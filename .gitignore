@@ -19,5 +19,8 @@
 # vendor/
 compound.*
 compound
+
 config.*.yaml
 .compound.yaml
+
+!internal/*

@@ -31,6 +31,10 @@ type Market struct {
 	BaseRate decimal.Decimal `sql:"type:decimal(24,8)" json:"base_rate"`
 	// The multiplier of utilization rate that gives the slope of the interest rate. per year
 	Multiplier decimal.Decimal `sql:"type:decimal(24,8)" json:"multiplier"`
+	// The multiplierPerBlock after hitting a specified utilization point. per year
+	JumpMultiplier decimal.Decimal `sql:"type:decimal(24,8)" json:"jump_multiplier"`
+	// Kink
+	Kink decimal.Decimal `sql:"type:decimal(24,8)" json:"kink"`
 }
 
 // BorrowRate get borrow rate
@@ -49,8 +53,16 @@ func (m *Market) UtilizationRate() decimal.Decimal {
 }
 
 // ExchangeRate exchange rate
-func (m Market) ExchangeRate() decimal.Decimal {
+func (m *Market) ExchangeRate() decimal.Decimal {
 	return decimal.Zero
+}
+
+func (m *Market) Transfer() {
+
+}
+
+func (m *Market) transferAllowed() {
+
 }
 
 // IMarketStore asset store interface

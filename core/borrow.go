@@ -8,7 +8,7 @@ type Borrow struct {
 // seizeAllowed()
 //
 
-// Repay()
+// RepayBorrow()
 // borrowVerify()
 // repayAllowed()
 //LiquidateBorrow()
