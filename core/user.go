@@ -30,4 +30,5 @@ type IUserStore interface {
 type IUserService interface {
 	Find(ctx context.Context, mixinID string) (*User, error)
 	Login(ctx context.Context, token string) (*User, error)
+	SupportMarket(ctx context.Context)
 }

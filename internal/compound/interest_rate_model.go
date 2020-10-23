@@ -61,8 +61,7 @@ func GetExchangeRate(totalCash, totalBorrows, totalReserves, totalSupply decimal
 func GetBorrowRatePerBlock(cash, borrows, reserves, baseRate, multiplier, jumpMultiplier, kink decimal.Decimal) decimal.Decimal {
 	utilRate := UtilizationRate(cash, borrows, reserves)
 
-	if utilRate.LessThanOrEqual(kink) ||
-		kink.Equal(decimal.Zero) ||
+	if kink.Equal(decimal.Zero) ||
 		utilRate.LessThanOrEqual(kink) {
 		return utilRate.Mul(GetMultiplierPerBlock(multiplier)).Add(GetBaseRatePerBlock(baseRate))
 	}

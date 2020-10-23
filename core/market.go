@@ -19,11 +19,11 @@ type Market struct {
 	CTokens decimal.Decimal `sql:"type:decimal(24,8)" json:"c_tokens"`
 	// 平台储备金总量
 	TotalReserves decimal.Decimal `sql:"type:decimal(24,8)" json:"total_reserves"`
-	// 平台储备金率 (0, 1), below 0.10
+	// 平台储备金率 (0, 1), 默认为 0.10
 	ReserveFactor decimal.Decimal `sql:"type:decimal(24,8)" json:"reserve_factor"`
 	// 清算激励因子 (0, 1)
 	LiquidationIncentive decimal.Decimal `sql:"type:decimal(24,8)" json:"liquidation_incentive"`
-	//抵押因子（0, 1）
+	//抵押因子 = 可借贷价值 / 抵押资产价值，目前compound设置为0.75 
 	CollateralFactor decimal.Decimal `sql:"type:decimal(24,8)" json:"collateral_factor"`
 	//触发清算因子 [0.05, 0.9]
 	CloseFactor decimal.Decimal `sql:"type:decimal(24,8)" json:"close_factor"`
@@ -35,6 +35,7 @@ type Market struct {
 	JumpMultiplier decimal.Decimal `sql:"type:decimal(24,8)" json:"jump_multiplier"`
 	// Kink
 	Kink decimal.Decimal `sql:"type:decimal(24,8)" json:"kink"`
+
 }
 
 // BorrowRate get borrow rate
@@ -70,4 +71,14 @@ type IMarketStore interface {
 	Save(ctx context.Context, market *Market) error
 	Find(ctx context.Context, assetID string) (*Market, error)
 	All(ctx context.Context) ([]*Market, error)
+}
+
+// IMarket market interface
+type IMarket interface {
+	BorrowRatePerBlock() decimal.Decimal
+	SupplyRatePerBlock() decimal.Decimal
+	UtilizationRate() decimal.Decimal
+	ExchangeRate() decimal.Decimal
+	Mint() 
+	MintAllowed()
 }

@@ -36,5 +36,6 @@ require (
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	golang.org/x/sys v0.0.0-20200928205150-006507a75852 // indirect
 	gopkg.in/ini.v1 v1.61.0 // indirect
+	gopkg.in/redis.v5 v5.2.9
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 )

@@ -5,9 +5,7 @@ import (
 	"compound/core"
 	"fmt"
 	"os"
-	"path"
 
-	"github.com/mitchellh/go-homedir"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/yiplee/structs"
@@ -30,7 +28,7 @@ func init() {
 		onInitialize(initConfig, initLog)
 	})
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file. default is $HOME/.compound.yaml")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file. default is ./config/.config.yaml")
 	rootCmd.PersistentFlags().BoolVar(&debugMode, "debug", false, "enable or disable debug model")
 }
 
@@ -50,12 +48,7 @@ func onInitialize(fs ...func()) {
 
 func initConfig() {
 	if cfgFile == "" {
-		dir, err := homedir.Dir()
-		if err != nil {
-			panic(err)
-		}
-
-		filename := path.Join(dir, ".compound.yaml")
+		filename := "./config/.config.yaml"
 		fmt.Println(filename)
 		info, err := os.Stat(filename)
 		if !os.IsNotExist(err) && !info.IsDir() {
@@ -71,7 +64,7 @@ func initConfig() {
 		panic(err)
 	}
 
-	fmt.Println(cfg)
+	fmt.Println("load config successful!!")
 }
 
 func initLog() {

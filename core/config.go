@@ -10,6 +10,7 @@ type Config struct {
 	DB    db.Config `json:"db"`
 	Redis Redis     `json:"redis,omitempty"`
 	Mixin Mixin     `json:"mixin"`
+	App   App       `json:"app"`
 }
 
 // Redis redis config
@@ -20,6 +21,21 @@ type Redis struct {
 
 // Mixin mixin dapp config
 type Mixin struct {
+	mixin.Keystore
+	ClientSecret string `json:"client_secret"`
+	Pin          string `json:"pin"`
+}
+
+// App app config
+type App struct {
+	AESKey          string `json:"aes_key"`
+	BlockAssetID    string `json:"block_asset_id"`
+	SecondsPerBlock int64  `json:"seconds_per_block"`
+	Genesis         int64  `json:"genesis"`
+}
+
+// BlockWallet block wallet
+type BlockWallet struct {
 	mixin.Keystore
 	ClientSecret string `json:"client_secret"`
 	Pin          string `json:"pin"`

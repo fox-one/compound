@@ -5,7 +5,7 @@ set -e
 TAG=${1:-dev}
 VERSION=$(git describe --tags)
 COMMIT=$(git rev-parse --short HEAD)
-BINARY=uniswap."${TAG}"
+BINARY=compound."${TAG}"
 
 trap 'rm -f config_gen.go' EXIT
 # go get -u github.com/fox-one/pkg/config/config-gen

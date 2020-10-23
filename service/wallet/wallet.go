@@ -3,6 +3,8 @@ package wallet
 import (
 	"compound/core"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"time"
 
 	"github.com/fox-one/mixin-sdk-go"
@@ -69,4 +71,28 @@ func convertSnapshot(snapshot *mixin.Snapshot) *core.Snapshot {
 		Amount:     snapshot.Amount,
 		Memo:       snapshot.Memo,
 	}
+}
+
+func (s *walletService) NewWallet(ctx context.Context, walletName, pin string) (*mixin.Keystore, string, error) {
+	privateKey, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		return nil, "", err
+	}
+
+	_, keystore, err := s.client.CreateUser(ctx, privateKey, walletName)
+	if err != nil {
+		return nil, "", err
+	}
+
+	newClient, err := mixin.NewFromKeystore(keystore)
+	if err != nil {
+		return nil, "", err
+	}
+
+	err = newClient.ModifyPin(ctx, "", pin)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return keystore, pin, nil
 }

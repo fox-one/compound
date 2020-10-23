@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/fox-one/mixin-sdk-go"
 	"github.com/shopspring/decimal"
 )
 
@@ -41,4 +42,5 @@ type IWalletStore interface {
 type IWalletService interface {
 	HandleTransfer(ctx context.Context, transfer *Transfer) (*Snapshot, error)
 	PullSnapshots(ctx context.Context, cursor string, limit int) ([]*Snapshot, string, error)
+	NewWallet(ctx context.Context, walletName, pin string) (*mixin.Keystore, string, error)
 }

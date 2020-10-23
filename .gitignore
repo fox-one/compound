@@ -21,6 +21,6 @@ compound.*
 compound
 
 config.*.yaml
-.compound.yaml
+.config.yaml
 
 !internal/*
