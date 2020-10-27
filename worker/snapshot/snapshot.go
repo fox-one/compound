@@ -2,20 +2,27 @@ package snapshot
 
 import (
 	"compound/core"
+	"compound/worker"
 	"context"
 	"errors"
 	"time"
 
 	"github.com/bluele/gcache"
+	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/property"
+	"github.com/robfig/cron/v3"
+	"github.com/shopspring/decimal"
 )
 
-// SnapshotWorker snapshot worker
-type SnapshotWorker struct {
+// Worker snapshot worker
+type Worker struct {
+	worker.BaseJob
 	config        *core.Config
+	dapp          *mixin.Client
 	property      property.Store
 	walletService core.IWalletService
+	blockService  core.IBlockService
 	snapshotCache gcache.Cache
 }
 
@@ -27,38 +34,32 @@ const (
 // New new snapshot worker
 func New(
 	config *core.Config,
+	dapp *mixin.Client,
 	property property.Store,
 	walletService core.IWalletService,
-) *SnapshotWorker {
-	return &SnapshotWorker{
+	blockService core.IBlockService,
+) *Worker {
+	job := Worker{
 		config:        config,
+		dapp:          dapp,
 		property:      property,
 		walletService: walletService,
+		blockService:  blockService,
 		snapshotCache: gcache.New(limit).LRU().Build(),
 	}
-}
 
-// Run run snapshot worker
-func (w *SnapshotWorker) Run(ctx context.Context) error {
-	log := logger.FromContext(ctx).WithField("worker", "snapshot")
-	ctx = logger.WithContext(ctx, log)
-
-	duration := time.Millisecond
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(duration):
-			if err := w.realRun(ctx); err == nil {
-				duration = 100 * time.Millisecond
-			} else {
-				duration = time.Second
-			}
-		}
+	l, _ := time.LoadLocation(job.config.App.Location)
+	job.Cron = cron.New(cron.WithLocation(l))
+	spec := "@every 1s"
+	job.Cron.AddFunc(spec, job.Run)
+	job.OnWork = func() error {
+		return job.onWork(context.Background())
 	}
+
+	return &job
 }
 
-func (w *SnapshotWorker) realRun(ctx context.Context) error {
+func (w *Worker) onWork(ctx context.Context) error {
 	log := logger.FromContext(ctx)
 	checkPoint, err := w.property.Get(ctx, checkPointKey)
 	if err != nil {
@@ -81,23 +82,15 @@ func (w *SnapshotWorker) realRun(ctx context.Context) error {
 			continue
 		}
 
-		if snapshot.UserID != w.config.Mixin.ClientID {
-			continue
-		}
-
-		if snapshot.Amount.IsNegative() {
-			continue
-		}
-
-		if w.snapshotCache.Has(snapshot.ID) {
-			continue
-		}
+		// if w.snapshotCache.Has(snapshot.ID) {
+		// 	continue
+		// }
 
 		if err := w.handleSnapshot(ctx, snapshot); err != nil {
 			return err
 		}
 
-		w.snapshotCache.Set(snapshot.ID, nil)
+		// w.snapshotCache.Set(snapshot.ID, nil)
 	}
 
 	if checkPoint.String() != next {
@@ -110,7 +103,44 @@ func (w *SnapshotWorker) realRun(ctx context.Context) error {
 	return nil
 }
 
-func (w *SnapshotWorker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) error {
-	//TODO add handle snapshot code here
+func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) error {
+	if snapshot.UserID == w.config.BlockWallet.ClientID {
+		//block event 查找当前block是否处理过，已处理则pass,否则处理当前block.理论上block是连续的，如果一当block出现缺失，则block缺失期间不计算收益
+		return w.handleBlockEvent(ctx, snapshot)
+	} else {
+
+	}
+	return nil
+}
+
+func (w *Worker) handleBlockEvent(ctx context.Context, snapshot *core.Snapshot) error {
+	if snapshot.AssetID != w.config.App.BlockAssetID && snapshot.Amount.LessThan(decimal.Zero) {
+		return nil
+	}
+
+	log := logger.FromContext(ctx).WithField("worker", "snapshot")
+
+	_, err := w.blockService.ParseBlockMemo(ctx, snapshot.Memo)
+	if err != nil {
+		log.Errorln("parse block memo error:", err)
+		return nil
+	}
+
+	//market
+	//calculate utilization rate
+	//calculate exchange rate
+	//calculate borrow rate
+	//calculate supply rate
+
+	//market
+	//calculate borrow interest
+	//calculate supply interest
+
+	//market
+	//calcutate reserve
+
+	//account
+	//scan account liquidity
+
 	return nil
 }

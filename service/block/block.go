@@ -2,9 +2,15 @@ package block
 
 import (
 	"compound/core"
+	"compound/internal/compound"
 	"context"
+	"encoding/json"
 	"errors"
-	"time"
+)
+
+const (
+	// ServiceType service type
+	ServiceType = "block"
 )
 
 type service struct {
@@ -20,17 +26,37 @@ func New(config *core.Config) core.IBlockService {
 
 //CurrentBlock 获取当前块高度
 func (s *service) CurrentBlock(ctx context.Context) (int64, error) {
-	now := time.Now().UTC()
-	seconds := now.Unix()
-
-	if s.config.App.SecondsPerBlock <= 0 {
-		return 0, errors.New("invalid seconds_per_block")
+	current, e := compound.CurrentBlock(ctx, s.config.App.SecondsPerBlock, s.config.App.Genesis)
+	if e != nil {
+		return 0, e
 	}
-	currentBlock := seconds / s.config.App.SecondsPerBlock
-
-	return currentBlock, nil
+	return current, nil
 }
 
-func (s *service) NewBlockMemo(ctx context.Context, currentBlock int) (string, error) {
-	return "", nil
+func (s *service) NewBlockMemo(ctx context.Context, currentBlock int64) (string, error) {
+	memo := core.BlockMemo{
+		Service: ServiceType,
+		Block:   currentBlock,
+	}
+
+	bs, e := json.Marshal(&memo)
+	if e != nil {
+		return "", e
+	}
+
+	return string(bs), nil
+}
+
+func (s *service) ParseBlockMemo(ctx context.Context, memoStr string) (*core.BlockMemo, error) {
+	var memo core.BlockMemo
+	e := json.Unmarshal([]byte(memoStr), &memo)
+	if e != nil {
+		return nil, e
+	}
+
+	if memo.Service != ServiceType {
+		return nil, errors.New("invalid service type")
+	}
+
+	return &memo, nil
 }

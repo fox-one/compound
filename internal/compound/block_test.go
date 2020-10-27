@@ -6,7 +6,7 @@ import (
 )
 
 func TestCurrentBlock(t *testing.T) {
-	currentBlock, e := CurrentBlock(context.Background(), 15, 1603366002)
+	currentBlock, e := CurrentBlock(context.Background(), 15, 1603382400)
 	if e != nil {
 		t.Error(e)
 	}

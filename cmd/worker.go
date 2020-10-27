@@ -2,29 +2,41 @@ package cmd
 
 import (
 	"compound/worker"
+	"compound/worker/snapshot"
+	"compound/worker/block"
+	"os"
+	"os/signal"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/sync/errgroup"
 )
 
 var workerCmd = &cobra.Command{
 	Use:   "worker",
 	Short: "compound job worker",
 	Run: func(cmd *cobra.Command, args []string) {
-		ctx := cmd.Context()
+		// ctx := cmd.Context()
 
-		workers := []worker.Worker{}
+		db := provideDatabase()
+		dapp := provideMixinClient()
+		blockWallet := provideBlockWallet()
+		config := provideConfig()
+		propertyStore := providePropertyStore(db)
+		walletService := provideWalletService()
+		blockService := provideBlockService()
 
-		var g errgroup.Group
+		workers := []worker.IJob{
+			block.New(config, dapp, blockWallet, blockService),
+			snapshot.New(config, dapp, propertyStore, walletService, blockService),
+		}
+
 		for _, w := range workers {
-			g.Go(func() error {
-				return w.Run(ctx)
-			})
+			w.Start()
+			defer w.Stop()
 		}
 
-		if err := g.Wait(); err != nil {
-			cmd.PrintErrln("run worker error:", err)
-		}
+		sig := make(chan os.Signal)
+		signal.Notify(sig, os.Interrupt, os.Kill)
+		<-sig
 	},
 }
 

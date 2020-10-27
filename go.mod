@@ -14,6 +14,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/go-chi/chi v4.1.1+incompatible
 	github.com/go-redis/redis v6.15.7+incompatible
+	github.com/gofrs/uuid v3.3.0+incompatible
 	github.com/gorilla/schema v1.1.0
 	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/magiconair/properties v1.8.4 // indirect
@@ -21,6 +22,7 @@ require (
 	github.com/mitchellh/mapstructure v1.3.3 // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c
 	github.com/pelletier/go-toml v1.8.1 // indirect
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/rs/cors v1.7.0
 	github.com/shopspring/decimal v1.2.0
 	github.com/sirupsen/logrus v1.5.0
