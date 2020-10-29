@@ -7,6 +7,8 @@ import (
 )
 
 var (
+	// SecondsPerBlock seconds per block
+	SecondsPerBlock int64 = 15
 	// BlocksPerYear blocks per year
 	BlocksPerYear = decimal.NewFromInt(2102400)
 	// CloseFactorMin min of close factor, must be strictly greater than this value
@@ -49,34 +51,32 @@ func ReservesNew(interestAccumulated, reserveFactor decimal.Decimal) decimal.Dec
 }
 
 // GetExchangeRate exchange rate
-func GetExchangeRate(totalCash, totalBorrows, totalReserves, totalSupply decimal.Decimal) decimal.Decimal {
-	if totalSupply.Equal(decimal.Zero) {
-		return InitialExchangeRate
+func GetExchangeRate(totalCash, totalBorrows, totalReserves, tokenSupply, initialExchangeRate decimal.Decimal) decimal.Decimal {
+	if tokenSupply.Equal(decimal.Zero) {
+		return initialExchangeRate
 	}
 
-	return totalCash.Add(totalBorrows).Sub(totalReserves).Div(totalSupply)
+	return totalCash.Add(totalBorrows).Sub(totalReserves).Div(tokenSupply)
 }
 
 // GetBorrowRatePerBlock borrowRate per block
-func GetBorrowRatePerBlock(cash, borrows, reserves, baseRate, multiplier, jumpMultiplier, kink decimal.Decimal) decimal.Decimal {
-	utilRate := UtilizationRate(cash, borrows, reserves)
-
+func GetBorrowRatePerBlock(utilizationRate, baseRate, multiplier, jumpMultiplier, kink decimal.Decimal) decimal.Decimal {
 	if kink.Equal(decimal.Zero) ||
-		utilRate.LessThanOrEqual(kink) {
-		return utilRate.Mul(GetMultiplierPerBlock(multiplier)).Add(GetBaseRatePerBlock(baseRate))
+		utilizationRate.LessThanOrEqual(kink) {
+		return utilizationRate.Mul(GetMultiplierPerBlock(multiplier)).Add(GetBaseRatePerBlock(baseRate))
 	}
 
 	normalRate := kink.Mul(GetMultiplierPerBlock(multiplier)).Add(GetBaseRatePerBlock(baseRate))
-	excessUtilRate := utilRate.Sub(kink)
+	excessUtilRate := utilizationRate.Sub(kink)
 	return excessUtilRate.Mul(GetJumpMultiplierPerBlock(jumpMultiplier)).Add(normalRate)
 }
 
 // GetSupplyRatePerBlock supply rate per block
-func GetSupplyRatePerBlock(cash, borrows, reserves, baseRate, multiplier, jumpMultiplier, kink, reserveFactor decimal.Decimal) decimal.Decimal {
-	borrowRate := GetBorrowRatePerBlock(cash, borrows, reserves, baseRate, multiplier, jumpMultiplier, kink)
+func GetSupplyRatePerBlock(utilizationRate, baseRate, multiplier, jumpMultiplier, kink, reserveFactor decimal.Decimal) decimal.Decimal {
+	borrowRate := GetBorrowRatePerBlock(utilizationRate, baseRate, multiplier, jumpMultiplier, kink)
 	oneMinusReserveFactor := decimal.NewFromInt(1).Sub(reserveFactor)
 	rateToPool := borrowRate.Mul(oneMinusReserveFactor)
-	return UtilizationRate(cash, borrows, reserves).Mul(rateToPool)
+	return utilizationRate.Mul(rateToPool)
 }
 
 // GetBaseRatePerBlock base rate per block

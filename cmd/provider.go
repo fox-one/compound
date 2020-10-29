@@ -4,6 +4,7 @@ import (
 	"compound/core"
 	"compound/service/block"
 	"compound/service/wallet"
+	"compound/store/market"
 	"compound/store/user"
 
 	"github.com/fox-one/mixin-sdk-go"
@@ -11,7 +12,7 @@ import (
 	"github.com/fox-one/pkg/store/db"
 	propertystore "github.com/fox-one/pkg/store/property"
 
-	"gopkg.in/redis.v5"
+	"github.com/go-redis/redis"
 )
 
 func provideDatabase() *db.DB {
@@ -47,6 +48,15 @@ func provideBlockWallet() *mixin.Client {
 	return c
 }
 
+func provideReserveWallet() *mixin.Client {
+	c, err := mixin.NewFromKeystore(&cfg.BlockWallet.Keystore)
+	if err != nil {
+		panic(err)
+	}
+
+	return c
+}
+
 // ---------------store-----------------------------------------
 
 func provideUserStore(db *db.DB) core.IUserStore {
@@ -57,6 +67,10 @@ func providePropertyStore(db *db.DB) property.Store {
 	return propertystore.New(db)
 }
 
+func provideMarketStore() core.IMarketStore {
+	return market.New(provideDatabase())
+}
+
 // ------------------service------------------------------------
 func provideWalletService() core.IWalletService {
 	return wallet.New(provideMixinClient(), cfg.Mixin.Pin)
@@ -64,4 +78,8 @@ func provideWalletService() core.IWalletService {
 
 func provideBlockService() core.IBlockService {
 	return block.New(provideConfig())
+}
+
+func providePriceService() core.IPriceOracleService {
+	return nil
 }

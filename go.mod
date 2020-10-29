@@ -14,6 +14,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/go-chi/chi v4.1.1+incompatible
 	github.com/go-redis/redis v6.15.7+incompatible
+	github.com/go-resty/resty/v2 v2.3.0
 	github.com/gofrs/uuid v3.3.0+incompatible
 	github.com/gorilla/schema v1.1.0
 	github.com/json-iterator/go v1.1.10 // indirect

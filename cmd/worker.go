@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"compound/worker"
+	"compound/worker/priceoracle"
 	"compound/worker/snapshot"
-	"compound/worker/block"
 	"os"
 	"os/signal"
 
@@ -20,13 +20,17 @@ var workerCmd = &cobra.Command{
 		dapp := provideMixinClient()
 		blockWallet := provideBlockWallet()
 		config := provideConfig()
+
 		propertyStore := providePropertyStore(db)
+		marketStore := provideMarketStore()
+
 		walletService := provideWalletService()
 		blockService := provideBlockService()
+		priceService := providePriceService()
 
 		workers := []worker.IJob{
-			block.New(config, dapp, blockWallet, blockService),
-			snapshot.New(config, dapp, propertyStore, walletService, blockService),
+			priceoracle.New(dapp, blockWallet, config, marketStore, blockService, priceService),
+			snapshot.New(config, dapp, propertyStore, walletService, priceService, blockService),
 		}
 
 		for _, w := range workers {

@@ -5,6 +5,7 @@ import (
 	"compound/worker"
 	"context"
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/bluele/gcache"
@@ -23,6 +24,7 @@ type Worker struct {
 	property      property.Store
 	walletService core.IWalletService
 	blockService  core.IBlockService
+	priceService  core.IPriceOracleService
 	snapshotCache gcache.Cache
 }
 
@@ -37,6 +39,7 @@ func New(
 	dapp *mixin.Client,
 	property property.Store,
 	walletService core.IWalletService,
+	priceSrv core.IPriceOracleService,
 	blockService core.IBlockService,
 ) *Worker {
 	job := Worker{
@@ -45,6 +48,7 @@ func New(
 		property:      property,
 		walletService: walletService,
 		blockService:  blockService,
+		priceService:  priceSrv,
 		snapshotCache: gcache.New(limit).LRU().Build(),
 	}
 
@@ -105,7 +109,6 @@ func (w *Worker) onWork(ctx context.Context) error {
 
 func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) error {
 	if snapshot.UserID == w.config.BlockWallet.ClientID {
-		//block event 查找当前block是否处理过，已处理则pass,否则处理当前block.理论上block是连续的，如果一当block出现缺失，则block缺失期间不计算收益
 		return w.handleBlockEvent(ctx, snapshot)
 	} else {
 
@@ -120,11 +123,31 @@ func (w *Worker) handleBlockEvent(ctx context.Context, snapshot *core.Snapshot) 
 
 	log := logger.FromContext(ctx).WithField("worker", "snapshot")
 
-	_, err := w.blockService.ParseBlockMemo(ctx, snapshot.Memo)
+	blockMemo, err := w.blockService.ParseBlockMemo(ctx, snapshot.Memo)
 	if err != nil {
 		log.Errorln("parse block memo error:", err)
 		return nil
 	}
+
+	service := blockMemo[core.BlockMemoKeyService]
+	if service == core.MemoServicePrice {
+		// cache price
+		block, err := strconv.ParseInt(blockMemo[core.BlockMemoKeyBlock], 10, 64)
+		if err != nil {
+			return nil
+		}
+		symbol := blockMemo[core.BlockMemoKeySymbol]
+		price, err := decimal.NewFromString(blockMemo[core.BlockMemoKeyPrice])
+		if err != nil {
+			return nil
+		}
+
+		w.priceService.Save(ctx, symbol, price, block)
+	} else if service == core.MemoServiceMarket {
+
+	}
+
+	// cache market
 
 	//market
 	//calculate utilization rate

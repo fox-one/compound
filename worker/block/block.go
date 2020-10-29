@@ -6,6 +6,7 @@ import (
 	"compound/worker"
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/fox-one/mixin-sdk-go"
@@ -47,6 +48,10 @@ func (w *Worker) onWork(ctx context.Context) error {
 	log := logger.FromContext(ctx).WithField("worker", "block")
 
 	currentBlock, err := w.BlockService.CurrentBlock(ctx)
+	if err != nil {
+		log.Errorln(err)
+		return err
+	}
 	// 检查当前区块是否已创建
 	str := fmt.Sprintf("foxone-compound-block-%d", currentBlock)
 	traceID := id.UUIDFromString(str)
@@ -66,7 +71,10 @@ func (w *Worker) onWork(ctx context.Context) error {
 		log.Infoln("block exists")
 	} else {
 		//create new block
-		memoStr, err := w.BlockService.NewBlockMemo(ctx, currentBlock)
+		memo := make(core.BlockMemo)
+		memo[core.BlockMemoKeyService] = core.MemoServiceBlock
+		memo[core.BlockMemoKeyBlock] = strconv.FormatInt(currentBlock, 10)
+		memoStr, err := w.BlockService.FormatBlockMemo(ctx, memo)
 		if err != nil {
 			log.Errorln("new block memo error:", err)
 			return err
