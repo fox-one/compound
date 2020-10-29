@@ -129,13 +129,15 @@ func (w *Worker) handleBlockEvent(ctx context.Context, snapshot *core.Snapshot) 
 		return nil
 	}
 
+	block, err := strconv.ParseInt(blockMemo[core.BlockMemoKeyBlock], 10, 64)
+	if err != nil {
+		return nil
+	}
+
 	service := blockMemo[core.BlockMemoKeyService]
 	if service == core.MemoServicePrice {
 		// cache price
-		block, err := strconv.ParseInt(blockMemo[core.BlockMemoKeyBlock], 10, 64)
-		if err != nil {
-			return nil
-		}
+
 		symbol := blockMemo[core.BlockMemoKeySymbol]
 		price, err := decimal.NewFromString(blockMemo[core.BlockMemoKeyPrice])
 		if err != nil {

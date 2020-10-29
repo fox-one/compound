@@ -1,14 +1,30 @@
 package core
 
-import "github.com/shopspring/decimal"
+import (
+	"context"
+	"time"
+
+	"github.com/shopspring/decimal"
+)
 
 // Supply supply info
 type Supply struct {
-	// asset id
-	UserID  string          `sql:"size:36" json:"user_id"`
-	AssetID string          `sql:"size:36" json:"asset_id"`
-	CTokens decimal.Decimal `sql:"type:decimal(24,8)" json:"c_tokens"`
+	ID        uint64          `sql:"AUTO_INCREMENT;PRIMARY_KEY" json:"id"`
+	UserID    string          `sql:"size:36;unique_index:user_symbol_idx" json:"user_id"`
+	Symbol    string          `sql:"size:20;unique_index:user_symbol_idx" json:"symbol"`
+	CTokens   decimal.Decimal `sql:"type:decimal(20,8)" json:"c_tokens"`
+	CreatedAt time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`
 }
 
-// Redeem
-// redeemAllowed
+// ISupplyStore supply store interface
+type ISupplyStore interface {
+	Save(ctx context.Context, supply *Supply) error
+	Find(ctx context.Context, userID string, symbols ...string) ([]*Supply, error)
+}
+
+// ISupplyService supply service interface
+type ISupplyService interface {
+	Redeem(ctx context.Context, amount decimal.Decimal, userID, symbol string) error
+	Loan(ctx context.Context, amount decimal.Decimal, userID, symbol string) error
+}

@@ -2,12 +2,10 @@ package cmd
 
 import (
 	"compound/handler/hc"
-	"context"
+	"compound/handler/rest"
 	"fmt"
 	"net/http"
-	"time"
 
-	"github.com/drone/signal"
 	"github.com/fox-one/pkg/logger"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -37,17 +35,17 @@ var serverCmd = &cobra.Command{
 
 		{
 			//rpc
-			mux.Mount("/rpc", nil)
+			mux.Mount("/rpc/v1", nil)
 		}
 
 		{
 			//restful api
-			mux.Mount("/api", nil)
+			mux.Mount("/api/v1", rest.Handle(ctx))
 		}
 
 		{
 			//websocket
-			mux.Mount("/ws", nil)
+			mux.Mount("/ws/v1", nil)
 		}
 
 		port, _ := cmd.Flags().GetInt("port")
@@ -58,28 +56,11 @@ var serverCmd = &cobra.Command{
 			Handler: mux,
 		}
 
-		ctx, quit := context.WithCancel(ctx)
-		done := make(chan struct{}, 1)
-		signal.WithContextFunc(ctx, func() {
-			quit()
-
-			ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
-			defer cancel()
-
-			if err := server.Shutdown(ctx); err != nil {
-				logrus.WithError(err).Error("graceful shutdown server failed")
-			}
-
-			close(done)
-		})
-
 		logrus.Infoln("serve at", addr)
 		err := server.ListenAndServe()
 		if err != http.ErrServerClosed {
 			logrus.WithError(err).Fatal("server aborted")
 		}
-
-		<-done
 	},
 }
 
