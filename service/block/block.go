@@ -36,7 +36,7 @@ func (s *service) GetBlock(ctx context.Context, t time.Time) (int64, error) {
 	return block, nil
 }
 
-func (s *service) FormatBlockMemo(ctx context.Context, memo core.BlockMemo) (string, error) {
+func (s *service) FormatBlockMemo(ctx context.Context, memo core.Action) (string, error) {
 	bs, e := json.Marshal(&memo)
 	if e != nil {
 		return "", e
@@ -45,8 +45,8 @@ func (s *service) FormatBlockMemo(ctx context.Context, memo core.BlockMemo) (str
 	return string(bs), nil
 }
 
-func (s *service) ParseBlockMemo(ctx context.Context, memoStr string) (core.BlockMemo, error) {
-	var memo core.BlockMemo
+func (s *service) ParseBlockMemo(ctx context.Context, memoStr string) (core.Action, error) {
+	var memo core.Action
 	e := json.Unmarshal([]byte(memoStr), &memo)
 	if e != nil {
 		return nil, e

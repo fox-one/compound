@@ -5,9 +5,12 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/fox-one/mixin-sdk-go"
+	"github.com/shopspring/decimal"
 )
 
 // New new wallet service
@@ -95,4 +98,13 @@ func (s *walletService) NewWallet(ctx context.Context, walletName, pin string) (
 	}
 
 	return keystore, pin, nil
+}
+
+// PaySchemaURL build pay schema url
+func PaySchemaURL(amount decimal.Decimal, asset, recipient, trace, memo string) (string, error) {
+	if amount.LessThanOrEqual(decimal.Zero) || asset == "" || recipient == "" || trace == "" {
+		return "", errors.New("invalid paramaters")
+	}
+
+	return fmt.Sprintf("mixin://pay?amount=%s&asset=%s&recipient=%s&trace=%s&memo=%s", amount.String(), asset, recipient, trace, memo), nil
 }

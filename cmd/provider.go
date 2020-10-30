@@ -5,8 +5,11 @@ import (
 	"compound/service/block"
 	marketservice "compound/service/market"
 	oracle "compound/service/oracle"
+	supplyService "compound/service/supply"
 	"compound/service/wallet"
+	"compound/store/borrow"
 	"compound/store/market"
+	"compound/store/supply"
 	"compound/store/user"
 
 	"github.com/fox-one/mixin-sdk-go"
@@ -43,7 +46,7 @@ func provideDApp() *mixin.Client {
 
 func provideMainWallet() *mixin.Client {
 	return provideDApp()
-} 
+}
 
 func provideBlockWallet() *mixin.Client {
 	c, err := mixin.NewFromKeystore(&cfg.BlockWallet.Keystore)
@@ -77,6 +80,14 @@ func provideMarketStore() core.IMarketStore {
 	return market.New(provideDatabase())
 }
 
+func provideSupplyStore() core.ISupplyStore {
+	return supply.New(provideDatabase())
+}
+
+func provideBorrowStore() core.IBorrowStore {
+	return borrow.New(provideDatabase())
+}
+
 // ------------------service------------------------------------
 func provideWalletService() core.IWalletService {
 	return wallet.New(provideDApp(), cfg.Mixin.Pin)
@@ -98,4 +109,13 @@ func provideMarketService() core.IMarketService {
 		provideMarketStore(),
 		provideBlockService(),
 		providePriceService())
+}
+
+func provideSupplyService() core.ISupplyService {
+	return supplyService.New(provideConfig(), provideMainWallet())
+}
+
+func provideBorrowService() core.IBorrowService {
+	// return borrowService.New()
+	return nil
 }

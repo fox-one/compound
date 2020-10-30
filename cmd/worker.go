@@ -24,16 +24,32 @@ var workerCmd = &cobra.Command{
 
 		propertyStore := providePropertyStore(db)
 		marketStore := provideMarketStore()
+		supplyStore := provideSupplyStore()
+		borrowStore := provideBorrowStore()
 
 		walletService := provideWalletService()
 		blockService := provideBlockService()
 		priceService := providePriceService()
 		marketService := provideMarketService()
+		supplyService := provideSupplyService()
+		borrowService := provideBorrowService()
 
 		workers := []worker.IJob{
 			priceoracle.New(dapp, blockWallet, config, marketStore, blockService, priceService),
 			market.New(dapp, blockWallet, config, marketStore, blockService, priceService),
-			snapshot.New(config, dapp, propertyStore, walletService, priceService, blockService, marketService),
+			snapshot.New(config,
+				dapp,
+				propertyStore,
+				db,
+				marketStore,
+				supplyStore,
+				borrowStore,
+				walletService,
+				priceService,
+				blockService,
+				marketService,
+				supplyService,
+				borrowService),
 		}
 
 		for _, w := range workers {

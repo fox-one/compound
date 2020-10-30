@@ -4,16 +4,16 @@ import (
 	"compound/core"
 	"compound/worker"
 	"context"
+	"encoding/json"
 	"errors"
-	"strconv"
 	"time"
 
 	"github.com/bluele/gcache"
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/property"
+	"github.com/fox-one/pkg/store/db"
 	"github.com/robfig/cron/v3"
-	"github.com/shopspring/decimal"
 )
 
 // Worker snapshot worker
@@ -22,10 +22,16 @@ type Worker struct {
 	config        *core.Config
 	dapp          *mixin.Client
 	property      property.Store
+	db            *db.DB
+	marketStore   core.IMarketStore
+	supplyStore   core.ISupplyStore
+	borrowStore   core.IBorrowStore
 	walletService core.IWalletService
 	blockService  core.IBlockService
 	priceService  core.IPriceOracleService
 	marketService core.IMarketService
+	supplyService core.ISupplyService
+	borrowService core.IBorrowService
 	snapshotCache gcache.Cache
 }
 
@@ -39,19 +45,31 @@ func New(
 	config *core.Config,
 	dapp *mixin.Client,
 	property property.Store,
+	db *db.DB,
+	marketStore core.IMarketStore,
+	supplyStore core.ISupplyStore,
+	borrowStore core.IBorrowStore,
 	walletService core.IWalletService,
 	priceSrv core.IPriceOracleService,
 	blockService core.IBlockService,
 	marketSrv core.IMarketService,
+	supplyService core.ISupplyService,
+	borrowService core.IBorrowService,
 ) *Worker {
 	job := Worker{
 		config:        config,
 		dapp:          dapp,
 		property:      property,
+		db:            db,
+		marketStore:   marketStore,
+		supplyStore:   supplyStore,
+		borrowStore:   borrowStore,
 		walletService: walletService,
 		blockService:  blockService,
 		priceService:  priceSrv,
 		marketService: marketSrv,
+		supplyService: supplyService,
+		borrowService: borrowService,
 		snapshotCache: gcache.New(limit).LRU().Build(),
 	}
 
@@ -113,85 +131,26 @@ func (w *Worker) onWork(ctx context.Context) error {
 func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) error {
 	if snapshot.UserID == w.config.BlockWallet.ClientID {
 		return w.handleBlockEvent(ctx, snapshot)
-	} else {
-
-	}
-	return nil
-}
-
-func (w *Worker) handleBlockEvent(ctx context.Context, snapshot *core.Snapshot) error {
-	if snapshot.AssetID != w.config.App.BlockAssetID {
-		return nil
-	}
-
-	log := logger.FromContext(ctx).WithField("worker", "snapshot")
-
-	blockMemo, err := w.blockService.ParseBlockMemo(ctx, snapshot.Memo)
-	if err != nil {
-		log.Errorln("parse block memo error:", err)
-		return nil
-	}
-
-	block, err := strconv.ParseInt(blockMemo[core.BlockMemoKeyBlock], 10, 64)
-	if err != nil {
-		return nil
-	}
-
-	service := blockMemo[core.BlockMemoKeyService]
-	if service == core.MemoServicePrice {
-		// cache price
-
-		symbol := blockMemo[core.BlockMemoKeySymbol]
-		price, err := decimal.NewFromString(blockMemo[core.BlockMemoKeyPrice])
-		if err != nil {
+	} else if snapshot.UserID == w.config.Mixin.ClientID {
+		// main wallet
+		var action core.Action
+		e := json.Unmarshal([]byte(snapshot.Memo), &action)
+		if e != nil {
 			return nil
 		}
-
-		w.priceService.Save(ctx, symbol, price, block)
-	} else if service == core.MemoServiceMarket {
-		symbol := blockMemo[core.BlockMemoKeySymbol]
-	
-		//utilization rate
-		utilizationRate, err := decimal.NewFromString(blockMemo[core.BlockMemoKeyUtilizationRate])
-		if err != nil {
-			return nil
+		service := action[core.ActionKeyService]
+		if service == core.ActionServiceSupply {
+			return w.handleSupplyEvent(ctx, snapshot)
+		} else if service == core.ActionServiceRedeem {
+			return w.handleSupplyRedeemEvent(ctx, snapshot)
+		} else if service == core.ActionServiceBorrow {
+			return w.handleBorrowEvent(ctx, snapshot)
+		} else if service == core.ActionServiceRepay {
+			return w.handleBorrowRepayEvent(ctx, snapshot)
+		} else {
+			return w.handleRefundEvent(ctx, snapshot)
 		}
 
-		w.marketService.SaveUtilizationRate(ctx, symbol, utilizationRate, block)
-
-		// borrow rate
-		borrowRate, err := decimal.NewFromString(blockMemo[core.BlockMemoKeyBorrowRate])
-		if err != nil {
-			return nil
-		}
-
-		w.marketService.SaveBorrowRatePerBlock(ctx, symbol, borrowRate, block)
-
-		// supply rate
-		supplyRate, err := decimal.NewFromString(blockMemo[core.BlockMemoKeySupplyRate])
-		if err != nil {
-			return nil
-		}
-		w.marketService.SaveSupplyRatePerBlock(ctx, symbol, supplyRate, block)
 	}
-
-	// cache market
-
-	//market
-	//calculate utilization rate
-	//calculate exchange rate
-	//calculate borrow rate
-	//calculate supply rate
-
-	//market
-	//calculate borrow interest
-	//calculate supply interest
-
-	//market
-	//calcutate reserve
-
-	//account
-	//scan account liquidity
-
 	return nil
 }

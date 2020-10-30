@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"compound/core"
+	"compound/pkg/id"
+	"compound/service/wallet"
 	"context"
 	"fmt"
 
@@ -39,16 +41,19 @@ var exampleCmd = &cobra.Command{
 		// cmd.Println(string(bs))
 
 		blockService := provideBlockService()
-		memo := make(core.BlockMemo)
-		memo[core.BlockMemoKeyService] = core.MemoServiceMarket
-		memo[core.BlockMemoKeySymbol] = "USDT"
-		memo[core.BlockMemoKeyBlock] = "1234567890"
-		memo[core.BlockMemoKeyUtilizationRate] = "0.5667"
-		memo[core.BlockMemoKeyBorrowRate] = "0.0000000002324345"
-		memo[core.BlockMemoKeySupplyRate] = "0.0000000003434535"
+		memo := make(core.Action)
+		memo[core.ActionKeyService] = core.ActionServiceMarket
+		memo[core.ActionKeySymbol] = "USDT"
+		memo[core.ActionKeyBlock] = "1234567890"
+		memo[core.ActionKeyUtilizationRate] = "0.5667"
+		memo[core.ActionKeyBorrowRate] = "0.0000000002324345"
+		memo[core.ActionKeySupplyRate] = "0.0000000003434535"
 
-		fmt.Println(blockService.FormatBlockMemo(context.Background(), memo))
+		mStr, _ := blockService.FormatBlockMemo(context.Background(), memo)
+		fmt.Println(mStr)
 		fmt.Println(decimal.NewFromFloat(0.13).Div(decimal.NewFromInt(2102400)))
+
+		fmt.Println(wallet.PaySchemaURL(decimal.NewFromInt(12), "965e5c6e-434c-3fa9-b780-c50f43cd955c", "8be122b4-596f-4e4f-a307-978bed0ffb75", id.GenTraceID(), mStr))
 	},
 }
 

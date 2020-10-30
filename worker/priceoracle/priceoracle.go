@@ -110,10 +110,10 @@ func (w *Worker) checkAndPushPriceOnChain(ctx context.Context, market *core.Mark
 		log.Infoln("transation exists")
 	} else {
 		//create new block
-		memo := make(core.BlockMemo)
-		memo[core.BlockMemoKeyService] = core.MemoServicePrice
-		memo[core.BlockMemoKeyBlock] = strconv.FormatInt(currentBlock, 10)
-		memo[core.BlockMemoKeyPrice] = ticker.Price.Truncate(8).String()
+		memo := make(core.Action)
+		memo[core.ActionKeyService] = core.ActionServicePrice
+		memo[core.ActionKeyBlock] = strconv.FormatInt(currentBlock, 10)
+		memo[core.ActionKeyPrice] = ticker.Price.Truncate(8).String()
 		memoStr, err := w.BlockService.FormatBlockMemo(ctx, memo)
 		if err != nil {
 			log.Errorln("new block memo error:", err)

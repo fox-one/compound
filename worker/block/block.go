@@ -71,9 +71,9 @@ func (w *Worker) onWork(ctx context.Context) error {
 		log.Infoln("block exists")
 	} else {
 		//create new block
-		memo := make(core.BlockMemo)
-		memo[core.BlockMemoKeyService] = core.MemoServiceBlock
-		memo[core.BlockMemoKeyBlock] = strconv.FormatInt(currentBlock, 10)
+		memo := make(core.Action)
+		memo[core.ActionKeyService] = core.ActionServiceBlock
+		memo[core.ActionKeyBlock] = strconv.FormatInt(currentBlock, 10)
 		memoStr, err := w.BlockService.FormatBlockMemo(ctx, memo)
 		if err != nil {
 			log.Errorln("new block memo error:", err)

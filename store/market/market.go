@@ -55,10 +55,41 @@ func (s *marketStore) Find(ctx context.Context, assetID, symbol string) (*core.M
 	return &market, nil
 }
 
+func (s *marketStore) FindByCToken(ctx context.Context, ctokenAssetID, ctokenSymbol string) (*core.Market, error) {
+	if ctokenAssetID == "" && ctokenSymbol == "" {
+		return nil, errors.New("invalid asset_id and symbol")
+	}
+
+	var market core.Market
+	query := s.db.View()
+	if ctokenAssetID != "" {
+		query = query.Where("asset_id=?", ctokenAssetID)
+	}
+	if ctokenSymbol != "" {
+		query = query.Where("symbol=?", ctokenSymbol)
+	}
+
+	if err := query.First(&market).Error; err != nil {
+		return nil, err
+	}
+
+	return &market, nil
+}
+
 func (s *marketStore) All(ctx context.Context) ([]*core.Market, error) {
 	var markets []*core.Market
 	if err := s.db.View().Find(&markets).Error; err != nil {
 		return nil, err
 	}
 	return markets, nil
+}
+
+func (s *marketStore) Update(ctx context.Context, tx *db.DB, market *core.Market) error {
+	version := market.Version
+	market.Version++
+	if err := tx.Update().Model(core.Market{}).Where("asset_id=? and version=?", market.AssetID, version).Update(market).Error; err != nil {
+		return err
+	}
+
+	return nil
 }

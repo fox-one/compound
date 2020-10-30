@@ -101,10 +101,10 @@ func (w *Worker) checkAndPushMarketOnChain(ctx context.Context, market *core.Mar
 		log.Infoln("transation exists")
 	} else {
 		//create new block
-		memo := make(core.BlockMemo)
-		memo[core.BlockMemoKeyService] = core.MemoServiceMarket
-		memo[core.BlockMemoKeySymbol] = market.Symbol
-		memo[core.BlockMemoKeyBlock] = strconv.FormatInt(currentBlock, 10)
+		memo := make(core.Action)
+		memo[core.ActionKeyService] = core.ActionServiceMarket
+		memo[core.ActionKeySymbol] = market.Symbol
+		memo[core.ActionKeyBlock] = strconv.FormatInt(currentBlock, 10)
 
 		// utilization rate
 		uRate, err := w.MarketService.CurUtilizationRate(ctx, market)
@@ -113,7 +113,7 @@ func (w *Worker) checkAndPushMarketOnChain(ctx context.Context, market *core.Mar
 			return err
 		}
 
-		memo[core.BlockMemoKeyUtilizationRate] = uRate.Truncate(4).String()
+		memo[core.ActionKeyUtilizationRate] = uRate.Truncate(4).String()
 
 		// borrow rate
 		bRate, err := w.MarketService.CurBorrowRatePerBlock(ctx, market)
@@ -122,7 +122,7 @@ func (w *Worker) checkAndPushMarketOnChain(ctx context.Context, market *core.Mar
 			return err
 		}
 
-		memo[core.BlockMemoKeyBorrowRate] = bRate.Truncate(16).String()
+		memo[core.ActionKeyBorrowRate] = bRate.Truncate(16).String()
 
 		// supply rate
 		sRate, err := w.MarketService.CurSupplyRatePerBlock(ctx, market)
@@ -131,7 +131,7 @@ func (w *Worker) checkAndPushMarketOnChain(ctx context.Context, market *core.Mar
 			return err
 		}
 
-		memo[core.BlockMemoKeySupplyRate] = sRate.Truncate(16).String()
+		memo[core.ActionKeySupplyRate] = sRate.Truncate(16).String()
 
 		// format memo to string
 		memoStr, err := w.BlockService.FormatBlockMemo(ctx, memo)

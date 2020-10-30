@@ -13,7 +13,9 @@ type supplyStore struct {
 
 // New new supply store
 func New(db *db.DB) core.ISupplyStore {
-	return &supplyStore{}
+	return &supplyStore{
+		db: db,
+	}
 }
 
 func init() {
@@ -45,4 +47,14 @@ func (s *supplyStore) Find(ctx context.Context, userID string, symbols ...string
 	}
 
 	return supplies, nil
+}
+
+func (s *supplyStore) Update(ctx context.Context, tx *db.DB, supply *core.Supply) error {
+	version := supply.Version
+	supply.Version++
+	if err := tx.Update().Model(core.Supply{}).Where("user_id=? symbol=? and version=?", supply.UserID, supply.Symbol, version).Updates(supply).Error; err != nil {
+		return err
+	}
+
+	return nil
 }
