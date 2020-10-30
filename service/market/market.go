@@ -14,30 +14,27 @@ import (
 )
 
 type service struct {
-	Redis         *redis.Client
-	mainWallet    *mixin.Client
-	reserveWallet *mixin.Client
-	marketstore   core.IMarketStore
-	blockSrv      core.IBlockService
-	priceSrv      core.IPriceOracleService
+	Redis       *redis.Client
+	mainWallet  *mixin.Client
+	marketstore core.IMarketStore
+	blockSrv    core.IBlockService
+	priceSrv    core.IPriceOracleService
 }
 
 // New new market service
 func New(
 	redis *redis.Client,
 	mainWallet *mixin.Client,
-	reserveWallet *mixin.Client,
 	marketStr core.IMarketStore,
 	blockSrv core.IBlockService,
 	priceSrv core.IPriceOracleService,
 ) core.IMarketService {
 	return &service{
-		Redis:         redis,
-		mainWallet:    mainWallet,
-		reserveWallet: reserveWallet,
-		marketstore:   marketStr,
-		blockSrv:      blockSrv,
-		priceSrv:      priceSrv,
+		Redis:       redis,
+		mainWallet:  mainWallet,
+		marketstore: marketStr,
+		blockSrv:    blockSrv,
+		priceSrv:    priceSrv,
 	}
 }
 
@@ -226,12 +223,13 @@ func (s *service) CurTotalBorrow(ctx context.Context, market *core.Market) (deci
 
 // 总保留金
 func (s *service) CurTotalReserves(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
-	cash, e := s.reserveWallet.ReadAsset(ctx, market.AssetID)
-	if e != nil {
-		return decimal.Zero, e
-	}
+	// cash, e := s.reserveWallet.ReadAsset(ctx, market.AssetID)
+	// if e != nil {
+	// 	return decimal.Zero, e
+	// }
 
-	return cash.Balance, nil
+	// return cash.Balance, nil
+	return decimal.Zero, nil
 }
 
 // 总借款利息

@@ -41,6 +41,7 @@ var exampleCmd = &cobra.Command{
 		blockService := provideBlockService()
 		memo := make(core.BlockMemo)
 		memo[core.BlockMemoKeyService] = core.MemoServiceMarket
+		memo[core.BlockMemoKeySymbol] = "USDT"
 		memo[core.BlockMemoKeyBlock] = "1234567890"
 		memo[core.BlockMemoKeyUtilizationRate] = "0.5667"
 		memo[core.BlockMemoKeyBorrowRate] = "0.0000000002324345"

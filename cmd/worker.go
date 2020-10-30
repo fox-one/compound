@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"compound/worker"
+	"compound/worker/market"
 	"compound/worker/priceoracle"
 	"compound/worker/snapshot"
 	"os"
@@ -17,7 +18,7 @@ var workerCmd = &cobra.Command{
 		// ctx := cmd.Context()
 
 		db := provideDatabase()
-		dapp := provideMixinClient()
+		dapp := provideDApp()
 		blockWallet := provideBlockWallet()
 		config := provideConfig()
 
@@ -27,10 +28,12 @@ var workerCmd = &cobra.Command{
 		walletService := provideWalletService()
 		blockService := provideBlockService()
 		priceService := providePriceService()
+		marketService := provideMarketService()
 
 		workers := []worker.IJob{
 			priceoracle.New(dapp, blockWallet, config, marketStore, blockService, priceService),
-			snapshot.New(config, dapp, propertyStore, walletService, priceService, blockService),
+			market.New(dapp, blockWallet, config, marketStore, blockService, priceService),
+			snapshot.New(config, dapp, propertyStore, walletService, priceService, blockService, marketService),
 		}
 
 		for _, w := range workers {

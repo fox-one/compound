@@ -25,6 +25,7 @@ type Worker struct {
 	walletService core.IWalletService
 	blockService  core.IBlockService
 	priceService  core.IPriceOracleService
+	marketService core.IMarketService
 	snapshotCache gcache.Cache
 }
 
@@ -41,6 +42,7 @@ func New(
 	walletService core.IWalletService,
 	priceSrv core.IPriceOracleService,
 	blockService core.IBlockService,
+	marketSrv core.IMarketService,
 ) *Worker {
 	job := Worker{
 		config:        config,
@@ -49,6 +51,7 @@ func New(
 		walletService: walletService,
 		blockService:  blockService,
 		priceService:  priceSrv,
+		marketService: marketSrv,
 		snapshotCache: gcache.New(limit).LRU().Build(),
 	}
 
@@ -117,7 +120,7 @@ func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) er
 }
 
 func (w *Worker) handleBlockEvent(ctx context.Context, snapshot *core.Snapshot) error {
-	if snapshot.AssetID != w.config.App.BlockAssetID && snapshot.Amount.LessThan(decimal.Zero) {
+	if snapshot.AssetID != w.config.App.BlockAssetID {
 		return nil
 	}
 
@@ -146,7 +149,30 @@ func (w *Worker) handleBlockEvent(ctx context.Context, snapshot *core.Snapshot) 
 
 		w.priceService.Save(ctx, symbol, price, block)
 	} else if service == core.MemoServiceMarket {
+		symbol := blockMemo[core.BlockMemoKeySymbol]
+	
+		//utilization rate
+		utilizationRate, err := decimal.NewFromString(blockMemo[core.BlockMemoKeyUtilizationRate])
+		if err != nil {
+			return nil
+		}
 
+		w.marketService.SaveUtilizationRate(ctx, symbol, utilizationRate, block)
+
+		// borrow rate
+		borrowRate, err := decimal.NewFromString(blockMemo[core.BlockMemoKeyBorrowRate])
+		if err != nil {
+			return nil
+		}
+
+		w.marketService.SaveBorrowRatePerBlock(ctx, symbol, borrowRate, block)
+
+		// supply rate
+		supplyRate, err := decimal.NewFromString(blockMemo[core.BlockMemoKeySupplyRate])
+		if err != nil {
+			return nil
+		}
+		w.marketService.SaveSupplyRatePerBlock(ctx, symbol, supplyRate, block)
 	}
 
 	// cache market

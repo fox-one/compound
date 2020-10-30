@@ -103,10 +103,11 @@ func (w *Worker) checkAndPushMarketOnChain(ctx context.Context, market *core.Mar
 		//create new block
 		memo := make(core.BlockMemo)
 		memo[core.BlockMemoKeyService] = core.MemoServiceMarket
+		memo[core.BlockMemoKeySymbol] = market.Symbol
 		memo[core.BlockMemoKeyBlock] = strconv.FormatInt(currentBlock, 10)
 
 		// utilization rate
-		uRate, err := w.MarketService.UtilizationRate(ctx, market)
+		uRate, err := w.MarketService.CurUtilizationRate(ctx, market)
 		if err != nil {
 			log.Errorln("get utilization rate error:", err)
 			return err
@@ -115,7 +116,7 @@ func (w *Worker) checkAndPushMarketOnChain(ctx context.Context, market *core.Mar
 		memo[core.BlockMemoKeyUtilizationRate] = uRate.Truncate(4).String()
 
 		// borrow rate
-		bRate, err := w.MarketService.BorrowRatePerBlock(ctx, market)
+		bRate, err := w.MarketService.CurBorrowRatePerBlock(ctx, market)
 		if err != nil {
 			log.Errorln("get borrow rate per block error:", err)
 			return err
@@ -124,7 +125,7 @@ func (w *Worker) checkAndPushMarketOnChain(ctx context.Context, market *core.Mar
 		memo[core.BlockMemoKeyBorrowRate] = bRate.Truncate(16).String()
 
 		// supply rate
-		sRate, err := w.MarketService.SupplyRatePerBlock(ctx, market)
+		sRate, err := w.MarketService.CurSupplyRatePerBlock(ctx, market)
 		if err != nil {
 			log.Errorln("get supply rate per block error:", err)
 			return err

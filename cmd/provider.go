@@ -3,6 +3,8 @@ package cmd
 import (
 	"compound/core"
 	"compound/service/block"
+	marketservice "compound/service/market"
+	oracle "compound/service/oracle"
 	"compound/service/wallet"
 	"compound/store/market"
 	"compound/store/user"
@@ -30,7 +32,7 @@ func provideConfig() *core.Config {
 	return &cfg
 }
 
-func provideMixinClient() *mixin.Client {
+func provideDApp() *mixin.Client {
 	c, err := mixin.NewFromKeystore(&cfg.Mixin.Keystore)
 	if err != nil {
 		panic(err)
@@ -38,6 +40,10 @@ func provideMixinClient() *mixin.Client {
 
 	return c
 }
+
+func provideMainWallet() *mixin.Client {
+	return provideDApp()
+} 
 
 func provideBlockWallet() *mixin.Client {
 	c, err := mixin.NewFromKeystore(&cfg.BlockWallet.Keystore)
@@ -73,7 +79,7 @@ func provideMarketStore() core.IMarketStore {
 
 // ------------------service------------------------------------
 func provideWalletService() core.IWalletService {
-	return wallet.New(provideMixinClient(), cfg.Mixin.Pin)
+	return wallet.New(provideDApp(), cfg.Mixin.Pin)
 }
 
 func provideBlockService() core.IBlockService {
@@ -81,5 +87,15 @@ func provideBlockService() core.IBlockService {
 }
 
 func providePriceService() core.IPriceOracleService {
-	return nil
+	return oracle.New(provideConfig(),
+		provideRedis(),
+		provideBlockService())
+}
+
+func provideMarketService() core.IMarketService {
+	return marketservice.New(provideRedis(),
+		provideDApp(),
+		provideMarketStore(),
+		provideBlockService(),
+		providePriceService())
 }
