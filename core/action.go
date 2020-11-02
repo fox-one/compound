@@ -37,6 +37,8 @@ const (
 	ActionServiceRedeem = "rdm"
 	// ActionServiceRepay repay borrow
 	ActionServiceRepay = "rpy"
+	// ActionServiceMint mint
+	ActionServiceMint = "mint"
 )
 
 // Action action

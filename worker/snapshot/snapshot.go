@@ -147,6 +147,8 @@ func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) er
 			return w.handleBorrowEvent(ctx, snapshot)
 		} else if service == core.ActionServiceRepay {
 			return w.handleBorrowRepayEvent(ctx, snapshot)
+		} else if service == core.ActionServiceMint {
+			return w.handleMintEvent(ctx, snapshot)
 		} else {
 			return w.handleRefundEvent(ctx, snapshot)
 		}
