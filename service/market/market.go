@@ -144,7 +144,7 @@ func (s *service) CurUtilizationRate(ctx context.Context, market *core.Market) (
 	}
 
 	//cash里面不包含准备金，所以不需要减去准备金
-	rate := compound.UtilizationRate(cash.Balance, market.TotalBorrows, decimal.Zero)
+	rate := compound.UtilizationRate(cash.Balance, market.TotalBorrows, market.Reserves)
 	return rate, nil
 }
 func (s *service) CurExchangeRate(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
@@ -158,7 +158,7 @@ func (s *service) CurExchangeRate(ctx context.Context, market *core.Market) (dec
 	}
 
 	//cash里面不包含准备金，所以不需要减去准备金
-	rate := compound.GetExchangeRate(cash.Balance, market.TotalBorrows, decimal.Zero, market.CTokens, market.InitExchangeRate)
+	rate := compound.GetExchangeRate(cash.Balance, market.TotalBorrows, market.Reserves, market.CTokens, market.InitExchangeRate)
 
 	return rate, nil
 }
@@ -223,13 +223,7 @@ func (s *service) CurTotalBorrow(ctx context.Context, market *core.Market) (deci
 
 // 总保留金
 func (s *service) CurTotalReserves(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
-	// cash, e := s.reserveWallet.ReadAsset(ctx, market.AssetID)
-	// if e != nil {
-	// 	return decimal.Zero, e
-	// }
-
-	// return cash.Balance, nil
-	return decimal.Zero, nil
+	return market.Reserves, nil
 }
 
 // 总借款利息

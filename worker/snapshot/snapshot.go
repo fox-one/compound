@@ -107,15 +107,9 @@ func (w *Worker) onWork(ctx context.Context) error {
 			continue
 		}
 
-		// if w.snapshotCache.Has(snapshot.ID) {
-		// 	continue
-		// }
-
 		if err := w.handleSnapshot(ctx, snapshot); err != nil {
 			return err
 		}
-
-		// w.snapshotCache.Set(snapshot.ID, nil)
 	}
 
 	if checkPoint.String() != next {
@@ -129,9 +123,7 @@ func (w *Worker) onWork(ctx context.Context) error {
 }
 
 func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) error {
-	if snapshot.UserID == w.config.BlockWallet.ClientID {
-		return w.handleBlockEvent(ctx, snapshot)
-	} else if snapshot.UserID == w.config.Mixin.ClientID {
+	if snapshot.UserID == w.config.Mixin.ClientID {
 		// main wallet
 		var action core.Action
 		e := json.Unmarshal([]byte(snapshot.Memo), &action)
@@ -139,20 +131,28 @@ func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) er
 			return nil
 		}
 		service := action[core.ActionKeyService]
-		if service == core.ActionServiceSupply {
-			return w.handleSupplyEvent(ctx, snapshot)
-		} else if service == core.ActionServiceRedeem {
-			return w.handleSupplyRedeemEvent(ctx, snapshot)
-		} else if service == core.ActionServiceBorrow {
-			return w.handleBorrowEvent(ctx, snapshot)
-		} else if service == core.ActionServiceRepay {
-			return w.handleBorrowRepayEvent(ctx, snapshot)
-		} else if service == core.ActionServiceMint {
-			return w.handleMintEvent(ctx, snapshot)
-		} else {
-			return w.handleRefundEvent(ctx, snapshot)
+		switch service {
+		case core.ActionServicePrice:
+			return handlePriceEvent(ctx, w, action, snapshot)
+		case core.ActionServiceMarket:
+			return handleMarketEvent(ctx, w, action, snapshot)
+		case core.ActionServiceSupply:
+			return handleSupplyEvent(ctx, w, action, snapshot)
+		case core.ActionServiceRedeem:
+			return handleSupplyRedeemEvent(ctx, w, action, snapshot)
+		case core.ActionServiceBorrow:
+			return handleBorrowEvent(ctx, w, action, snapshot)
+		case core.ActionServiceRepay:
+			return handleBorrowRepayEvent(ctx, w, action, snapshot)
+		case core.ActionServiceMint:
+			return handleMintEvent(ctx, w, action, snapshot)
+		case core.ActionServiceCollateralStatus:
+			return handleUpdateCollateralStatusEvent(ctx, w, action, snapshot)
+		default:
+			return handleRefundEvent(ctx, w, action, snapshot)
 		}
-
 	}
 	return nil
 }
+
+type handleTransferAction func(ctx context.Context, w *Worker, action *core.Action, snapshot *core.Snapshot) error

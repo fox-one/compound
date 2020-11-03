@@ -20,6 +20,14 @@ const (
 	ActionKeyBorrowRate = "br"
 	// ActionKeySupplyRate supply rate : decimal
 	ActionKeySupplyRate = "sr"
+	// ActionKeyAmount amount
+	ActionKeyAmount = "amnt"
+	// ActionKeyCToken ctokens
+	ActionKeyCToken = "ctk"
+	// ActionKeyStatus status
+	ActionKeyStatus = "st"
+	// ActionKeyUser user
+	ActionKeyUser = "usr"
 )
 
 const (
@@ -35,10 +43,14 @@ const (
 	ActionServiceBorrow = "brw"
 	// ActionServiceRedeem redeem supply
 	ActionServiceRedeem = "rdm"
+	// ActionServiceRedeemTransfer redeem transfer to user
+	ActionServiceRedeemTransfer = "rdm-tran"
 	// ActionServiceRepay repay borrow
 	ActionServiceRepay = "rpy"
 	// ActionServiceMint mint
 	ActionServiceMint = "mint"
+	// ActionServiceCollateralStatus collateral status
+	ActionServiceCollateralStatus = "col-st"
 )
 
 // Action action

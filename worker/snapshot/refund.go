@@ -5,6 +5,6 @@ import (
 	"context"
 )
 
-func (w *Worker) handleRefundEvent(ctx context.Context, snapshot *core.Snapshot) error {
+var handleRefundEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
 	return nil
 }

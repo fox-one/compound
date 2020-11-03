@@ -52,8 +52,8 @@ func (s *PriceService) Save(ctx context.Context, symbol string, price decimal.De
 
 	// not exists, add new
 	if s.Redis.Exists(k).Val() == 0 {
-		//new
-		s.Redis.Set(k, []byte(price.String()), time.Hour)
+		//new expired after 24h
+		s.Redis.Set(k, []byte(price.String()), time.Hour*24)
 	}
 
 	return nil

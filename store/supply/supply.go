@@ -36,13 +36,18 @@ func (s *supplyStore) Save(ctx context.Context, supply *core.Supply) error {
 
 	return nil
 }
-func (s *supplyStore) Find(ctx context.Context, userID string, symbols ...string) ([]*core.Supply, error) {
-	query := s.db.View().Where("user_id=?", userID)
-	if len(symbols) > 0 {
-		query = query.Where("symbol in (?)", symbols)
+func (s *supplyStore) Find(ctx context.Context, userID string, symbol string) (*core.Supply, error) {
+	var supply core.Supply
+	if e := s.db.View().Where("user_id=? and symbol=?", userID, symbol).First(&supply).Error; e != nil {
+		return nil, e
 	}
+
+	return &supply, nil
+}
+
+func (s *supplyStore) FindByUser(ctx context.Context, userID string) ([]*core.Supply, error) {
 	var supplies []*core.Supply
-	if e := query.Find(&supplies).Error; e != nil {
+	if e := s.db.View().Where("user_id=?", userID).Find(&supplies).Error; e != nil {
 		return nil, e
 	}
 

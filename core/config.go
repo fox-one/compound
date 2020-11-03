@@ -7,13 +7,12 @@ import (
 
 // Config compound config
 type Config struct {
-	DB            db.Config     `json:"db"`
-	Redis         Redis         `json:"redis,omitempty"`
-	Mixin         Mixin         `json:"mixin"`
-	App           App           `json:"app"`
-	BlockWallet   BlockWallet   `json:"block_wallet"`
-	ReserveWallet ReserveWallet `json:"reserve_wallet"`
-	PriceOracle   PriceOracle   `json:"price_oracle"`
+	DB          db.Config   `json:"db"`
+	Redis       Redis       `json:"redis,omitempty"`
+	Mixin       Mixin       `json:"mixin"`
+	App         App         `json:"app"`
+	BlockWallet BlockWallet `json:"block_wallet"`
+	PriceOracle PriceOracle `json:"price_oracle"`
 }
 
 // Redis redis config
@@ -45,11 +44,11 @@ type BlockWallet struct {
 }
 
 // ReserveWallet reserve wallet config
-type ReserveWallet struct {
-	mixin.Keystore
-	ClientSecret string `json:"client_secret"`
-	Pin          string `json:"pin"`
-}
+// type ReserveWallet struct {
+// 	mixin.Keystore
+// 	ClientSecret string `json:"client_secret"`
+// 	Pin          string `json:"pin"`
+// }
 
 // PriceOracle price oracle config
 type PriceOracle struct {

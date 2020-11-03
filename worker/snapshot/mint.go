@@ -5,12 +5,19 @@ import (
 	"context"
 
 	"github.com/fox-one/pkg/store/db"
+	"github.com/shopspring/decimal"
 )
 
 // send ctoken to user
-func (w *Worker) handleMintEvent(ctx context.Context, snapshot *core.Snapshot) error {
+var handleMintEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
 	return w.db.Tx(func(tx *db.DB) error {
 		market, e := w.marketStore.FindByCToken(ctx, snapshot.AssetID, "")
+		if e != nil {
+			return e
+		}
+
+		pAmount := action[core.ActionKeyAmount]
+		principal, e := decimal.NewFromString(pAmount)
 		if e != nil {
 			return e
 		}
@@ -24,17 +31,14 @@ func (w *Worker) handleMintEvent(ctx context.Context, snapshot *core.Snapshot) e
 			return e
 		}
 		//update supply ctokens
-		supplies, e := w.supplyStore.Find(ctx, snapshot.OpponentID, market.Symbol)
+		supply, e := w.supplyStore.Find(ctx, snapshot.OpponentID, market.Symbol)
 		if e != nil {
-			return e
-		}
-
-		if len(supplies) <= 0 {
 			//new
 			supply := core.Supply{
-				UserID:  snapshot.OpponentID,
-				Symbol:  market.Symbol,
-				CTokens: ctokens,
+				UserID:    snapshot.OpponentID,
+				Symbol:    market.Symbol,
+				Principal: principal,
+				Ctokens:   ctokens,
 			}
 			e = w.supplyStore.Save(ctx, &supply)
 			if e != nil {
@@ -42,9 +46,9 @@ func (w *Worker) handleMintEvent(ctx context.Context, snapshot *core.Snapshot) e
 			}
 		} else {
 			//update
-			s := supplies[0]
-			s.CTokens = s.CTokens.Add(ctokens)
-			e := w.supplyStore.Update(ctx, tx, s)
+			supply.Principal = supply.Principal.Add(principal)
+			supply.Ctokens = supply.Ctokens.Add(ctokens)
+			e := w.supplyStore.Update(ctx, tx, supply)
 			if e != nil {
 				return e
 			}

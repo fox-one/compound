@@ -36,18 +36,24 @@ func (s *borrowStore) Save(ctx context.Context, borrow *core.Borrow) error {
 
 	return nil
 }
-func (s *borrowStore) Find(ctx context.Context, userID string, symbols ...string) ([]*core.Borrow, error) {
-	query := s.db.View().Where("user_id=?", userID)
-	if len(symbols) > 0 {
-		query = query.Where("symbol in (?)", symbols)
+func (s *borrowStore) Find(ctx context.Context, userID string, symbol string) (*core.Borrow, error) {
+	var borrow core.Borrow
+	if e := s.db.View().Where("user_id=? and symbol=?", userID, symbol).First(&borrow).Error; e != nil {
+		return nil, e
 	}
+
+	return &borrow, nil
+}
+
+func (s *borrowStore) FindByUser(ctx context.Context, userID string) ([]*core.Borrow, error) {
 	var borrows []*core.Borrow
-	if e := query.Find(&borrows).Error; e != nil {
+	if e := s.db.View().Where("user_id=?", userID).Find(&borrows).Error; e != nil {
 		return nil, e
 	}
 
 	return borrows, nil
 }
+
 func (s *borrowStore) Update(ctx context.Context, tx *db.DB, borrow *core.Borrow) error {
 	version := borrow.Version
 	borrow.Version++

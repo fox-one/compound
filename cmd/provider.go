@@ -5,7 +5,6 @@ import (
 	"compound/service/block"
 	marketservice "compound/service/market"
 	oracle "compound/service/oracle"
-	supplyService "compound/service/supply"
 	"compound/service/wallet"
 	"compound/store/borrow"
 	"compound/store/market"
@@ -112,7 +111,8 @@ func provideMarketService() core.IMarketService {
 }
 
 func provideSupplyService() core.ISupplyService {
-	return supplyService.New(provideConfig(), provideMainWallet())
+	// return supplyService.New(provideConfig(), provideMainWallet())
+	return nil
 }
 
 func provideBorrowService() core.IBorrowService {

@@ -5,10 +5,10 @@ import (
 	"context"
 )
 
-func (w *Worker) handleBorrowRepayEvent(ctx context.Context, snapshot *core.Snapshot) error {
+var handleBorrowRepayEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
 	_, e := w.marketStore.Find(ctx, snapshot.AssetID, "")
 	if e != nil {
-		return w.handleRefundEvent(ctx, snapshot)
+		return handleRefundEvent(ctx, w, action, snapshot)
 	}
 
 	return nil

@@ -107,12 +107,13 @@ func (w *Worker) checkAndPushPriceOnChain(ctx context.Context, market *core.Mark
 	}
 
 	if payment.Status == "paid" {
-		log.Infoln("transation exists")
+		log.Infoln("transaction exists")
 	} else {
 		//create new block
 		memo := make(core.Action)
 		memo[core.ActionKeyService] = core.ActionServicePrice
 		memo[core.ActionKeyBlock] = strconv.FormatInt(currentBlock, 10)
+		memo[core.ActionKeySymbol] = market.Symbol
 		memo[core.ActionKeyPrice] = ticker.Price.Truncate(8).String()
 		memoStr, err := w.BlockService.FormatBlockMemo(ctx, memo)
 		if err != nil {
