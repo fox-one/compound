@@ -18,15 +18,15 @@ func New() core.IAccountService {
 }
 
 func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID string) (decimal.Decimal, error) {
-	supplies, e := s.supplyStore.Find(ctx, userID)
-	if e != nil {
-		return decimal.Zero, e
-	}
+	// supplies, e := s.supplyStore.FindByUser(ctx, userID)
+	// if e != nil {
+	// 	return decimal.Zero, e
+	// }
 
-	borrows, e := s.borrowStore.Find(ctx, userID)
-	if e != nil {
-		return decimal.Zero, e
-	}
+	// borrows, e := s.borrowStore.FindByUser(ctx, userID)
+	// if e != nil {
+	// 	return decimal.Zero, e
+	// }
 
 	return decimal.Zero, nil
 }

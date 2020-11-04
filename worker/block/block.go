@@ -35,7 +35,7 @@ func New(cfg *core.Config, dapp *mixin.Client, blockWallet *mixin.Client, blockS
 
 	l, _ := time.LoadLocation(job.Config.App.Location)
 	job.Cron = cron.New(cron.WithLocation(l))
-	spec := "@every 1s"
+	spec := "@every 10ms"
 	job.Cron.AddFunc(spec, job.Run)
 	job.OnWork = func() error {
 		return job.onWork(context.Background())

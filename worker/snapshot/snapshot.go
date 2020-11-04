@@ -19,20 +19,21 @@ import (
 // Worker snapshot worker
 type Worker struct {
 	worker.BaseJob
-	config        *core.Config
-	dapp          *mixin.Client
-	property      property.Store
-	db            *db.DB
-	marketStore   core.IMarketStore
-	supplyStore   core.ISupplyStore
-	borrowStore   core.IBorrowStore
-	walletService core.IWalletService
-	blockService  core.IBlockService
-	priceService  core.IPriceOracleService
-	marketService core.IMarketService
-	supplyService core.ISupplyService
-	borrowService core.IBorrowService
-	snapshotCache gcache.Cache
+	config         *core.Config
+	dapp           *mixin.Client
+	property       property.Store
+	db             *db.DB
+	marketStore    core.IMarketStore
+	supplyStore    core.ISupplyStore
+	borrowStore    core.IBorrowStore
+	walletService  core.IWalletService
+	blockService   core.IBlockService
+	priceService   core.IPriceOracleService
+	marketService  core.IMarketService
+	supplyService  core.ISupplyService
+	borrowService  core.IBorrowService
+	accountService core.IAccountService
+	snapshotCache  gcache.Cache
 }
 
 const (
@@ -55,27 +56,29 @@ func New(
 	marketSrv core.IMarketService,
 	supplyService core.ISupplyService,
 	borrowService core.IBorrowService,
+	accountService core.IAccountService,
 ) *Worker {
 	job := Worker{
-		config:        config,
-		dapp:          dapp,
-		property:      property,
-		db:            db,
-		marketStore:   marketStore,
-		supplyStore:   supplyStore,
-		borrowStore:   borrowStore,
-		walletService: walletService,
-		blockService:  blockService,
-		priceService:  priceSrv,
-		marketService: marketSrv,
-		supplyService: supplyService,
-		borrowService: borrowService,
-		snapshotCache: gcache.New(limit).LRU().Build(),
+		config:         config,
+		dapp:           dapp,
+		property:       property,
+		db:             db,
+		marketStore:    marketStore,
+		supplyStore:    supplyStore,
+		borrowStore:    borrowStore,
+		walletService:  walletService,
+		blockService:   blockService,
+		priceService:   priceSrv,
+		marketService:  marketSrv,
+		supplyService:  supplyService,
+		borrowService:  borrowService,
+		accountService: accountService,
+		snapshotCache:  gcache.New(limit).LRU().Build(),
 	}
 
 	l, _ := time.LoadLocation(job.config.App.Location)
 	job.Cron = cron.New(cron.WithLocation(l))
-	spec := "@every 1s"
+	spec := "@every 100ms"
 	job.Cron.AddFunc(spec, job.Run)
 	job.OnWork = func() error {
 		return job.onWork(context.Background())
@@ -140,14 +143,18 @@ func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) er
 			return handleSupplyEvent(ctx, w, action, snapshot)
 		case core.ActionServiceRedeem:
 			return handleSupplyRedeemEvent(ctx, w, action, snapshot)
+		case core.ActionServiceRedeemTransfer:
+			return handleRedeemTransferEvent(ctx, w, action, snapshot)
 		case core.ActionServiceBorrow:
 			return handleBorrowEvent(ctx, w, action, snapshot)
 		case core.ActionServiceRepay:
 			return handleBorrowRepayEvent(ctx, w, action, snapshot)
 		case core.ActionServiceMint:
 			return handleMintEvent(ctx, w, action, snapshot)
-		case core.ActionServiceCollateralStatus:
-			return handleUpdateCollateralStatusEvent(ctx, w, action, snapshot)
+		case core.ActionServicePledge:
+			return handlePledgeEvent(ctx, w, action, snapshot)
+		case core.ActionServiceUnpledge:
+			return handleUnpledgeEvent(ctx, w, action, snapshot)
 		default:
 			return handleRefundEvent(ctx, w, action, snapshot)
 		}

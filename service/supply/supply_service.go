@@ -3,13 +3,11 @@ package supply
 import (
 	"compound/core"
 	"compound/pkg/id"
-	"compound/service/wallet"
 	"context"
 	"errors"
 	"fmt"
 
 	"github.com/fox-one/mixin-sdk-go"
-	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/store/db"
 	"github.com/shopspring/decimal"
 )
@@ -23,6 +21,7 @@ type supplyService struct {
 	accountService core.IAccountService
 	priceService   core.IPriceOracleService
 	blockService   core.IBlockService
+	walletService  core.IWalletService
 }
 
 // New new supply service
@@ -32,14 +31,18 @@ func New(cfg *core.Config,
 	supplyStore core.ISupplyStore,
 	accountService core.IAccountService,
 	priceService core.IPriceOracleService,
-	blockService core.IBlockService) core.ISupplyService {
-	// return &supplyService{
-	// 	config:      cfg,
-	// 	mainWallet:  mainWallet,
-	// 	db:          db,
-	// 	supplyStore: supplyStore,
-	// }
-	return nil
+	blockService core.IBlockService,
+	walletService core.IWalletService) core.ISupplyService {
+	return &supplyService{
+		config:         cfg,
+		mainWallet:     mainWallet,
+		db:             db,
+		supplyStore:    supplyStore,
+		accountService: accountService,
+		priceService:   priceService,
+		blockService:   blockService,
+		walletService:  walletService,
+	}
 }
 
 // 赎回
@@ -56,7 +59,7 @@ func (s *supplyService) Redeem(ctx context.Context, redeemTokens decimal.Decimal
 		return "", e
 	}
 
-	return wallet.PaySchemaURL(redeemTokens, market.CTokenAssetID, s.mainWallet.ClientID, id.GenTraceID(), str)
+	return s.walletService.PaySchemaURL(redeemTokens, market.CTokenAssetID, s.mainWallet.ClientID, id.GenTraceID(), str)
 }
 
 func (s *supplyService) RedeemAllowed(ctx context.Context, redeemTokens decimal.Decimal, userID string, market *core.Market) bool {
@@ -82,8 +85,7 @@ func (s *supplyService) RedeemAllowed(ctx context.Context, redeemTokens decimal.
 		return false
 	}
 
-	if !s.accountService.IsNoBorrows(ctx, userID) &&
-		supply.CollateStatus == core.CollateStateOn {
+	if s.accountService.HasBorrows(ctx, userID) {
 		// check liquidity
 		liquidity, e := s.accountService.CalculateAccountLiquidity(ctx, userID)
 		if e != nil {
@@ -116,8 +118,7 @@ func (s *supplyService) MaxRedeem(ctx context.Context, userID string, market *co
 
 	amount := supply.Principal
 
-	if !s.accountService.IsNoBorrows(ctx, userID) &&
-		supply.CollateStatus == core.CollateStateOn {
+	if s.accountService.HasBorrows(ctx, userID) {
 		// check liquidity
 		liquidity, e := s.accountService.CalculateAccountLiquidity(ctx, userID)
 		if e != nil {
@@ -174,14 +175,45 @@ func (s *supplyService) Supply(ctx context.Context, amount decimal.Decimal, mark
 	if e != nil {
 		return "", e
 	}
-	return wallet.PaySchemaURL(amount, market.AssetID, s.mainWallet.ClientID, id.GenTraceID(), str)
+	return s.walletService.PaySchemaURL(amount, market.AssetID, s.mainWallet.ClientID, id.GenTraceID(), str)
 }
 
-func (s *supplyService) SetCollateStatus(ctx context.Context, userID string, market *core.Market, status core.CollateStatus) error {
-	log := logger.FromContext(ctx)
-	//不可抵押
-	if market.CollateralFactor.LessThanOrEqual(decimal.Zero) {
-		return errors.New("disable collateral")
+//抵押
+func (s *supplyService) Pledge(ctx context.Context, pledgedTokens decimal.Decimal, userID string, market *core.Market) (string, error) {
+	supply, e := s.supplyStore.Find(ctx, userID, market.Symbol)
+	if e != nil {
+		return "", e
+	}
+
+	remainTokens := supply.Ctokens.Sub(supply.CollateTokens)
+	if pledgedTokens.GreaterThan(remainTokens) {
+		return "", errors.New("insufficient remain tokens")
+	}
+
+	memo := make(core.Action)
+	memo[core.ActionKeyService] = core.ActionServicePledge
+
+	memoStr, e := memo.Format()
+	if e != nil {
+		return "", e
+	}
+
+	return s.walletService.PaySchemaURL(pledgedTokens, market.CTokenAssetID, s.mainWallet.ClientID, id.GenTraceID(), memoStr)
+}
+
+//撤销抵押
+func (s *supplyService) Unpledge(ctx context.Context, pledgedTokens decimal.Decimal, userID string, market *core.Market) error {
+	supply, e := s.supplyStore.Find(ctx, userID, market.Symbol)
+	if e != nil {
+		return e
+	}
+
+	if pledgedTokens.GreaterThanOrEqual(supply.CollateTokens) {
+		return errors.New("invalid unpledge tokens")
+	}
+
+	if s.accountService.HasBorrows(ctx, userID) {
+		return errors.New("unpledge forbidden, has borrows")
 	}
 
 	curBlock, e := s.blockService.CurrentBlock(ctx)
@@ -189,7 +221,7 @@ func (s *supplyService) SetCollateStatus(ctx context.Context, userID string, mar
 		return e
 	}
 
-	trace := id.UUIDFromString(fmt.Sprintf("collate-%s-%s-%d-%d", userID, market.Symbol, curBlock, status))
+	trace := id.UUIDFromString(fmt.Sprintf("unpledge-%s-%s-%d", userID, market.Symbol, curBlock))
 	input := mixin.TransferInput{
 		AssetID:    s.config.App.BlockAssetID,
 		OpponentID: s.mainWallet.ClientID,
@@ -197,37 +229,37 @@ func (s *supplyService) SetCollateStatus(ctx context.Context, userID string, mar
 		TraceID:    trace,
 	}
 
-	payment, err := s.mainWallet.VerifyPayment(ctx, input)
-	if err != nil {
-		log.Errorln("verifypayment error:", err)
-		return err
-	}
+	if !s.walletService.VerifyPayment(ctx, &input) {
+		memo := make(core.Action)
+		memo[core.ActionKeyService] = core.ActionServiceUnpledge
+		memo[core.ActionKeyCToken] = pledgedTokens.String()
+		memo[core.ActionKeySymbol] = market.Symbol
+		memo[core.ActionKeyUser] = userID
 
-	if payment.Status == "paid" {
-		log.Infoln("transaction exists")
-		return errors.New("transaction exists")
-	}
+		memoStr, e := memo.Format()
+		if e != nil {
+			return e
+		}
 
-	memo := make(core.Action)
-	memo[core.ActionKeyService] = core.ActionServiceCollateralStatus
-	memo[core.ActionKeyStatus] = status.String()
-	memo[core.ActionKeySymbol] = market.Symbol
-	memo[core.ActionKeyUser] = userID
+		input.Memo = memoStr
 
-	memoStr, e := s.blockService.FormatBlockMemo(ctx, memo)
-	if e != nil {
-		return e
-	}
-
-	input.Memo = memoStr
-
-	_, e = s.blockWallet.Transfer(ctx, &input, s.config.BlockWallet.Pin)
-	if e != nil {
-		return e
+		_, e = s.blockWallet.Transfer(ctx, &input, s.config.BlockWallet.Pin)
+		if e != nil {
+			return e
+		}
 	}
 
 	return nil
+}
 
+//当前最大可抵押
+func (s *supplyService) MaxPledge(ctx context.Context, userID string, market *core.Market) (decimal.Decimal, error) {
+	supply, e := s.supplyStore.Find(ctx, userID, market.Symbol)
+	if e != nil {
+		return decimal.Zero, e
+	}
+
+	return supply.Ctokens.Sub(supply.CollateTokens), nil
 }
 
 // estimatedAccountLiquidity(

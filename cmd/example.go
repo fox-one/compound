@@ -2,8 +2,6 @@ package cmd
 
 import (
 	"compound/core"
-	"compound/pkg/id"
-	"compound/service/wallet"
 	"context"
 	"fmt"
 
@@ -53,7 +51,7 @@ var exampleCmd = &cobra.Command{
 		fmt.Println(mStr)
 		fmt.Println(decimal.NewFromFloat(0.13).Div(decimal.NewFromInt(2102400)))
 
-		fmt.Println(wallet.PaySchemaURL(decimal.NewFromInt(12), "965e5c6e-434c-3fa9-b780-c50f43cd955c", "8be122b4-596f-4e4f-a307-978bed0ffb75", id.GenTraceID(), mStr))
+		// fmt.Println(wallet.PaySchemaURL(decimal.NewFromInt(12), "965e5c6e-434c-3fa9-b780-c50f43cd955c", "8be122b4-596f-4e4f-a307-978bed0ffb75", id.GenTraceID(), mStr))
 	},
 }
 

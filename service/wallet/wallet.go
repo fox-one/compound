@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/fox-one/mixin-sdk-go"
+	"github.com/fox-one/pkg/logger"
 	"github.com/shopspring/decimal"
 )
 
@@ -101,10 +102,22 @@ func (s *walletService) NewWallet(ctx context.Context, walletName, pin string) (
 }
 
 // PaySchemaURL build pay schema url
-func PaySchemaURL(amount decimal.Decimal, asset, recipient, trace, memo string) (string, error) {
+func (s *walletService) PaySchemaURL(amount decimal.Decimal, asset, recipient, trace, memo string) (string, error) {
 	if amount.LessThanOrEqual(decimal.Zero) || asset == "" || recipient == "" || trace == "" {
 		return "", errors.New("invalid paramaters")
 	}
 
 	return fmt.Sprintf("mixin://pay?amount=%s&asset=%s&recipient=%s&trace=%s&memo=%s", amount.String(), asset, recipient, trace, memo), nil
+}
+
+func (s *walletService) VerifyPayment(ctx context.Context, input *mixin.TransferInput) bool {
+	log := logger.FromContext(ctx)
+
+	payment, err := s.client.VerifyPayment(ctx, *input)
+	if err != nil {
+		log.Errorln("verifypayment error:", err)
+		return false
+	}
+
+	return payment.Status == "paid"
 }

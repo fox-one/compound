@@ -17,7 +17,7 @@ type IAccountService interface {
 	CalculateAccountLiquidity(ctx context.Context, userID string) (decimal.Decimal, error)
 	// >0, greater than liquidity; else less than liquidity
 	CompValueAndLiquidity(ctx context.Context, valueAmount decimal.Decimal, valueSymbol string, liqudity decimal.Decimal) (decimal.Decimal, error)
-	IsNoBorrows(ctx context.Context, userID string) bool
+	HasBorrows(ctx context.Context, userID string) bool
 }
 type IAccount interface {
 	getLiquidity() decimal.Decimal

@@ -49,8 +49,10 @@ const (
 	ActionServiceRepay = "rpy"
 	// ActionServiceMint mint
 	ActionServiceMint = "mint"
-	// ActionServiceCollateralStatus collateral status
-	ActionServiceCollateralStatus = "col-st"
+	// ActionServicePledge pledge
+	ActionServicePledge = "plg"
+	// ActionServiceUnpledge unpledge
+	ActionServiceUnpledge = "uplg"
 )
 
 // Action action

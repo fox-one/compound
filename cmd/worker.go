@@ -33,6 +33,7 @@ var workerCmd = &cobra.Command{
 		marketService := provideMarketService()
 		supplyService := provideSupplyService()
 		borrowService := provideBorrowService()
+		accountService := provideAccountService()
 
 		workers := []worker.IJob{
 			priceoracle.New(dapp, blockWallet, config, marketStore, blockService, priceService),
@@ -49,7 +50,8 @@ var workerCmd = &cobra.Command{
 				blockService,
 				marketService,
 				supplyService,
-				borrowService),
+				borrowService,
+				accountService),
 		}
 
 		for _, w := range workers {

@@ -119,3 +119,7 @@ func provideBorrowService() core.IBorrowService {
 	// return borrowService.New()
 	return nil
 }
+
+func provideAccountService() core.IAccountService {
+	return nil
+}
