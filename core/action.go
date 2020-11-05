@@ -52,6 +52,10 @@ const (
 	ActionServicePledge = "plg"
 	// ActionServiceUnpledge unpledge
 	ActionServiceUnpledge = "uplg"
+	// ActionServiceSupplyInterest supply interest
+	ActionServiceSupplyInterest = "s-inter"
+	// ActionServiceBorrowInterest borrow interest
+	ActionServiceBorrowInterest = "b-inter"
 )
 
 // Action action

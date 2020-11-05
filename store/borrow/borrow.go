@@ -82,3 +82,12 @@ func (s *borrowStore) Update(ctx context.Context, tx *db.DB, borrow *core.Borrow
 
 	return nil
 }
+
+func (s *borrowStore) All(ctx context.Context) ([]*core.Borrow, error) {
+	var borrows []*core.Borrow
+	if e := s.db.View().Find(&borrows).Error; e != nil {
+		return nil, e
+	}
+
+	return borrows, nil
+}

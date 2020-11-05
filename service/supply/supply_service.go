@@ -68,8 +68,9 @@ func (s *supplyService) RedeemAllowed(ctx context.Context, redeemTokens decimal.
 		return false
 	}
 
+	remainTokens := supply.Ctokens.Sub(supply.CollateTokens)
 	// check ctokens
-	if redeemTokens.GreaterThan(supply.Ctokens) {
+	if redeemTokens.GreaterThan(remainTokens) {
 		return false
 	}
 
@@ -85,27 +86,6 @@ func (s *supplyService) RedeemAllowed(ctx context.Context, redeemTokens decimal.
 		return false
 	}
 
-	if s.accountService.HasBorrows(ctx, userID) {
-		// check liquidity
-		liquidity, e := s.accountService.CalculateAccountLiquidity(ctx, userID)
-		if e != nil {
-			return false
-		}
-
-		if liquidity.LessThanOrEqual(decimal.Zero) {
-			return false
-		}
-
-		comp, e := s.accountService.CompValueAndLiquidity(ctx, amount, market.Symbol, liquidity)
-		if e != nil {
-			return false
-		}
-
-		if comp.GreaterThan(decimal.Zero) {
-			return false
-		}
-	}
-
 	return true
 }
 
@@ -116,36 +96,8 @@ func (s *supplyService) MaxRedeem(ctx context.Context, userID string, market *co
 		return decimal.Zero, e
 	}
 
-	amount := supply.Principal
-
-	if s.accountService.HasBorrows(ctx, userID) {
-		// check liquidity
-		liquidity, e := s.accountService.CalculateAccountLiquidity(ctx, userID)
-		if e != nil {
-			return decimal.Zero, e
-		}
-
-		if liquidity.LessThanOrEqual(decimal.Zero) {
-			return decimal.Zero, e
-		}
-
-		curBlock, e := s.blockService.CurrentBlock(ctx)
-		if e != nil {
-			return decimal.Zero, e
-		}
-
-		price, e := s.priceService.GetUnderlyingPrice(ctx, market.Symbol, curBlock)
-		if e != nil {
-			return decimal.Zero, e
-		}
-
-		redeemValue := amount.Mul(price)
-		if redeemValue.GreaterThan(liquidity) {
-			redeemValue = liquidity
-		}
-
-		amount = redeemValue.Div(price)
-	}
+	remainTokens := supply.Ctokens.Sub(supply.CollateTokens)
+	remainAmount := supply.Principal.Mul(remainTokens).Div(supply.Ctokens)
 
 	// check market cash
 	marketCash, e := s.mainWallet.ReadAsset(ctx, market.AssetID)
@@ -153,13 +105,13 @@ func (s *supplyService) MaxRedeem(ctx context.Context, userID string, market *co
 		return decimal.Zero, e
 	}
 
-	if amount.GreaterThan(marketCash.Balance) {
-		amount = marketCash.Balance
+	if remainAmount.GreaterThan(marketCash.Balance) {
+		remainAmount = marketCash.Balance
 	}
 
-	ctokens := supply.Ctokens.Mul(amount).Div(supply.Principal)
+	remainTokens = supply.Ctokens.Mul(remainAmount).Div(supply.Principal)
 
-	return ctokens, nil
+	return remainTokens, nil
 }
 
 // 存入
@@ -212,7 +164,13 @@ func (s *supplyService) Unpledge(ctx context.Context, pledgedTokens decimal.Deci
 		return errors.New("invalid unpledge tokens")
 	}
 
-	if s.accountService.HasBorrows(ctx, userID) {
+	// TODO：有借钱就不可撤销，后续优化：根据用户提供的流动性来动态计算是否可撤销
+	has, e := s.accountService.HasBorrows(ctx, userID)
+	if e != nil {
+		return e
+	}
+
+	if has {
 		return errors.New("unpledge forbidden, has borrows")
 	}
 

@@ -20,6 +20,7 @@ type Worker struct {
 	worker.BaseJob
 	config         *core.Config
 	mainWallet     *core.Wallet
+	blockWallet    *core.Wallet
 	property       property.Store
 	db             *db.DB
 	marketStore    core.IMarketStore
@@ -44,6 +45,7 @@ const (
 func New(
 	config *core.Config,
 	mainWallet *core.Wallet,
+	blockWallet *core.Wallet,
 	property property.Store,
 	db *db.DB,
 	marketStore core.IMarketStore,
@@ -60,6 +62,7 @@ func New(
 	job := Worker{
 		config:         config,
 		mainWallet:     mainWallet,
+		blockWallet:    blockWallet,
 		property:       property,
 		db:             db,
 		marketStore:    marketStore,
@@ -135,8 +138,14 @@ func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) er
 		service := action[core.ActionKeyService]
 		switch service {
 		case core.ActionServicePrice:
+			if snapshot.OpponentID != w.blockWallet.Client.ClientID {
+				return handleRefundEvent(ctx, w, action, snapshot)
+			}
 			return handlePriceEvent(ctx, w, action, snapshot)
 		case core.ActionServiceMarket:
+			if snapshot.OpponentID != w.blockWallet.Client.ClientID {
+				return handleRefundEvent(ctx, w, action, snapshot)
+			}
 			return handleMarketEvent(ctx, w, action, snapshot)
 		case core.ActionServiceSupply:
 			return handleSupplyEvent(ctx, w, action, snapshot)
@@ -156,6 +165,16 @@ func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) er
 			return handlePledgeEvent(ctx, w, action, snapshot)
 		case core.ActionServiceUnpledge:
 			return handleUnpledgeEvent(ctx, w, action, snapshot)
+		case core.ActionServiceSupplyInterest:
+			if snapshot.OpponentID != w.blockWallet.Client.ClientID {
+				return handleRefundEvent(ctx, w, action, snapshot)
+			}
+			return handleSupplyInterestEvent(ctx, w, action, snapshot)
+		case core.ActionServiceBorrowInterest:
+			if snapshot.OpponentID != w.blockWallet.Client.ClientID {
+				return handleRefundEvent(ctx, w, action, snapshot)
+			}
+			return handleBorrowInterestEvent(ctx, w, action, snapshot)
 		default:
 			return handleRefundEvent(ctx, w, action, snapshot)
 		}

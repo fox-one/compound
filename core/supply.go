@@ -29,6 +29,7 @@ type ISupplyStore interface {
 	Find(ctx context.Context, userID string, symbol string) (*Supply, error)
 	FindByUser(ctx context.Context, userID string) ([]*Supply, error)
 	Update(ctx context.Context, tx *db.DB, supply *Supply) error
+	All(ctx context.Context) ([]*Supply, error)
 }
 
 // ISupplyService supply service interface

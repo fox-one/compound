@@ -46,7 +46,7 @@ func (s Server) HandleRestAPI() http.Handler {
 	})
 
 	// rt := reversetwirp.NewSingleTwirpServerProxy()
-	r.Post("/oauth", auth.HandleOauth(&s.cfg.Mixin))
+	// r.Post("/oauth", auth.HandleOauth(&s.cfg.Mixin))
 
 	return r
 }

@@ -101,7 +101,13 @@ var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Actio
 		return nil
 	}
 
-	if w.accountService.HasBorrows(ctx, userID) {
+	// TODO：有借钱就不可撤销，后续优化：根据用户提供的流动性来动态计算是否可撤销
+	has, e := w.accountService.HasBorrows(ctx, userID)
+	if e != nil {
+		return nil
+	}
+
+	if has {
 		return nil
 	}
 

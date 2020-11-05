@@ -19,16 +19,16 @@ import (
 type Worker struct {
 	worker.BaseJob
 	Config       *core.Config
-	Dapp         *mixin.Client
-	BlockWallet  *mixin.Client
+	MainWallet   *core.Wallet
+	BlockWallet  *core.Wallet
 	BlockService core.IBlockService
 }
 
 // New new block worker
-func New(cfg *core.Config, dapp *mixin.Client, blockWallet *mixin.Client, blockService core.IBlockService) *Worker {
+func New(cfg *core.Config, mainWallet *core.Wallet, blockWallet *core.Wallet, blockService core.IBlockService) *Worker {
 	job := Worker{
 		Config:       cfg,
-		Dapp:         dapp,
+		MainWallet:   mainWallet,
 		BlockWallet:  blockWallet,
 		BlockService: blockService,
 	}
@@ -57,11 +57,11 @@ func (w *Worker) onWork(ctx context.Context) error {
 	traceID := id.UUIDFromString(str)
 	transferInput := mixin.TransferInput{
 		AssetID:    w.Config.App.BlockAssetID,
-		OpponentID: w.Config.Mixin.ClientID,
+		OpponentID: w.MainWallet.Client.ClientID,
 		Amount:     decimal.NewFromFloat(0.00000001),
 		TraceID:    traceID,
 	}
-	payment, err := w.Dapp.VerifyPayment(ctx, transferInput)
+	payment, err := w.MainWallet.Client.VerifyPayment(ctx, transferInput)
 	if err != nil {
 		log.Errorln("verifypayment error:", err)
 		return err
@@ -81,7 +81,7 @@ func (w *Worker) onWork(ctx context.Context) error {
 		}
 
 		transferInput.Memo = memoStr
-		_, err = w.BlockWallet.Transfer(ctx, &transferInput, w.Config.BlockWallet.Pin)
+		_, err = w.BlockWallet.Client.Transfer(ctx, &transferInput, w.Config.BlockWallet.Pin)
 
 		if err != nil {
 			log.Errorln("transfer new block error:", err)

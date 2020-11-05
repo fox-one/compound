@@ -63,3 +63,12 @@ func (s *supplyStore) Update(ctx context.Context, tx *db.DB, supply *core.Supply
 
 	return nil
 }
+
+func (s *supplyStore) All(ctx context.Context) ([]*core.Supply, error) {
+	var supplies []*core.Supply
+	if e := s.db.View().Find(&supplies).Error; e != nil {
+		return nil, e
+	}
+
+	return supplies, nil
+}

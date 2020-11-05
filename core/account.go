@@ -14,10 +14,9 @@ type Account struct {
 
 // IAccountService account service interface
 type IAccountService interface {
+	// calculate account liquidity by real time
 	CalculateAccountLiquidity(ctx context.Context, userID string) (decimal.Decimal, error)
-	// >0, greater than liquidity; else less than liquidity
-	CompValueAndLiquidity(ctx context.Context, valueAmount decimal.Decimal, valueSymbol string, liqudity decimal.Decimal) (decimal.Decimal, error)
-	HasBorrows(ctx context.Context, userID string) bool
+	HasBorrows(ctx context.Context, userID string) (bool, error)
 }
 
 type IAccount interface {

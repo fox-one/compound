@@ -20,3 +20,7 @@ func Sqrt(d decimal.Decimal) decimal.Decimal {
 func Ceil(d decimal.Decimal, precision int32) decimal.Decimal {
 	return d.Shift(precision).Ceil().Shift(-precision)
 }
+
+func Floor(d decimal.Decimal, precision int32) decimal.Decimal {
+	return d.Shift(precision).Floor().Shift(-precision)
+}

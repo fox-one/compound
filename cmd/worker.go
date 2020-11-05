@@ -40,6 +40,7 @@ var workerCmd = &cobra.Command{
 			market.New(mainWallet, blockWallet, config, marketStore, blockService, priceService),
 			snapshot.New(config,
 				mainWallet,
+				blockWallet,
 				propertyStore,
 				db,
 				marketStore,

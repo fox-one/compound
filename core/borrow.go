@@ -35,6 +35,7 @@ type IBorrowStore interface {
 	FindBySymbol(ctx context.Context, symbol string) ([]*Borrow, error)
 	SumOfBorrows(ctx context.Context, symbol string) (decimal.Decimal, error)
 	Update(ctx context.Context, tx *db.DB, borrow *Borrow) error
+	All(ctx context.Context) ([]*Borrow, error)
 }
 
 // IBorrowService supply service interface
