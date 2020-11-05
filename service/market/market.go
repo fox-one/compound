@@ -15,7 +15,8 @@ import (
 type service struct {
 	Redis       *redis.Client
 	mainWallet  *core.Wallet
-	marketstore core.IMarketStore
+	marketStore core.IMarketStore
+	borrowStore core.IBorrowStore
 	blockSrv    core.IBlockService
 	priceSrv    core.IPriceOracleService
 }
@@ -25,13 +26,15 @@ func New(
 	redis *redis.Client,
 	mainWallet *core.Wallet,
 	marketStr core.IMarketStore,
+	borrowStore core.IBorrowStore,
 	blockSrv core.IBlockService,
 	priceSrv core.IPriceOracleService,
 ) core.IMarketService {
 	return &service{
 		Redis:       redis,
 		mainWallet:  mainWallet,
-		marketstore: marketStr,
+		marketStore: marketStr,
+		borrowStore: borrowStore,
 		blockSrv:    blockSrv,
 		priceSrv:    priceSrv,
 	}
@@ -133,7 +136,8 @@ func (s *service) GetSupplyRate(ctx context.Context, symbol string, block int64)
 
 //资金使用率，同一个block里保持一致，该数据会影响到借款和存款利率的计算
 func (s *service) CurUtilizationRate(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
-	if market.TotalBorrows.LessThanOrEqual(decimal.Zero) {
+	borrows, e := s.borrowStore.SumOfBorrows(ctx, market.Symbol)
+	if e != nil {
 		return decimal.Zero, nil
 	}
 
@@ -143,7 +147,7 @@ func (s *service) CurUtilizationRate(ctx context.Context, market *core.Market) (
 	}
 
 	//cash里面不包含准备金，所以不需要减去准备金
-	rate := compound.UtilizationRate(cash.Balance, market.TotalBorrows, market.Reserves)
+	rate := compound.UtilizationRate(cash.Balance, borrows, market.Reserves)
 	return rate, nil
 }
 func (s *service) CurExchangeRate(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
@@ -156,8 +160,13 @@ func (s *service) CurExchangeRate(ctx context.Context, market *core.Market) (dec
 		return decimal.Zero, e
 	}
 
+	borrows, e := s.borrowStore.SumOfBorrows(ctx, market.Symbol)
+	if e != nil {
+		return decimal.Zero, nil
+	}
+
 	//cash里面不包含准备金，所以不需要减去准备金
-	rate := compound.GetExchangeRate(cash.Balance, market.TotalBorrows, market.Reserves, market.CTokens, market.InitExchangeRate)
+	rate := compound.GetExchangeRate(cash.Balance, borrows, market.Reserves, market.CTokens, market.InitExchangeRate)
 
 	return rate, nil
 }
@@ -217,7 +226,11 @@ func (s *service) CurTotalCash(ctx context.Context, market *core.Market) (decima
 
 // 总借出量
 func (s *service) CurTotalBorrow(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
-	return market.TotalBorrows, nil
+	borrows, e := s.borrowStore.SumOfBorrows(ctx, market.Symbol)
+	if e != nil {
+		return decimal.Zero, nil
+	}
+	return borrows, nil
 }
 
 // 总保留金

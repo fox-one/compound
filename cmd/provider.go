@@ -107,6 +107,7 @@ func provideMarketService() core.IMarketService {
 	return marketservice.New(provideRedis(),
 		provideMainWallet(),
 		provideMarketStore(),
+		provideBorrowStore(),
 		provideBlockService(),
 		providePriceService())
 }
