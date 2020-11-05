@@ -9,7 +9,7 @@ import (
 type Config struct {
 	DB          db.Config   `json:"db"`
 	Redis       Redis       `json:"redis,omitempty"`
-	Mixin       Mixin       `json:"mixin"`
+	MainWallet  MainWallet  `json:"mixin"`
 	App         App         `json:"app"`
 	BlockWallet BlockWallet `json:"block_wallet"`
 	PriceOracle PriceOracle `json:"price_oracle"`
@@ -21,8 +21,8 @@ type Redis struct {
 	DB   int    `json:"db,omitempty"`
 }
 
-// Mixin mixin dapp config
-type Mixin struct {
+// MainWallet mixin dapp config
+type MainWallet struct {
 	mixin.Keystore
 	ClientSecret string `json:"client_secret"`
 	Pin          string `json:"pin"`

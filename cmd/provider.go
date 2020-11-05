@@ -34,26 +34,27 @@ func provideConfig() *core.Config {
 	return &cfg
 }
 
-func provideDApp() *mixin.Client {
-	c, err := mixin.NewFromKeystore(&cfg.Mixin.Keystore)
+func provideMainWallet() *core.Wallet {
+	c, err := mixin.NewFromKeystore(&cfg.MainWallet.Keystore)
 	if err != nil {
 		panic(err)
 	}
-
-	return c
+	return &core.Wallet{
+		Client: c,
+		Pin:    provideConfig().MainWallet.Pin,
+	}
 }
 
-func provideMainWallet() *mixin.Client {
-	return provideDApp()
-}
-
-func provideBlockWallet() *mixin.Client {
+func provideBlockWallet() *core.Wallet {
 	c, err := mixin.NewFromKeystore(&cfg.BlockWallet.Keystore)
 	if err != nil {
 		panic(err)
 	}
 
-	return c
+	return &core.Wallet{
+		Client: c,
+		Pin:    provideConfig().BlockWallet.Pin,
+	}
 }
 
 func provideReserveWallet() *mixin.Client {
@@ -89,7 +90,7 @@ func provideBorrowStore() core.IBorrowStore {
 
 // ------------------service------------------------------------
 func provideWalletService() core.IWalletService {
-	return wallet.New(provideDApp(), cfg.Mixin.Pin)
+	return wallet.New(provideMainWallet())
 }
 
 func provideBlockService() core.IBlockService {
@@ -104,7 +105,7 @@ func providePriceService() core.IPriceOracleService {
 
 func provideMarketService() core.IMarketService {
 	return marketservice.New(provideRedis(),
-		provideDApp(),
+		provideMainWallet(),
 		provideMarketStore(),
 		provideBlockService(),
 		providePriceService())

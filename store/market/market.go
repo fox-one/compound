@@ -28,8 +28,8 @@ func init() {
 	})
 }
 
-func (s *marketStore) Save(ctx context.Context, market *core.Market) error {
-	if err := s.db.Update().Create(market).Error; err != nil {
+func (s *marketStore) Save(ctx context.Context, tx *db.DB, market *core.Market) error {
+	if err := tx.Update().Create(market).Error; err != nil {
 		return err
 	}
 	return nil

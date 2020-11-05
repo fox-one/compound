@@ -8,14 +8,13 @@ import (
 
 	"context"
 
-	"github.com/fox-one/mixin-sdk-go"
 	"github.com/go-redis/redis"
 	"github.com/shopspring/decimal"
 )
 
 type service struct {
 	Redis       *redis.Client
-	mainWallet  *mixin.Client
+	mainWallet  *core.Wallet
 	marketstore core.IMarketStore
 	blockSrv    core.IBlockService
 	priceSrv    core.IPriceOracleService
@@ -24,7 +23,7 @@ type service struct {
 // New new market service
 func New(
 	redis *redis.Client,
-	mainWallet *mixin.Client,
+	mainWallet *core.Wallet,
 	marketStr core.IMarketStore,
 	blockSrv core.IBlockService,
 	priceSrv core.IPriceOracleService,
@@ -138,7 +137,7 @@ func (s *service) CurUtilizationRate(ctx context.Context, market *core.Market) (
 		return decimal.Zero, nil
 	}
 
-	cash, e := s.mainWallet.ReadAsset(ctx, market.AssetID)
+	cash, e := s.mainWallet.Client.ReadAsset(ctx, market.AssetID)
 	if e != nil {
 		return decimal.Zero, e
 	}
@@ -152,7 +151,7 @@ func (s *service) CurExchangeRate(ctx context.Context, market *core.Market) (dec
 		return market.InitExchangeRate, nil
 	}
 
-	cash, e := s.mainWallet.ReadAsset(ctx, market.AssetID)
+	cash, e := s.mainWallet.Client.ReadAsset(ctx, market.AssetID)
 	if e != nil {
 		return decimal.Zero, e
 	}
@@ -209,7 +208,7 @@ func (s *service) CurSupplyRatePerBlock(ctx context.Context, market *core.Market
 
 // 剩余现金
 func (s *service) CurTotalCash(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
-	cash, e := s.mainWallet.ReadAsset(ctx, market.AssetID)
+	cash, e := s.mainWallet.Client.ReadAsset(ctx, market.AssetID)
 	if e != nil {
 		return decimal.Zero, e
 	}

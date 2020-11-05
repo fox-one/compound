@@ -25,7 +25,7 @@ type Supply struct {
 
 // ISupplyStore supply store interface
 type ISupplyStore interface {
-	Save(ctx context.Context, supply *Supply) error
+	Save(ctx context.Context, tx *db.DB, supply *Supply) error
 	Find(ctx context.Context, userID string, symbol string) (*Supply, error)
 	FindByUser(ctx context.Context, userID string) ([]*Supply, error)
 	Update(ctx context.Context, tx *db.DB, supply *Supply) error

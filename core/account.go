@@ -19,6 +19,7 @@ type IAccountService interface {
 	CompValueAndLiquidity(ctx context.Context, valueAmount decimal.Decimal, valueSymbol string, liqudity decimal.Decimal) (decimal.Decimal, error)
 	HasBorrows(ctx context.Context, userID string) bool
 }
+
 type IAccount interface {
 	getLiquidity() decimal.Decimal
 	LiquidateBorrowAllowed() bool

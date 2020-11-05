@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/bluele/gcache"
-	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/property"
 	"github.com/fox-one/pkg/store/db"
@@ -20,7 +19,7 @@ import (
 type Worker struct {
 	worker.BaseJob
 	config         *core.Config
-	dapp           *mixin.Client
+	mainWallet     *core.Wallet
 	property       property.Store
 	db             *db.DB
 	marketStore    core.IMarketStore
@@ -44,7 +43,7 @@ const (
 // New new snapshot worker
 func New(
 	config *core.Config,
-	dapp *mixin.Client,
+	mainWallet *core.Wallet,
 	property property.Store,
 	db *db.DB,
 	marketStore core.IMarketStore,
@@ -60,7 +59,7 @@ func New(
 ) *Worker {
 	job := Worker{
 		config:         config,
-		dapp:           dapp,
+		mainWallet:     mainWallet,
 		property:       property,
 		db:             db,
 		marketStore:    marketStore,
@@ -126,7 +125,7 @@ func (w *Worker) onWork(ctx context.Context) error {
 }
 
 func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) error {
-	if snapshot.UserID == w.config.Mixin.ClientID {
+	if snapshot.UserID == w.mainWallet.Client.ClientID {
 		// main wallet
 		var action core.Action
 		e := json.Unmarshal([]byte(snapshot.Memo), &action)
@@ -147,6 +146,8 @@ func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) er
 			return handleRedeemTransferEvent(ctx, w, action, snapshot)
 		case core.ActionServiceBorrow:
 			return handleBorrowEvent(ctx, w, action, snapshot)
+		case core.ActionServiceBorrowTransfer:
+			return handleBorrowTransferEvent(ctx, w, action, snapshot)
 		case core.ActionServiceRepay:
 			return handleBorrowRepayEvent(ctx, w, action, snapshot)
 		case core.ActionServiceMint:
@@ -162,4 +163,4 @@ func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) er
 	return nil
 }
 
-type handleTransferAction func(ctx context.Context, w *Worker, action *core.Action, snapshot *core.Snapshot) error
+type handleTransactionEvent func(ctx context.Context, w *Worker, action *core.Action, snapshot *core.Snapshot) error

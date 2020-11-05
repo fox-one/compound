@@ -29,8 +29,8 @@ func init() {
 	})
 }
 
-func (s *borrowStore) Save(ctx context.Context, borrow *core.Borrow) error {
-	if e := s.db.Update().Where("user_id=? and symbol=?", borrow.UserID, borrow.Symbol).FirstOrCreate(borrow).Error; e != nil {
+func (s *borrowStore) Save(ctx context.Context, tx *db.DB, borrow *core.Borrow) error {
+	if e := tx.Update().Where("user_id=? and symbol=?", borrow.UserID, borrow.Symbol).FirstOrCreate(borrow).Error; e != nil {
 		return e
 	}
 

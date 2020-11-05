@@ -19,8 +19,8 @@ import (
 //Worker block worker
 type Worker struct {
 	worker.BaseJob
-	MixinDapp          *mixin.Client
-	BlockWallet        *mixin.Client
+	MainWallet         *core.Wallet
+	BlockWallet        *core.Wallet
 	Config             *core.Config
 	MarketStore        core.IMarketStore
 	BlockService       core.IBlockService
@@ -28,9 +28,9 @@ type Worker struct {
 }
 
 // New new block worker
-func New(dapp *mixin.Client, blockWallet *mixin.Client, cfg *core.Config, marketStore core.IMarketStore, blockSrv core.IBlockService, priceSrv core.IPriceOracleService) *Worker {
+func New(mainWallet *core.Wallet, blockWallet *core.Wallet, cfg *core.Config, marketStore core.IMarketStore, blockSrv core.IBlockService, priceSrv core.IPriceOracleService) *Worker {
 	job := Worker{
-		MixinDapp:          dapp,
+		MainWallet:         mainWallet,
 		BlockWallet:        blockWallet,
 		Config:             cfg,
 		MarketStore:        marketStore,
@@ -96,11 +96,11 @@ func (w *Worker) checkAndPushPriceOnChain(ctx context.Context, market *core.Mark
 	traceID := id.UUIDFromString(str)
 	transferInput := mixin.TransferInput{
 		AssetID:    w.Config.App.BlockAssetID,
-		OpponentID: w.Config.Mixin.ClientID,
+		OpponentID: w.MainWallet.Client.ClientID,
 		Amount:     decimal.NewFromFloat(0.00000001),
 		TraceID:    traceID,
 	}
-	payment, err := w.MixinDapp.VerifyPayment(ctx, transferInput)
+	payment, err := w.MainWallet.Client.VerifyPayment(ctx, transferInput)
 	if err != nil {
 		log.Errorln("verifypayment error:", err)
 		return err
@@ -122,7 +122,7 @@ func (w *Worker) checkAndPushPriceOnChain(ctx context.Context, market *core.Mark
 		}
 
 		transferInput.Memo = memoStr
-		_, err = w.BlockWallet.Transfer(ctx, &transferInput, w.Config.BlockWallet.Pin)
+		_, err = w.BlockWallet.Client.Transfer(ctx, &transferInput, w.BlockWallet.Pin)
 
 		if err != nil {
 			log.Errorln("transfer new block error:", err)

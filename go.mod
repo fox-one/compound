@@ -17,6 +17,7 @@ require (
 	github.com/go-resty/resty/v2 v2.3.0
 	github.com/gofrs/uuid v3.3.0+incompatible
 	github.com/gorilla/schema v1.1.0
+	github.com/hhatto/gocloc v0.3.3 // indirect
 	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/magiconair/properties v1.8.4 // indirect
 	github.com/mitchellh/go-homedir v1.1.0

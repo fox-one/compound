@@ -51,7 +51,7 @@ var handleSupplyRedeemEvent = func(ctx context.Context, w *Worker, action core.A
 		}
 
 		input.Memo = memoStr
-		_, e = w.dapp.Transfer(ctx, &input, w.config.Mixin.Pin)
+		_, e = w.mainWallet.Client.Transfer(ctx, &input, w.mainWallet.Pin)
 
 		if e != nil {
 			return e

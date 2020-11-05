@@ -10,12 +10,8 @@ import (
 
 // Market market info
 type Market struct {
-	// asset id
-	AssetID string `sql:"size:36;PRIMARY_KEY" json:"asset_id"`
-	// symbol
-	Symbol string `sql:"size:20;unique_index:symbol_idx" json:"symbol"`
-	// 已借出的资产
-	TotalBorrows        decimal.Decimal `sql:"type:decimal(20,8)" json:"total_borrows"`
+	AssetID             string          `sql:"size:36;PRIMARY_KEY" json:"asset_id"`
+	Symbol              string          `sql:"size:20;unique_index:symbol_idx" json:"symbol"`
 	TotalBorrowInterest decimal.Decimal `sql:"type:decimal(20,8)" json:"total_borrow_interest"`
 	TotalSupplyInterest decimal.Decimal `sql:"type:decimal(20,8)" json:"total_supply_interest"`
 	// ctoken asset id
@@ -53,7 +49,7 @@ type Market struct {
 
 // IMarketStore asset store interface
 type IMarketStore interface {
-	Save(ctx context.Context, market *Market) error
+	Save(ctx context.Context, tx *db.DB, market *Market) error
 	Find(ctx context.Context, assetID, symbol string) (*Market, error)
 	FindByCToken(ctx context.Context, ctokenAssetID, ctokenSymbol string) (*Market, error)
 	All(ctx context.Context) ([]*Market, error)

@@ -29,8 +29,8 @@ func init() {
 	})
 }
 
-func (s *supplyStore) Save(ctx context.Context, supply *core.Supply) error {
-	if e := s.db.Update().Where("user_id=? and symbol=?", supply.UserID, supply.Symbol).FirstOrCreate(supply).Error; e != nil {
+func (s *supplyStore) Save(ctx context.Context, tx *db.DB, supply *core.Supply) error {
+	if e := tx.Update().Where("user_id=? and symbol=?", supply.UserID, supply.Symbol).FirstOrCreate(supply).Error; e != nil {
 		return e
 	}
 

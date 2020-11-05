@@ -11,13 +11,13 @@ import (
 
 // Borrow borrow info
 type Borrow struct {
-	UserID    string          `sql:"size:36;PRIMARY_KEY" json:"user_id"`
-	Symbol    string          `sql:"size:20;PRIMARY_KEY" json:"symbol"`
-	CTokens   decimal.Decimal `sql:"type:decimal(20,8)" json:"c_tokens"`
-	Interest  decimal.Decimal `sql:"type:decimal(20,8)" json:"interest"`
-	Version   uint64          `sql:"default:0" json:"version"`
-	CreatedAt time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`
+	UserID        string          `sql:"size:36;PRIMARY_KEY" json:"user_id"`
+	Symbol        string          `sql:"size:20;PRIMARY_KEY" json:"symbol"`
+	Principal     decimal.Decimal `sql:"type:decimal(20,8)" json:"principal"`
+	InterestIndex decimal.Decimal `sql:"type:decimal(20,8)" json:"interest_index"`
+	Version       uint64          `sql:"default:0" json:"version"`
+	CreatedAt     time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt     time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`
 }
 
 var (
@@ -29,7 +29,7 @@ var (
 
 // IBorrowStore supply store interface
 type IBorrowStore interface {
-	Save(ctx context.Context, borrow *Borrow) error
+	Save(ctx context.Context, tx *db.DB, borrow *Borrow) error
 	Find(ctx context.Context, userID string, symbol string) (*Borrow, error)
 	FindByUser(ctx context.Context, userID string) ([]*Borrow, error)
 	Update(ctx context.Context, tx *db.DB, borrow *Borrow) error
@@ -37,8 +37,11 @@ type IBorrowStore interface {
 
 // IBorrowService supply service interface
 type IBorrowService interface {
-	Repay(ctx context.Context, amount decimal.Decimal, userID string, market *Market) error
-	Borrow(ctx context.Context, amount decimal.Decimal, userID string, market *Market) error
+	Repay(ctx context.Context, amount decimal.Decimal, userID string, market *Market) (string, error)
+	MaxRepay(ctx context.Context, userID string, market *Market) (decimal.Decimal, error)
+	Borrow(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *Market) error
+	BorrowAllowed(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *Market) bool
+	MaxBorrow(ctx context.Context, userID string, market *Market) (decimal.Decimal, error)
 }
 
 // SeizeTokens()

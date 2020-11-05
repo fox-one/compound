@@ -15,16 +15,14 @@ import (
 )
 
 // New new wallet service
-func New(c *mixin.Client, pin string) core.IWalletService {
+func New(mainWallet *core.Wallet) core.IWalletService {
 	return &walletService{
-		client: c,
-		pin:    pin,
+		MainWallet: mainWallet,
 	}
 }
 
 type walletService struct {
-	client *mixin.Client
-	pin    string
+	MainWallet *core.Wallet
 }
 
 func (s *walletService) HandleTransfer(ctx context.Context, transfer *core.Transfer) (*core.Snapshot, error) {
@@ -36,7 +34,7 @@ func (s *walletService) HandleTransfer(ctx context.Context, transfer *core.Trans
 		Memo:       transfer.Memo,
 	}
 
-	snapshot, err := s.client.Transfer(ctx, input, s.pin)
+	snapshot, err := s.MainWallet.Client.Transfer(ctx, input, s.MainWallet.Pin)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +48,7 @@ func (s *walletService) PullSnapshots(ctx context.Context, cursor string, limit 
 		offset = time.Now().UTC()
 	}
 
-	snapshots, err := s.client.ReadNetworkSnapshots(ctx, "", offset, "ASC", limit)
+	snapshots, err := s.MainWallet.Client.ReadNetworkSnapshots(ctx, "", offset, "ASC", limit)
 	if err != nil {
 		return nil, "", err
 	}
@@ -83,7 +81,7 @@ func (s *walletService) NewWallet(ctx context.Context, walletName, pin string) (
 		return nil, "", err
 	}
 
-	_, keystore, err := s.client.CreateUser(ctx, privateKey, walletName)
+	_, keystore, err := s.MainWallet.Client.CreateUser(ctx, privateKey, walletName)
 	if err != nil {
 		return nil, "", err
 	}
@@ -113,7 +111,7 @@ func (s *walletService) PaySchemaURL(amount decimal.Decimal, asset, recipient, t
 func (s *walletService) VerifyPayment(ctx context.Context, input *mixin.TransferInput) bool {
 	log := logger.FromContext(ctx)
 
-	payment, err := s.client.VerifyPayment(ctx, *input)
+	payment, err := s.MainWallet.Client.VerifyPayment(ctx, *input)
 	if err != nil {
 		log.Errorln("verifypayment error:", err)
 		return false

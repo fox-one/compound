@@ -2,24 +2,38 @@ package borrow
 
 import (
 	"compound/core"
+	"compound/pkg/id"
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/fox-one/mixin-sdk-go"
+	"github.com/fox-one/pkg/logger"
 	"github.com/shopspring/decimal"
 )
 
 type borrowService struct {
-	config       *core.Config
-	mainWallet   *mixin.Client
-	marketStore  core.IMarketStore
-	supplyStore  core.ISupplyStore
-	blockService core.IBlockService
-	priceService core.IPriceOracleService
+	config         *core.Config
+	mainWallet     *mixin.Client
+	blockWallet    *mixin.Client
+	marketStore    core.IMarketStore
+	borrowStore    core.IBorrowStore
+	blockService   core.IBlockService
+	priceService   core.IPriceOracleService
+	walletService  core.IWalletService
+	accountService core.IAccountService
 }
 
 // New new borrow service
-func New(cfg *core.Config, mainWallet *mixin.Client, marketStore core.IMarketStore, supplyStore core.ISupplyStore, blockService core.IBlockService, priceService core.IPriceOracleService) core.IBorrowService {
+func New(cfg *core.Config,
+	mainWallet *mixin.Client,
+	blockWallet *mixin.Client,
+	marketStore core.IMarketStore,
+	borrowStore core.IBorrowStore,
+	blockService core.IBlockService,
+	priceService core.IPriceOracleService,
+	walletService core.IWalletService,
+	accountServie core.IAccountService) core.IBorrowService {
 	// return &borrowService{
 	// 	config:     cfg,
 	// 	mainWallet: mainWallet,
@@ -27,78 +41,151 @@ func New(cfg *core.Config, mainWallet *mixin.Client, marketStore core.IMarketSto
 	return nil
 }
 
-func (s *borrowService) Repay(ctx context.Context, amount decimal.Decimal, userID string, market *core.Market) error {
+func (s *borrowService) Repay(ctx context.Context, amount decimal.Decimal, userID string, market *core.Market) (string, error) {
+	action := make(core.Action)
+	action[core.ActionKeyService] = core.ActionServiceRepay
+
+	memoStr, e := action.Format()
+	if e != nil {
+		return "", e
+	}
+
+	return s.walletService.PaySchemaURL(amount, market.AssetID, s.mainWallet.ClientID, id.GenTraceID(), memoStr)
+}
+
+func (s *borrowService) MaxRepay(ctx context.Context, userID string, market *core.Market) (decimal.Decimal, error) {
+	borrow, e := s.borrowStore.Find(ctx, userID, market.Symbol)
+	if e != nil {
+		return decimal.Zero, e
+	}
+
+	return borrow.Principal, nil
+}
+
+func (s *borrowService) Borrow(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *core.Market) error {
+	if !s.BorrowAllowed(ctx, borrowAmount, userID, market) {
+		return errors.New("borrow not allowed")
+	}
+
+	curBlock, e := s.blockService.CurrentBlock(ctx)
+	if e != nil {
+		return e
+	}
+
+	trace := id.UUIDFromString(fmt.Sprintf("borrow-%s-%s-%d", userID, market.Symbol, curBlock))
+	input := mixin.TransferInput{
+		AssetID:    s.config.App.BlockAssetID,
+		OpponentID: s.mainWallet.ClientID,
+		Amount:     decimal.NewFromFloat(0.00000001),
+		TraceID:    trace,
+	}
+
+	if s.walletService.VerifyPayment(ctx, &input) {
+		return errors.New("borrow exists")
+	}
+
+	memo := make(core.Action)
+	memo[core.ActionKeyService] = core.ActionServiceBorrow
+	memo[core.ActionKeyAmount] = borrowAmount.String()
+	memo[core.ActionKeySymbol] = market.Symbol
+	memo[core.ActionKeyUser] = userID
+
+	memoStr, e := memo.Format()
+	if e != nil {
+		return e
+	}
+
+	input.Memo = memoStr
+
+	_, e = s.blockWallet.Transfer(ctx, &input, s.config.BlockWallet.Pin)
+	if e != nil {
+		return e
+	}
+
 	return nil
 }
 
-func (s *borrowService) Borrow(ctx context.Context, borrowAmount decimal.Decimal, borrowAssetID string, collateralAssetID string, userID string) error {
+func (s *borrowService) BorrowAllowed(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *core.Market) bool {
+	log := logger.FromContext(ctx)
+
 	if borrowAmount.LessThanOrEqual(decimal.Zero) {
-		return errors.New("invalid borrow amount")
+		log.Errorln("invalid borrow amount")
+		return false
 	}
 
-	borrowMarket, e := s.marketStore.Find(ctx, borrowAssetID, "")
+	marketCash, e := s.mainWallet.ReadAsset(ctx, market.AssetID)
 	if e != nil {
-		return e
-	}
-
-	collateralMarket, e := s.marketStore.Find(ctx, collateralAssetID, "")
-	if e != nil {
-		return e
-	}
-
-	// check collateral factor
-	if collateralMarket.CollateralFactor.LessThanOrEqual(decimal.Zero) {
-		return core.ErrCollateralDisabled
+		log.Errorln(e)
+		return false
 	}
 
 	// check borrow cap
-	borrowMarketCash, e := s.mainWallet.ReadAsset(ctx, borrowMarket.AssetID)
+	if marketCash.Balance.LessThan(market.BorrowCap) {
+		log.Errorln("insufficient market cash")
+		return false
+	}
+
+	if borrowAmount.GreaterThan(marketCash.Balance.Sub(market.BorrowCap)) {
+		log.Errorln("insufficient market cash")
+		return false
+	}
+
+	// check liquidity
+	liquidity, e := s.accountService.CalculateAccountLiquidity(ctx, userID)
 	if e != nil {
-		return e
-	}
-	sub := borrowMarketCash.Balance.Sub(borrowAmount)
-	if sub.LessThanOrEqual(borrowMarket.BorrowCap) {
-		return core.ErrBorrowsOverCap
+		log.Errorln(e)
+		return false
 	}
 
-	//check liquidity
+	curBlock, e := s.blockService.CurrentBlock(ctx)
+	if e != nil {
+		log.Errorln(e)
+		return false
+	}
 
-	return nil
+	price, e := s.priceService.GetUnderlyingPrice(ctx, market.Symbol, curBlock)
+	if e != nil {
+		log.Errorln(e)
+		return false
+	}
+
+	borrowValue := borrowAmount.Mul(price)
+	if borrowValue.GreaterThan(liquidity) {
+		log.Errorln("insufficient liquidity")
+		return false
+	}
+
+	return true
 }
 
-// 预估账户的流动性
-func (s *borrowService) estimatedAccountLiquidity(ctx context.Context, collateralAmount decimal.Decimal, collateralMarket *core.Market, userID string) (decimal.Decimal, error) {
-	// suppies, e := s.supplyStore.Find(ctx, userID)
-	// if e != nil {
-	// 	return decimal.Zero, e
-	// }
+func (s *borrowService) MaxBorrow(ctx context.Context, userID string, market *core.Market) (decimal.Decimal, error) {
+	marketCash, e := s.mainWallet.ReadAsset(ctx, market.AssetID)
+	if e != nil {
+		return decimal.Zero, e
+	}
 
-	// curBlock, e := s.blockService.CurrentBlock(ctx)
-	// if e != nil {
-	// 	return decimal.Zero, e
-	// }
-	// //总可抵押价值
-	// totalBorrowablePrice := decimal.Zero
-	// for _, supply := range suppies {
-	// 	p, e := s.priceService.GetUnderlyingPrice(ctx, supply.Symbol, curBlock)
-	// 	if e != nil {
-	// 		return decimal.Zero, e
-	// 	}
+	// check borrow cap
+	if marketCash.Balance.LessThan(market.BorrowCap) {
+		return decimal.Zero, errors.New("insufficient market cash")
+	}
 
-	// 	delta := supply.CTokens.Sub(supply.Collaterals)
-	// 	totalBorrowablePrice = totalBorrowablePrice.Add(delta.Mul(p))
-	// }
+	// check liquidity
+	liquidity, e := s.accountService.CalculateAccountLiquidity(ctx, userID)
+	if e != nil {
+		return decimal.Zero, e
+	}
 
-	// if totalBorrowablePrice.LessThanOrEqual(decimal.Zero) {
-	// 	return decimal.Zero, nil
-	// }
+	curBlock, e := s.blockService.CurrentBlock(ctx)
+	if e != nil {
+		return decimal.Zero, e
+	}
 
-	// bp, e := s.priceService.GetUnderlyingPrice(ctx, collateralMarket.Symbol, curBlock)
-	// if e != nil {
-	// 	return decimal.Zero, e
-	// }
+	price, e := s.priceService.GetUnderlyingPrice(ctx, market.Symbol, curBlock)
+	if e != nil {
+		return decimal.Zero, e
+	}
 
-	// collateralPrice := borrowAmount.Mul(bp)
+	borrowAmount := liquidity.Div(price)
 
-	return decimal.Zero, nil
+	return borrowAmount, nil
 }

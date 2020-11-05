@@ -18,7 +18,7 @@ var workerCmd = &cobra.Command{
 		// ctx := cmd.Context()
 
 		db := provideDatabase()
-		dapp := provideDApp()
+		mainWallet := provideMainWallet()
 		blockWallet := provideBlockWallet()
 		config := provideConfig()
 
@@ -36,10 +36,10 @@ var workerCmd = &cobra.Command{
 		accountService := provideAccountService()
 
 		workers := []worker.IJob{
-			priceoracle.New(dapp, blockWallet, config, marketStore, blockService, priceService),
-			market.New(dapp, blockWallet, config, marketStore, blockService, priceService),
+			priceoracle.New(mainWallet, blockWallet, config, marketStore, blockService, priceService),
+			market.New(mainWallet, blockWallet, config, marketStore, blockService, priceService),
 			snapshot.New(config,
-				dapp,
+				mainWallet,
 				propertyStore,
 				db,
 				marketStore,

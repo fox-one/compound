@@ -8,6 +8,12 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// Wallet wallet
+type Wallet struct {
+	Client *mixin.Client `json:"client"`
+	Pin    string        `json:"pin"`
+}
+
 // Transfer transfer record
 type Transfer struct {
 	ID         int64           `sql:"PRIMARY_KEY" json:"id,omitempty"`

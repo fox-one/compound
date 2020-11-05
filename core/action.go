@@ -2,9 +2,6 @@ package core
 
 import "encoding/json"
 
-type TransferAction struct {
-}
-
 const (
 	// ActionKeyService key service type :string
 	ActionKeyService = "srv"
@@ -41,6 +38,8 @@ const (
 	ActionServiceSupply = "spl"
 	// ActionServiceBorrow brw
 	ActionServiceBorrow = "brw"
+	// ActionServiceBorrowTransfer borrow transfer
+	ActionServiceBorrowTransfer = "brw-tran"
 	// ActionServiceRedeem redeem supply
 	ActionServiceRedeem = "rdm"
 	// ActionServiceRedeemTransfer redeem transfer to user
@@ -66,4 +65,9 @@ func (a *Action) Format() (string, error) {
 	}
 
 	return string(bs), nil
+}
+
+// NewAction new action
+func NewAction() Action {
+	return make(Action)
 }

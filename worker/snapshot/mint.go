@@ -40,7 +40,7 @@ var handleMintEvent = func(ctx context.Context, w *Worker, action core.Action, s
 				Principal: principal,
 				Ctokens:   ctokens,
 			}
-			e = w.supplyStore.Save(ctx, &supply)
+			e = w.supplyStore.Save(ctx, tx, &supply)
 			if e != nil {
 				return e
 			}
