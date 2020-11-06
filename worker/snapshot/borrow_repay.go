@@ -2,8 +2,12 @@ package snapshot
 
 import (
 	"compound/core"
+	"compound/pkg/id"
 	"context"
+	"fmt"
 
+	"github.com/fox-one/mixin-sdk-go"
+	"github.com/fox-one/pkg/store/db"
 	"github.com/shopspring/decimal"
 )
 
@@ -23,13 +27,44 @@ var handleBorrowRepayEvent = func(ctx context.Context, w *Worker, action core.Ac
 		return handleRefundEvent(ctx, w, action, snapshot)
 	}
 
-	borrow.Principal = borrow.Principal.Sub(amount)
-	if borrow.Principal.LessThan(decimal.Zero) {
-		borrow.Principal = decimal.Zero
-	}
-	if e = w.borrowStore.Update(ctx, w.db, borrow); e != nil {
-		return e
-	}
+	return w.db.Tx(func(tx *db.DB) error {
+		interestChanged := amount.Mul(borrow.InterestBalance.Div(borrow.Principal))
 
-	return nil
+		borrow.Principal = borrow.Principal.Sub(amount)
+		borrow.InterestBalance = borrow.InterestBalance.Sub(interestChanged)
+		if borrow.Principal.LessThan(decimal.Zero) {
+			borrow.Principal = decimal.Zero
+			borrow.InterestBalance = decimal.Zero
+		}
+		if e = w.borrowStore.Update(ctx, tx, borrow); e != nil {
+			return e
+		}
+
+		//计提保留金,转账到block钱包
+		reserve := interestChanged.Mul(market.ReserveFactor)
+		trace := id.UUIDFromString(fmt.Sprintf("reserve:%s", snapshot.TraceID))
+		input := mixin.TransferInput{
+			AssetID:    market.AssetID,
+			OpponentID: w.blockWallet.Client.ClientID,
+			Amount:     reserve,
+			TraceID:    trace,
+		}
+
+		if !w.walletService.VerifyPayment(ctx, &input) {
+			memo := core.NewAction()
+			memo[core.ActionKeyService] = core.ActionServiceReserve
+			memoStr, e := memo.Format()
+			if e != nil {
+				return e
+			}
+
+			input.Memo = memoStr
+			_, e = w.mainWallet.Client.Transfer(ctx, &input, w.mainWallet.Pin)
+			if e != nil {
+				return e
+			}
+		}
+
+		return nil
+	})
 }

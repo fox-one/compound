@@ -153,18 +153,18 @@ func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) er
 			return handleSupplyRedeemEvent(ctx, w, action, snapshot)
 		case core.ActionServiceRedeemTransfer:
 			return handleRedeemTransferEvent(ctx, w, action, snapshot)
-		case core.ActionServiceBorrow:
-			return handleBorrowEvent(ctx, w, action, snapshot)
-		case core.ActionServiceBorrowTransfer:
-			return handleBorrowTransferEvent(ctx, w, action, snapshot)
-		case core.ActionServiceRepay:
-			return handleBorrowRepayEvent(ctx, w, action, snapshot)
 		case core.ActionServiceMint:
 			return handleMintEvent(ctx, w, action, snapshot)
 		case core.ActionServicePledge:
 			return handlePledgeEvent(ctx, w, action, snapshot)
 		case core.ActionServiceUnpledge:
 			return handleUnpledgeEvent(ctx, w, action, snapshot)
+		case core.ActionServiceBorrow:
+			return handleBorrowEvent(ctx, w, action, snapshot)
+		case core.ActionServiceBorrowTransfer:
+			return handleBorrowTransferEvent(ctx, w, action, snapshot)
+		case core.ActionServiceRepay:
+			return handleBorrowRepayEvent(ctx, w, action, snapshot)
 		case core.ActionServiceSupplyInterest:
 			if snapshot.OpponentID != w.blockWallet.Client.ClientID {
 				return handleRefundEvent(ctx, w, action, snapshot)
@@ -175,6 +175,8 @@ func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) er
 				return handleRefundEvent(ctx, w, action, snapshot)
 			}
 			return handleBorrowInterestEvent(ctx, w, action, snapshot)
+		case core.ActionServiceReserve:
+			return handleReserveEvent(ctx, w, action, snapshot)
 		default:
 			return handleRefundEvent(ctx, w, action, snapshot)
 		}

@@ -10,20 +10,22 @@ import (
 
 // Market market info
 type Market struct {
-	AssetID             string          `sql:"size:36;PRIMARY_KEY" json:"asset_id"`
-	Symbol              string          `sql:"size:20;unique_index:symbol_idx" json:"symbol"`
+	AssetID string `sql:"size:36;PRIMARY_KEY" json:"asset_id"`
+	Symbol  string `sql:"size:20;unique_index:symbol_idx" json:"symbol"`
+	//累计借出利息
 	TotalBorrowInterest decimal.Decimal `sql:"type:decimal(20,8)" json:"total_borrow_interest"`
+	//累计存款利息
 	TotalSupplyInterest decimal.Decimal `sql:"type:decimal(20,8)" json:"total_supply_interest"`
+	// 保留金
+	Reserves decimal.Decimal `sql:"type:decimal(20,8)" json:"reserves"`
+	// CToken 累计铸造出来的币的数量
+	CTokens decimal.Decimal `sql:"type:decimal(20,8)" json:"ctokens"`
 	// ctoken asset id
 	CTokenAssetID string `sql:"size:36;unique_index:ctoken_asset_idx" json:"ctoken_asset_id"`
 	// ctoken symbol
 	CTokenSymbol string `sql:"size:20;unique_index:ctoken_symbol_idx" json:"ctoken_symbol"`
-	// CToken 累计铸造出来的币的数量
-	CTokens decimal.Decimal `sql:"type:decimal(20,8)" json:"ctokens"`
 	// 初始兑换率
 	InitExchangeRate decimal.Decimal `sql:"type:decimal(20,8);default:1" json:"init_exchange_rate"`
-	// 保留金
-	Reserves decimal.Decimal `sql:"type:decimal(20,8)" json:"reserves"`
 	// 平台保留金率 (0, 1), 默认为 0.10
 	ReserveFactor decimal.Decimal `sql:"type:decimal(20,8)" json:"reserve_factor"`
 	// 清算激励因子 (0, 1)
@@ -41,10 +43,12 @@ type Market struct {
 	// The multiplierPerBlock after hitting a specified utilization point. per year
 	JumpMultiplier decimal.Decimal `sql:"type:decimal(20,8)" json:"jump_multiplier"`
 	// Kink
-	Kink      decimal.Decimal `sql:"type:decimal(20,8)" json:"kink"`
-	Version   uint64          `sql:"default:0" json:"version"`
-	CreatedAt time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`
+	Kink decimal.Decimal `sql:"type:decimal(20,8)" json:"kink"`
+	//当前区块高度
+	BlockNumber int64     `json:"block_number"`
+	Version     int64     `sql:"default:0" json:"version"`
+	CreatedAt   time.Time `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt   time.Time `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`
 }
 
 // IMarketStore asset store interface

@@ -33,6 +33,7 @@ var handleSupplyRedeemEvent = func(ctx context.Context, w *Worker, action core.A
 
 	// transfer asset to user
 	amount := redeemTokens.Mul(supply.Principal).Div(supply.Ctokens)
+	interest := amount.Mul(supply.InterestBalance.Div(supply.Principal))
 	trace := id.UUIDFromString(fmt.Sprintf("redeem:%s", snapshot.TraceID))
 	input := mixin.TransferInput{
 		AssetID:    market.AssetID,
@@ -45,6 +46,7 @@ var handleSupplyRedeemEvent = func(ctx context.Context, w *Worker, action core.A
 		memo := make(core.Action)
 		memo[core.ActionKeyService] = core.ActionServiceRedeemTransfer
 		memo[core.ActionKeyCToken] = snapshot.Amount.Abs().String()
+		memo[core.ActionKeyInterest] = interest.Truncate(16).String()
 		memoStr, e := w.blockService.FormatBlockMemo(ctx, memo)
 		if e != nil {
 			return e
@@ -71,9 +73,13 @@ var handleRedeemTransferEvent = func(ctx context.Context, w *Worker, action core
 	if e != nil {
 		return e
 	}
+	interestChanged, e := decimal.NewFromString(action[core.ActionKeyInterest])
+	if e != nil {
+		return e
+	}
 
 	return w.db.Tx(func(tx *db.DB) error {
-		//update market
+		//update market ctokens
 		market, e := w.marketStore.Find(ctx, assetID, "")
 		if e != nil {
 			return e
@@ -91,9 +97,11 @@ var handleRedeemTransferEvent = func(ctx context.Context, w *Worker, action core
 		}
 		supply.Ctokens = supply.Ctokens.Sub(reducedCtokens)
 		supply.Principal = supply.Principal.Sub(amount)
+		supply.InterestBalance = supply.InterestBalance.Sub(interestChanged)
 		if supply.Ctokens.LessThanOrEqual(decimal.Zero) {
 			supply.Ctokens = decimal.Zero
 			supply.Principal = decimal.Zero
+			supply.InterestBalance = decimal.Zero
 		}
 		e = w.supplyStore.Update(ctx, tx, supply)
 		if e != nil {

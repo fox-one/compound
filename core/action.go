@@ -21,6 +21,8 @@ const (
 	ActionKeyAmount = "amnt"
 	// ActionKeyCToken ctokens
 	ActionKeyCToken = "ctk"
+	// ActionKeyInterest interest
+	ActionKeyInterest = "inter"
 	// ActionKeyStatus status
 	ActionKeyStatus = "st"
 	// ActionKeyUser user
@@ -56,6 +58,8 @@ const (
 	ActionServiceSupplyInterest = "s-inter"
 	// ActionServiceBorrowInterest borrow interest
 	ActionServiceBorrowInterest = "b-inter"
+	// ActionServiceReserve reserve
+	ActionServiceReserve = "reserve"
 )
 
 // Action action

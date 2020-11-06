@@ -219,9 +219,3 @@ func (s *supplyService) MaxPledge(ctx context.Context, userID string, market *co
 
 	return supply.Ctokens.Sub(supply.CollateTokens), nil
 }
-
-// estimatedAccountLiquidity(
-// calculateAccountLiquidity
-
-//supplyBalance
-//borrowBalance

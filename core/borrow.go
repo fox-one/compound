@@ -11,13 +11,17 @@ import (
 
 // Borrow borrow info
 type Borrow struct {
-	UserID        string          `sql:"size:36;PRIMARY_KEY" json:"user_id"`
-	Symbol        string          `sql:"size:20;PRIMARY_KEY" json:"symbol"`
-	Principal     decimal.Decimal `sql:"type:decimal(20,8)" json:"principal"`
-	InterestIndex decimal.Decimal `sql:"type:decimal(20,8)" json:"interest_index"`
-	Version       uint64          `sql:"default:0" json:"version"`
-	CreatedAt     time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt     time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`
+	UserID string `sql:"size:36;PRIMARY_KEY" json:"user_id"`
+	Symbol string `sql:"size:20;PRIMARY_KEY" json:"symbol"`
+	//本金 + 利息
+	Principal decimal.Decimal `sql:"type:decimal(20,8)" json:"principal"`
+	//累计利息，只增不减
+	InterestAccumulated decimal.Decimal `sql:"type:decimal(20,8)" json:"interest_accumulated"`
+	//利息余额，用户每次repay按比率扣除已repay利息
+	InterestBalance decimal.Decimal `sql:"type:decimal(20,8)" json:"interest_balance"`
+	Version         int64           `sql:"default:0" json:"version"`
+	CreatedAt       time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt       time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`
 }
 
 var (
