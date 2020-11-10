@@ -26,6 +26,7 @@ type Worker struct {
 	marketStore    core.IMarketStore
 	supplyStore    core.ISupplyStore
 	borrowStore    core.IBorrowStore
+	accountStore   core.IAccountStore
 	walletService  core.IWalletService
 	blockService   core.IBlockService
 	priceService   core.IPriceOracleService
@@ -51,6 +52,7 @@ func New(
 	marketStore core.IMarketStore,
 	supplyStore core.ISupplyStore,
 	borrowStore core.IBorrowStore,
+	accountStore core.IAccountStore,
 	walletService core.IWalletService,
 	priceSrv core.IPriceOracleService,
 	blockService core.IBlockService,
@@ -68,6 +70,7 @@ func New(
 		marketStore:    marketStore,
 		supplyStore:    supplyStore,
 		borrowStore:    borrowStore,
+		accountStore:   accountStore,
 		walletService:  walletService,
 		blockService:   blockService,
 		priceService:   priceSrv,
@@ -177,6 +180,10 @@ func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) er
 			return handleBorrowInterestEvent(ctx, w, action, snapshot)
 		case core.ActionServiceReserve:
 			return handleReserveEvent(ctx, w, action, snapshot)
+		case core.ActionServiceSeizeToken:
+			return handleSeizeTokenEvent(ctx, w, action, snapshot)
+		case core.ActionServiceSeizeTokenTransfer:
+			return handleSeizeTokenTransferEvent(ctx, w, action, snapshot)
 		default:
 			return handleRefundEvent(ctx, w, action, snapshot)
 		}

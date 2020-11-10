@@ -16,10 +16,10 @@ type Supply struct {
 	Principal decimal.Decimal `sql:"type:decimal(20,8)" json:"principal"`
 	//累计利息，只增不减
 	InterestAccumulated decimal.Decimal `sql:"type:decimal(20,8)" json:"interest_accumulated"`
-	//利息余额，用户每次repay按比率扣除已repay利息
+	//利息余额，用户每次redeem按比率扣除已redeem利息
 	InterestBalance decimal.Decimal `sql:"type:decimal(20,8)" json:"interest_balance"`
 	// 总供应量凭证
-	Ctokens decimal.Decimal `sql:"type:decimal(20,8)" json:"ctokens"`
+	CTokens decimal.Decimal `sql:"type:decimal(20,8)" json:"ctokens"`
 	// 抵押量
 	CollateTokens decimal.Decimal `sql:"type:decimal(20,8)" json:"collate_tokens"`
 	Version       int64           `sql:"default:0" json:"version"`

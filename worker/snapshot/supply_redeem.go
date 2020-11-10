@@ -32,7 +32,7 @@ var handleSupplyRedeemEvent = func(ctx context.Context, w *Worker, action core.A
 	}
 
 	// transfer asset to user
-	amount := redeemTokens.Mul(supply.Principal).Div(supply.Ctokens)
+	amount := redeemTokens.Mul(supply.Principal).Div(supply.CTokens)
 	interest := amount.Mul(supply.InterestBalance.Div(supply.Principal))
 	trace := id.UUIDFromString(fmt.Sprintf("redeem:%s", snapshot.TraceID))
 	input := mixin.TransferInput{
@@ -95,11 +95,11 @@ var handleRedeemTransferEvent = func(ctx context.Context, w *Worker, action core
 		if e != nil {
 			return e
 		}
-		supply.Ctokens = supply.Ctokens.Sub(reducedCtokens)
+		supply.CTokens = supply.CTokens.Sub(reducedCtokens)
 		supply.Principal = supply.Principal.Sub(amount)
 		supply.InterestBalance = supply.InterestBalance.Sub(interestChanged)
-		if supply.Ctokens.LessThanOrEqual(decimal.Zero) {
-			supply.Ctokens = decimal.Zero
+		if supply.CTokens.LessThanOrEqual(decimal.Zero) {
+			supply.CTokens = decimal.Zero
 			supply.Principal = decimal.Zero
 			supply.InterestBalance = decimal.Zero
 		}

@@ -84,6 +84,21 @@ func (s *marketStore) All(ctx context.Context) ([]*core.Market, error) {
 	return markets, nil
 }
 
+func (s *marketStore) AllAsMap(ctx context.Context) (map[string]*core.Market, error) {
+	markets, e := s.All(ctx)
+	if e != nil {
+		return nil, e
+	}
+
+	maps := make(map[string]*core.Market)
+
+	for _, m := range markets {
+		maps[m.Symbol] = m
+	}
+
+	return maps, nil
+}
+
 func (s *marketStore) Update(ctx context.Context, tx *db.DB, market *core.Market) error {
 	version := market.Version
 	market.Version++

@@ -18,11 +18,9 @@ var (
 	// CollateralFactorMax max of collateral factor, may exceed this value [0, 0.9]
 	CollateralFactorMax = decimal.NewFromFloat(0.9)
 	// LiquidationIncentiveMin must be no less than this value
-	LiquidationIncentiveMin = decimal.NewFromFloat(1.0)
+	LiquidationIncentiveMin = decimal.NewFromFloat(0.01)
 	// LiquidationIncentiveMax must be no greater than this value
-	LiquidationIncentiveMax = decimal.NewFromFloat(1.5)
-	// InitialExchangeRate initial exchange rate
-	InitialExchangeRate = decimal.NewFromInt(1)
+	LiquidationIncentiveMax = decimal.NewFromFloat(0.9)
 )
 
 var (

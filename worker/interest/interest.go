@@ -85,6 +85,7 @@ func (w *Worker) onWork(ctx context.Context) error {
 	if e == nil {
 		for _, supply := range supplies {
 			wg.Add(1)
+			golimit.Add()
 			go func(ctx context.Context, markets map[string]*core.Market, supply *core.Supply, currentBlock int64) {
 				defer wg.Done()
 				defer golimit.Done()
@@ -99,6 +100,7 @@ func (w *Worker) onWork(ctx context.Context) error {
 	if e == nil {
 		for _, borrow := range borrows {
 			wg.Add(1)
+			golimit.Add()
 			go func(ctx context.Context, markets map[string]*core.Market, borrow *core.Borrow, currentBlock int64) {
 				defer wg.Done()
 				defer golimit.Done()
@@ -107,22 +109,7 @@ func (w *Worker) onWork(ctx context.Context) error {
 		}
 	}
 
-	if supplies != nil {
-		for i := range supplies {
-			log.Infoln("supply index:", i)
-			golimit.Add()
-		}
-	}
-
-	if borrows != nil {
-		for i := range borrows {
-			log.Infoln("borrow index:", i)
-			golimit.Add()
-		}
-	}
-
 	golimit.Close()
-
 	wg.Wait()
 
 	return nil

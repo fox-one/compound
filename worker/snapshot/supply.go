@@ -68,7 +68,7 @@ var handlePledgeEvent = func(ctx context.Context, w *Worker, action core.Action,
 		return handleRefundEvent(ctx, w, action, snapshot)
 	}
 
-	remainTokens := supply.Ctokens.Sub(supply.CollateTokens)
+	remainTokens := supply.CTokens.Sub(supply.CollateTokens)
 	if tokens.GreaterThan(remainTokens) {
 		return handleRefundEvent(ctx, w, action, snapshot)
 	}

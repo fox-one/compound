@@ -38,7 +38,7 @@ var handleMintEvent = func(ctx context.Context, w *Worker, action core.Action, s
 				UserID:    snapshot.OpponentID,
 				Symbol:    market.Symbol,
 				Principal: principal,
-				Ctokens:   ctokens,
+				CTokens:   ctokens,
 			}
 			e = w.supplyStore.Save(ctx, tx, &supply)
 			if e != nil {
@@ -47,7 +47,7 @@ var handleMintEvent = func(ctx context.Context, w *Worker, action core.Action, s
 		} else {
 			//update
 			supply.Principal = supply.Principal.Add(principal)
-			supply.Ctokens = supply.Ctokens.Add(ctokens)
+			supply.CTokens = supply.CTokens.Add(ctokens)
 			e := w.supplyStore.Update(ctx, tx, supply)
 			if e != nil {
 				return e

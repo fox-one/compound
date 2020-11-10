@@ -68,13 +68,13 @@ func (s *supplyService) RedeemAllowed(ctx context.Context, redeemTokens decimal.
 		return false
 	}
 
-	remainTokens := supply.Ctokens.Sub(supply.CollateTokens)
+	remainTokens := supply.CTokens.Sub(supply.CollateTokens)
 	// check ctokens
 	if redeemTokens.GreaterThan(remainTokens) {
 		return false
 	}
 
-	amount := supply.Principal.Mul(redeemTokens).Div(supply.Ctokens)
+	amount := supply.Principal.Mul(redeemTokens).Div(supply.CTokens)
 
 	// check market cash
 	marketCash, e := s.mainWallet.ReadAsset(ctx, market.AssetID)
@@ -96,8 +96,8 @@ func (s *supplyService) MaxRedeem(ctx context.Context, userID string, market *co
 		return decimal.Zero, e
 	}
 
-	remainTokens := supply.Ctokens.Sub(supply.CollateTokens)
-	remainAmount := supply.Principal.Mul(remainTokens).Div(supply.Ctokens)
+	remainTokens := supply.CTokens.Sub(supply.CollateTokens)
+	remainAmount := supply.Principal.Mul(remainTokens).Div(supply.CTokens)
 
 	// check market cash
 	marketCash, e := s.mainWallet.ReadAsset(ctx, market.AssetID)
@@ -109,7 +109,7 @@ func (s *supplyService) MaxRedeem(ctx context.Context, userID string, market *co
 		remainAmount = marketCash.Balance
 	}
 
-	remainTokens = supply.Ctokens.Mul(remainAmount).Div(supply.Principal)
+	remainTokens = supply.CTokens.Mul(remainAmount).Div(supply.Principal)
 
 	return remainTokens, nil
 }
@@ -137,7 +137,7 @@ func (s *supplyService) Pledge(ctx context.Context, pledgedTokens decimal.Decima
 		return "", e
 	}
 
-	remainTokens := supply.Ctokens.Sub(supply.CollateTokens)
+	remainTokens := supply.CTokens.Sub(supply.CollateTokens)
 	if pledgedTokens.GreaterThan(remainTokens) {
 		return "", errors.New("insufficient remain tokens")
 	}
@@ -217,5 +217,5 @@ func (s *supplyService) MaxPledge(ctx context.Context, userID string, market *co
 		return decimal.Zero, e
 	}
 
-	return supply.Ctokens.Sub(supply.CollateTokens), nil
+	return supply.CTokens.Sub(supply.CollateTokens), nil
 }

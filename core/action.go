@@ -60,6 +60,12 @@ const (
 	ActionServiceBorrowInterest = "b-inter"
 	// ActionServiceReserve reserve
 	ActionServiceReserve = "reserve"
+	// ActionServiceLiquidity liquidity
+	ActionServiceLiquidity = "lqdy"
+	// ActionServiceSeizeToken seize token
+	ActionServiceSeizeToken = "seize"
+	// ActionServiceSeizeTokenTransfer transfer seized token to user
+	ActionServiceSeizeTokenTransfer = "seize-tran"
 )
 
 // Action action
