@@ -66,6 +66,8 @@ const (
 	ActionServiceSeizeToken = "seize"
 	// ActionServiceSeizeTokenTransfer transfer seized token to user
 	ActionServiceSeizeTokenTransfer = "seize-tran"
+	// ActionServiceRefund refund
+	ActionServiceRefund = "rfd"
 )
 
 // Action action
