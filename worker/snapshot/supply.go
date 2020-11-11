@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/fox-one/mixin-sdk-go"
+	"github.com/fox-one/pkg/logger"
 	"github.com/shopspring/decimal"
 )
 
@@ -85,12 +86,19 @@ var handlePledgeEvent = func(ctx context.Context, w *Worker, action core.Action,
 
 // from system，ignored if error
 var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
+	log := logger.FromContext(ctx).WithField("worker", "unpledge")
+
 	unpledgedTokens, e := decimal.NewFromString(action[core.ActionKeyCToken])
 	if e != nil {
 		return nil
 	}
 	symbol := action[core.ActionKeySymbol]
 	userID := action[core.ActionKeyUser]
+
+	market, e := w.marketStore.Find(ctx, "", symbol)
+	if e != nil {
+		return nil
+	}
 
 	supply, e := w.supplyStore.Find(ctx, userID, symbol)
 	if e != nil {
@@ -101,13 +109,63 @@ var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Actio
 		return nil
 	}
 
-	// TODO：有借钱就不可撤销，后续优化：根据用户提供的流动性来动态计算是否可撤销
-	has, e := w.accountService.HasBorrows(ctx, userID)
+	liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, userID)
 	if e != nil {
 		return nil
 	}
 
-	if has {
+	curBlock, e := w.blockService.CurrentBlock(ctx)
+	if e != nil {
+		return nil
+	}
+
+	price, e := w.priceService.GetUnderlyingPrice(ctx, supply.Symbol, curBlock)
+	if e != nil {
+		return nil
+	}
+
+	//calculate unpledge token liquidity
+	unpledgedTokenLiquidity := unpledgedTokens.Mul(supply.Principal).Div(supply.CTokens).Mul(market.CollateralFactor).Mul(price)
+	if unpledgedTokenLiquidity.GreaterThanOrEqual(liquidity) {
+		log.Errorln("insufficient liquidity")
+		return nil
+	}
+
+	trace := id.UUIDFromString(fmt.Sprintf("unpledge-transfer-%s", snapshot.TraceID))
+	input := mixin.TransferInput{
+		AssetID:    market.CTokenAssetID,
+		Amount:     unpledgedTokens,
+		OpponentID: userID,
+		TraceID:    trace,
+	}
+
+	if !w.walletService.VerifyPayment(ctx, &input) {
+		action := core.NewAction()
+		action[core.ActionKeyService] = core.ActionServiceUnpledgeTransfer
+		action[core.ActionKeySymbol] = symbol
+		memoStr, e := action.Format()
+		if e != nil {
+			return e
+		}
+
+		input.Memo = memoStr
+		_, e = w.mainWallet.Client.Transfer(ctx, &input, w.mainWallet.Pin)
+		if e != nil {
+			return e
+		}
+	}
+
+	return nil
+}
+
+// send unpledge ctoken to user
+var handleUnpledgeTransferEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
+	userID := snapshot.OpponentID
+	unpledgedTokens := snapshot.Amount.Abs()
+	symbol := action[core.ActionKeySymbol]
+
+	supply, e := w.supplyStore.Find(ctx, userID, symbol)
+	if e != nil {
 		return nil
 	}
 
@@ -117,6 +175,5 @@ var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Actio
 	if e != nil {
 		return e
 	}
-
 	return nil
 }

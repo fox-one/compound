@@ -162,6 +162,8 @@ func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) er
 			return handlePledgeEvent(ctx, w, action, snapshot)
 		case core.ActionServiceUnpledge:
 			return handleUnpledgeEvent(ctx, w, action, snapshot)
+		case core.ActionServiceUnpledgeTransfer:
+			return handleUnpledgeTransferEvent(ctx, w, action, snapshot)
 		case core.ActionServiceBorrow:
 			return handleBorrowEvent(ctx, w, action, snapshot)
 		case core.ActionServiceBorrowTransfer:

@@ -18,6 +18,7 @@ type supplyService struct {
 	blockWallet    *mixin.Client
 	db             *db.DB
 	supplyStore    core.ISupplyStore
+	marketStore    core.IMarketStore
 	accountService core.IAccountService
 	priceService   core.IPriceOracleService
 	blockService   core.IBlockService
@@ -29,6 +30,7 @@ func New(cfg *core.Config,
 	mainWallet *mixin.Client,
 	db *db.DB,
 	supplyStore core.ISupplyStore,
+	marketStore core.IMarketStore,
 	accountService core.IAccountService,
 	priceService core.IPriceOracleService,
 	blockService core.IBlockService,
@@ -38,6 +40,7 @@ func New(cfg *core.Config,
 		mainWallet:     mainWallet,
 		db:             db,
 		supplyStore:    supplyStore,
+		marketStore:    marketStore,
 		accountService: accountService,
 		priceService:   priceService,
 		blockService:   blockService,
@@ -154,29 +157,34 @@ func (s *supplyService) Pledge(ctx context.Context, pledgedTokens decimal.Decima
 }
 
 //撤销抵押
-func (s *supplyService) Unpledge(ctx context.Context, pledgedTokens decimal.Decimal, userID string, market *core.Market) error {
+func (s *supplyService) Unpledge(ctx context.Context, unpledgedTokens decimal.Decimal, userID string, market *core.Market) error {
 	supply, e := s.supplyStore.Find(ctx, userID, market.Symbol)
 	if e != nil {
 		return e
 	}
 
-	if pledgedTokens.GreaterThanOrEqual(supply.CollateTokens) {
+	if unpledgedTokens.GreaterThanOrEqual(supply.CollateTokens) {
 		return errors.New("invalid unpledge tokens")
 	}
 
-	// TODO：有借钱就不可撤销，后续优化：根据用户提供的流动性来动态计算是否可撤销
-	has, e := s.accountService.HasBorrows(ctx, userID)
+	liquidity, e := s.accountService.CalculateAccountLiquidity(ctx, userID)
 	if e != nil {
 		return e
-	}
-
-	if has {
-		return errors.New("unpledge forbidden, has borrows")
 	}
 
 	curBlock, e := s.blockService.CurrentBlock(ctx)
 	if e != nil {
 		return e
+	}
+
+	price, e := s.priceService.GetUnderlyingPrice(ctx, supply.Symbol, curBlock)
+	if e != nil {
+		return e
+	}
+
+	unpledgedTokenLiquidity := unpledgedTokens.Mul(supply.Principal).Div(supply.CTokens).Mul(market.CollateralFactor).Mul(price)
+	if unpledgedTokenLiquidity.GreaterThanOrEqual(liquidity) {
+		return errors.New("insufficient liquidity")
 	}
 
 	trace := id.UUIDFromString(fmt.Sprintf("unpledge-%s-%s-%d", userID, market.Symbol, curBlock))
@@ -190,7 +198,7 @@ func (s *supplyService) Unpledge(ctx context.Context, pledgedTokens decimal.Deci
 	if !s.walletService.VerifyPayment(ctx, &input) {
 		memo := make(core.Action)
 		memo[core.ActionKeyService] = core.ActionServiceUnpledge
-		memo[core.ActionKeyCToken] = pledgedTokens.String()
+		memo[core.ActionKeyCToken] = unpledgedTokens.String()
 		memo[core.ActionKeySymbol] = market.Symbol
 		memo[core.ActionKeyUser] = userID
 
