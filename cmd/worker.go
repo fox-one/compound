@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"compound/worker"
+	"compound/worker/interest"
+	"compound/worker/liquidity"
 	"compound/worker/market"
 	"compound/worker/priceoracle"
 	"compound/worker/snapshot"
@@ -17,42 +19,32 @@ var workerCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// ctx := cmd.Context()
 
+		config := provideConfig()
 		db := provideDatabase()
+		redis := provideRedis()
 		mainWallet := provideMainWallet()
 		blockWallet := provideBlockWallet()
-		config := provideConfig()
 
 		propertyStore := providePropertyStore(db)
-		marketStore := provideMarketStore()
-		supplyStore := provideSupplyStore()
-		borrowStore := provideBorrowStore()
+		marketStore := provideMarketStore(db)
+		supplyStore := provideSupplyStore(db)
+		borrowStore := provideBorrowStore(db)
+		accountStore := provideAccountStore(redis)
 
-		walletService := provideWalletService()
+		walletService := provideWalletService(mainWallet)
 		blockService := provideBlockService()
-		priceService := providePriceService()
-		marketService := provideMarketService()
-		supplyService := provideSupplyService()
-		borrowService := provideBorrowService()
-		accountService := provideAccountService()
+		priceService := providePriceService(redis, blockService)
+		marketService := provideMarketService(redis, mainWallet, marketStore, borrowStore, blockService, priceService)
+		accountService := provideAccountService(mainWallet, marketStore, supplyStore, borrowStore, accountStore, priceService, blockService, walletService, marketService)
+		supplyService := provideSupplyService(db, mainWallet, blockWallet, supplyStore, marketStore, accountService, priceService, blockService, walletService, marketService)
+		borrowService := provideBorrowService(mainWallet, blockWallet, marketStore, borrowStore, blockService, priceService, walletService, accountService)
 
 		workers := []worker.IJob{
 			priceoracle.New(mainWallet, blockWallet, config, marketStore, blockService, priceService),
 			market.New(mainWallet, blockWallet, config, marketStore, blockService, priceService),
-			snapshot.New(config,
-				mainWallet,
-				blockWallet,
-				propertyStore,
-				db,
-				marketStore,
-				supplyStore,
-				borrowStore,
-				walletService,
-				priceService,
-				blockService,
-				marketService,
-				supplyService,
-				borrowService,
-				accountService),
+			interest.New(config, mainWallet, blockWallet, marketStore, supplyStore, borrowStore, blockService, marketService, walletService),
+			liquidity.New(config, mainWallet, blockWallet, marketStore, supplyStore, borrowStore, blockService, marketService, walletService, accountService),
+			snapshot.New(config, db, mainWallet, blockWallet, propertyStore, marketStore, supplyStore, borrowStore, accountStore, walletService, priceService, blockService, marketService, supplyService, borrowService, accountService),
 		}
 
 		for _, w := range workers {

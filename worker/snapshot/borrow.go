@@ -16,7 +16,8 @@ import (
 var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
 	log := logger.FromContext(ctx).WithField("worker", "borrow_event")
 
-	market, e := w.marketStore.FindByCToken(ctx, snapshot.AssetID, "")
+	//TODO 优化borrow流程，不需要中转
+	market, e := w.marketStore.FindByCToken(ctx, snapshot.AssetID)
 	if e != nil {
 		log.Errorln("query market error:", e)
 		return nil
@@ -68,7 +69,7 @@ var handleBorrowTransferEvent = func(ctx context.Context, w *Worker, action core
 	userID := snapshot.OpponentID
 	borrowAmount := snapshot.Amount.Abs()
 
-	market, e := w.marketStore.Find(ctx, snapshot.AssetID, "")
+	market, e := w.marketStore.Find(ctx, snapshot.AssetID)
 	if e != nil {
 		return e
 	}

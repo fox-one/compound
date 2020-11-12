@@ -12,7 +12,7 @@ var walletCmd = &cobra.Command{
 	Aliases: []string{"nw"},
 	Short:   "new wallet",
 	Run: func(cmd *cobra.Command, args []string) {
-		walletService := provideWalletService()
+		walletService := provideWalletService(provideMainWallet())
 		name, err := cmd.Flags().GetString("name")
 		if err != nil {
 			cmd.PrintErrln(err)

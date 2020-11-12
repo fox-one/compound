@@ -7,12 +7,12 @@ import (
 	"fmt"
 
 	"github.com/fox-one/mixin-sdk-go"
-	"github.com/fox-one/pkg/logger"
 	"github.com/shopspring/decimal"
 )
 
+// from user
 var handleSupplyEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
-	market, e := w.marketStore.Find(ctx, snapshot.AssetID, "")
+	market, e := w.marketStore.Find(ctx, snapshot.AssetID)
 	if e != nil {
 		//refund to user
 		return handleRefundEvent(ctx, w, action, snapshot)
@@ -55,125 +55,52 @@ var handleSupplyEvent = func(ctx context.Context, w *Worker, action core.Action,
 
 // from user, refund if error
 var handlePledgeEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
-	tokens := snapshot.Amount
+	ctokens := snapshot.Amount
 	userID := snapshot.OpponentID
 	ctokenAssetID := snapshot.AssetID
 
-	market, e := w.marketStore.FindByCToken(ctx, ctokenAssetID, "")
+	supply, e := w.supplyStore.Find(ctx, userID, ctokenAssetID)
 	if e != nil {
-		return handleRefundEvent(ctx, w, action, snapshot)
-	}
-
-	supply, e := w.supplyStore.Find(ctx, userID, market.Symbol)
-	if e != nil {
-		return handleRefundEvent(ctx, w, action, snapshot)
-	}
-
-	remainTokens := supply.CTokens.Sub(supply.CollateTokens)
-	if tokens.GreaterThan(remainTokens) {
-		return handleRefundEvent(ctx, w, action, snapshot)
-	}
-
-	//update supply
-	supply.CollateTokens = supply.CollateTokens.Add(tokens)
-	e = w.supplyStore.Update(ctx, w.db, supply)
-	if e != nil {
-		return e
+		//new
+		supply = &core.Supply{
+			UserID:        userID,
+			CTokenAssetID: ctokenAssetID,
+			Collaterals:   ctokens,
+		}
+		if e = w.supplyStore.Save(ctx, w.db, supply); e != nil {
+			return e
+		}
+	} else {
+		//update supply
+		supply.Collaterals = supply.Collaterals.Add(ctokens)
+		e = w.supplyStore.Update(ctx, w.db, supply)
+		if e != nil {
+			return e
+		}
 	}
 
 	return nil
 }
 
-// from system，ignored if error
+// from system
 var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
-	log := logger.FromContext(ctx).WithField("worker", "unpledge")
-
-	unpledgedTokens, e := decimal.NewFromString(action[core.ActionKeyCToken])
-	if e != nil {
-		return nil
-	}
-	symbol := action[core.ActionKeySymbol]
-	userID := action[core.ActionKeyUser]
-
-	market, e := w.marketStore.Find(ctx, "", symbol)
-	if e != nil {
-		return nil
-	}
-
-	supply, e := w.supplyStore.Find(ctx, userID, symbol)
-	if e != nil {
-		return nil
-	}
-
-	if unpledgedTokens.GreaterThanOrEqual(supply.CollateTokens) {
-		return nil
-	}
-
-	liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, userID)
-	if e != nil {
-		return nil
-	}
-
-	curBlock, e := w.blockService.CurrentBlock(ctx)
-	if e != nil {
-		return nil
-	}
-
-	price, e := w.priceService.GetUnderlyingPrice(ctx, supply.Symbol, curBlock)
-	if e != nil {
-		return nil
-	}
-
-	//calculate unpledge token liquidity
-	unpledgedTokenLiquidity := unpledgedTokens.Mul(supply.Principal).Div(supply.CTokens).Mul(market.CollateralFactor).Mul(price)
-	if unpledgedTokenLiquidity.GreaterThanOrEqual(liquidity) {
-		log.Errorln("insufficient liquidity")
-		return nil
-	}
-
-	trace := id.UUIDFromString(fmt.Sprintf("unpledge-transfer-%s", snapshot.TraceID))
-	input := mixin.TransferInput{
-		AssetID:    market.CTokenAssetID,
-		Amount:     unpledgedTokens,
-		OpponentID: userID,
-		TraceID:    trace,
-	}
-
-	if !w.walletService.VerifyPayment(ctx, &input) {
-		action := core.NewAction()
-		action[core.ActionKeyService] = core.ActionServiceUnpledgeTransfer
-		action[core.ActionKeySymbol] = symbol
-		memoStr, e := action.Format()
-		if e != nil {
-			return e
-		}
-
-		input.Memo = memoStr
-		_, e = w.mainWallet.Client.Transfer(ctx, &input, w.mainWallet.Pin)
-		if e != nil {
-			return e
-		}
-	}
-
-	return nil
-}
-
-// send unpledge ctoken to user
-var handleUnpledgeTransferEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
 	userID := snapshot.OpponentID
 	unpledgedTokens := snapshot.Amount.Abs()
-	symbol := action[core.ActionKeySymbol]
+	ctokenAssetID := snapshot.AssetID
 
-	supply, e := w.supplyStore.Find(ctx, userID, symbol)
-	if e != nil {
-		return nil
-	}
-
-	//update supply
-	supply.CollateTokens = supply.CollateTokens.Sub(unpledgedTokens)
-	e = w.supplyStore.Update(ctx, w.db, supply)
+	supply, e := w.supplyStore.Find(ctx, userID, ctokenAssetID)
 	if e != nil {
 		return e
 	}
+
+	//update supply
+	supply.Collaterals = supply.Collaterals.Sub(unpledgedTokens)
+	if supply.Collaterals.LessThan(decimal.Zero) {
+		supply.Collaterals = decimal.Zero
+	}
+	if e = w.supplyStore.Update(ctx, w.db, supply); e != nil {
+		return e
+	}
+
 	return nil
 }

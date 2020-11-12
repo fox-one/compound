@@ -14,7 +14,8 @@ type userService struct {
 
 // New new user service
 func New(client *mixin.Client) core.IUserService {
-	return &userService{mixinClient: client}
+	// return &userService{mixinClient: client}
+	return nil
 }
 
 func (s *userService) Find(ctx context.Context, mixinID string) (*core.User, error) {

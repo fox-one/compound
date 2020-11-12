@@ -34,42 +34,39 @@ func (s *marketStore) Save(ctx context.Context, tx *db.DB, market *core.Market) 
 	}
 	return nil
 }
-func (s *marketStore) Find(ctx context.Context, assetID, symbol string) (*core.Market, error) {
-	if assetID == "" && symbol == "" {
-		return nil, errors.New("invalid asset_id and symbol")
+func (s *marketStore) Find(ctx context.Context, assetID string) (*core.Market, error) {
+	if assetID == "" {
+		return nil, errors.New("invalid asset_id")
 	}
 
 	var market core.Market
-	query := s.db.View()
-	if assetID != "" {
-		query = query.Where("asset_id=?", assetID)
-	}
-	if symbol != "" {
-		query = query.Where("symbol=?", symbol)
-	}
-
-	if err := query.First(&market).Error; err != nil {
+	if err := s.db.View().Where("asset_id=?", assetID).First(&market).Error; err != nil {
 		return nil, err
 	}
 
 	return &market, nil
 }
 
-func (s *marketStore) FindByCToken(ctx context.Context, ctokenAssetID, ctokenSymbol string) (*core.Market, error) {
-	if ctokenAssetID == "" && ctokenSymbol == "" {
-		return nil, errors.New("invalid asset_id and symbol")
+func (s *marketStore) FindBySymbol(ctx context.Context, symbol string) (*core.Market, error) {
+	if symbol == "" {
+		return nil, errors.New("invalid symbol")
 	}
 
 	var market core.Market
-	query := s.db.View()
-	if ctokenAssetID != "" {
-		query = query.Where("asset_id=?", ctokenAssetID)
-	}
-	if ctokenSymbol != "" {
-		query = query.Where("symbol=?", ctokenSymbol)
+	if err := s.db.View().Where("symbol=?", symbol).First(&market).Error; err != nil {
+		return nil, err
 	}
 
-	if err := query.First(&market).Error; err != nil {
+	return &market, nil
+}
+
+func (s *marketStore) FindByCToken(ctx context.Context, ctokenAssetID string) (*core.Market, error) {
+	if ctokenAssetID == "" {
+		return nil, errors.New("invalid ctoken_asset_id")
+	}
+
+	var market core.Market
+	if err := s.db.View().Where("ctoken_asset_id=?", ctokenAssetID).First(&market).Error; err != nil {
 		return nil, err
 	}
 

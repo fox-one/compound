@@ -240,12 +240,17 @@ func (s *service) CurTotalReserves(ctx context.Context, market *core.Market) (de
 
 // 总借款利息
 func (s *service) CurTotalBorrowInterest(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
-	return market.TotalBorrowInterest, nil
-}
+	borrows, e := s.borrowStore.FindBySymbol(ctx, market.Symbol)
+	if e != nil {
+		return decimal.Zero, e
+	}
 
-// 总存款利息
-func (s *service) CurTotalSupplyInterest(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
-	return market.TotalSupplyInterest, nil
+	totalBorrowInterest := decimal.Zero
+	for _, b := range borrows {
+		totalBorrowInterest = totalBorrowInterest.Add(b.InterestAccumulated)
+	}
+
+	return totalBorrowInterest, nil
 }
 
 // 铸币

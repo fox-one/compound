@@ -19,10 +19,10 @@ import (
 type Worker struct {
 	worker.BaseJob
 	config         *core.Config
+	db             *db.DB
 	mainWallet     *core.Wallet
 	blockWallet    *core.Wallet
-	property       property.Store
-	db             *db.DB
+	propertyStore  property.Store
 	marketStore    core.IMarketStore
 	supplyStore    core.ISupplyStore
 	borrowStore    core.IBorrowStore
@@ -45,10 +45,10 @@ const (
 // New new snapshot worker
 func New(
 	config *core.Config,
+	db *db.DB,
 	mainWallet *core.Wallet,
 	blockWallet *core.Wallet,
-	property property.Store,
-	db *db.DB,
+	propertyStore property.Store,
 	marketStore core.IMarketStore,
 	supplyStore core.ISupplyStore,
 	borrowStore core.IBorrowStore,
@@ -63,10 +63,10 @@ func New(
 ) *Worker {
 	job := Worker{
 		config:         config,
+		db:             db,
 		mainWallet:     mainWallet,
 		blockWallet:    blockWallet,
-		property:       property,
-		db:             db,
+		propertyStore:  propertyStore,
 		marketStore:    marketStore,
 		supplyStore:    supplyStore,
 		borrowStore:    borrowStore,
@@ -94,7 +94,7 @@ func New(
 
 func (w *Worker) onWork(ctx context.Context) error {
 	log := logger.FromContext(ctx)
-	checkPoint, err := w.property.Get(ctx, checkPointKey)
+	checkPoint, err := w.propertyStore.Get(ctx, checkPointKey)
 	if err != nil {
 		log.WithError(err).Errorf("read property error: %s", checkPointKey)
 		return err
@@ -121,7 +121,7 @@ func (w *Worker) onWork(ctx context.Context) error {
 	}
 
 	if checkPoint.String() != next {
-		if err := w.property.Save(ctx, checkPointKey, next); err != nil {
+		if err := w.propertyStore.Save(ctx, checkPointKey, next); err != nil {
 			log.WithError(err).Errorf("update property error: %s", checkPointKey)
 			return err
 		}
@@ -162,19 +162,12 @@ func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) er
 			return handlePledgeEvent(ctx, w, action, snapshot)
 		case core.ActionServiceUnpledge:
 			return handleUnpledgeEvent(ctx, w, action, snapshot)
-		case core.ActionServiceUnpledgeTransfer:
-			return handleUnpledgeTransferEvent(ctx, w, action, snapshot)
 		case core.ActionServiceBorrow:
 			return handleBorrowEvent(ctx, w, action, snapshot)
 		case core.ActionServiceBorrowTransfer:
 			return handleBorrowTransferEvent(ctx, w, action, snapshot)
 		case core.ActionServiceRepay:
 			return handleBorrowRepayEvent(ctx, w, action, snapshot)
-		case core.ActionServiceSupplyInterest:
-			if snapshot.OpponentID != w.blockWallet.Client.ClientID {
-				return handleRefundEvent(ctx, w, action, snapshot)
-			}
-			return handleSupplyInterestEvent(ctx, w, action, snapshot)
 		case core.ActionServiceBorrowInterest:
 			if snapshot.OpponentID != w.blockWallet.Client.ClientID {
 				return handleRefundEvent(ctx, w, action, snapshot)

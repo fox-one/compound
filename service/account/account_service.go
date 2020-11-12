@@ -20,6 +20,7 @@ type accountService struct {
 	priceService  core.IPriceOracleService
 	blockService  core.IBlockService
 	walletService core.IWalletService
+	marketService core.IMarketService
 }
 
 // New new account service
@@ -32,6 +33,7 @@ func New(
 	priceSrv core.IPriceOracleService,
 	blockSrv core.IBlockService,
 	walletService core.IWalletService,
+	marketServie core.IMarketService,
 ) core.IAccountService {
 	return &accountService{
 		mainWallet:    mainWallet,
@@ -41,15 +43,11 @@ func New(
 		priceService:  priceSrv,
 		blockService:  blockSrv,
 		walletService: walletService,
+		marketService: marketServie,
 	}
 }
 
 func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID string) (decimal.Decimal, error) {
-	markets, e := s.markets(ctx)
-	if e != nil {
-		return decimal.Zero, e
-	}
-
 	curBlock, e := s.blockService.CurrentBlock(ctx)
 	if e != nil {
 		return decimal.Zero, e
@@ -61,17 +59,21 @@ func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID s
 	}
 	supplyValue := decimal.Zero
 	for _, supply := range supplies {
-		market, found := markets[supply.Symbol]
-		if !found {
-			continue
-		}
-
-		price, e := s.priceService.GetUnderlyingPrice(ctx, supply.Symbol, curBlock)
+		market, e := s.marketStore.FindByCToken(ctx, supply.CTokenAssetID)
 		if e != nil {
 			continue
 		}
 
-		value := supply.Principal.Mul(supply.CollateTokens).Div(supply.CTokens).Mul(market.CollateralFactor).Mul(price)
+		price, e := s.priceService.GetUnderlyingPrice(ctx, market.Symbol, curBlock)
+		if e != nil {
+			continue
+		}
+
+		exchangeRate, e := s.marketService.CurExchangeRate(ctx, market)
+		if e != nil {
+			continue
+		}
+		value := supply.Collaterals.Mul(exchangeRate).Mul(market.CollateralFactor).Mul(price)
 		supplyValue = supplyValue.Add(value)
 	}
 
@@ -97,6 +99,7 @@ func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID s
 	return liquidity, nil
 }
 
+// key with asset_id
 func (s *accountService) markets(ctx context.Context) (map[string]*core.Market, error) {
 	markets, e := s.marketStore.All(ctx)
 	if e != nil {
@@ -106,7 +109,7 @@ func (s *accountService) markets(ctx context.Context) (map[string]*core.Market, 
 	maps := make(map[string]*core.Market)
 
 	for _, m := range markets {
-		maps[m.Symbol] = m
+		maps[m.AssetID] = m
 	}
 
 	return maps, nil
@@ -137,21 +140,30 @@ func (s *accountService) SeizeTokenAllowed(ctx context.Context, supply *core.Sup
 		return false
 	}
 
-	supplyMarket, e := s.marketStore.Find(ctx, "", supply.Symbol)
+	supplyMarket, e := s.marketStore.FindByCToken(ctx, supply.CTokenAssetID)
 	if e != nil {
 		return false
 	}
 
-	maxSeize := supply.CollateTokens.Div(supply.CTokens).Mul(supply.Principal).Mul(supplyMarket.CloseFactor)
+	exchangeRate, e := s.marketService.CurExchangeRate(ctx, supplyMarket)
+	if e != nil {
+		return false
+	}
+
+	maxSeize := supply.Collaterals.Mul(exchangeRate).Mul(supplyMarket.CloseFactor)
 	if seizeTokens.GreaterThan(maxSeize) {
 		return false
 	}
 
-	supplyPrice, e := s.priceService.GetUnderlyingPrice(ctx, supply.Symbol, curBlock)
+	supplyPrice, e := s.priceService.GetUnderlyingPrice(ctx, supplyMarket.Symbol, curBlock)
 	if e != nil {
 		return false
 	}
-	borrowPrice, e := s.priceService.GetUnderlyingPrice(ctx, supply.Symbol, curBlock)
+	borrowMarket, e := s.marketStore.FindBySymbol(ctx, borrow.Symbol)
+	if e != nil {
+		return false
+	}
+	borrowPrice, e := s.priceService.GetUnderlyingPrice(ctx, borrowMarket.Symbol, curBlock)
 	if e != nil {
 		return false
 	}
@@ -175,18 +187,27 @@ func (s *accountService) MaxSeize(ctx context.Context, supply *core.Supply, borr
 		return decimal.Zero, e
 	}
 
-	supplyMarket, e := s.marketStore.Find(ctx, "", supply.Symbol)
+	supplyMarket, e := s.marketStore.FindByCToken(ctx, supply.CTokenAssetID)
 	if e != nil {
 		return decimal.Zero, e
 	}
 
-	maxSeize := supply.CollateTokens.Div(supply.CTokens).Mul(supply.Principal).Mul(supplyMarket.CloseFactor)
-
-	supplyPrice, e := s.priceService.GetUnderlyingPrice(ctx, supply.Symbol, curBlock)
+	exchangeRate, e := s.marketService.CurExchangeRate(ctx, supplyMarket)
 	if e != nil {
 		return decimal.Zero, e
 	}
-	borrowPrice, e := s.priceService.GetUnderlyingPrice(ctx, supply.Symbol, curBlock)
+	
+	maxSeize := supply.Collaterals.Mul(exchangeRate).Mul(supplyMarket.CloseFactor)
+
+	supplyPrice, e := s.priceService.GetUnderlyingPrice(ctx, supplyMarket.Symbol, curBlock)
+	if e != nil {
+		return decimal.Zero, e
+	}
+	borrowMarket, e := s.marketStore.FindBySymbol(ctx, borrow.Symbol)
+	if e != nil {
+		return decimal.Zero, e
+	}
+	borrowPrice, e := s.priceService.GetUnderlyingPrice(ctx, borrowMarket.Symbol, curBlock)
 	if e != nil {
 		return decimal.Zero, e
 	}
@@ -213,12 +234,17 @@ func (s *accountService) SeizeToken(ctx context.Context, supply *core.Supply, bo
 		return "", e
 	}
 
-	borrowMarket, e := s.marketStore.Find(ctx, "", borrow.Symbol)
+	supplyMarket, e := s.marketStore.FindByCToken(ctx, supply.CTokenAssetID)
 	if e != nil {
 		return "", e
 	}
 
-	supplyPrice, e := s.priceService.GetUnderlyingPrice(ctx, supply.Symbol, curBlock)
+	supplyPrice, e := s.priceService.GetUnderlyingPrice(ctx, supplyMarket.Symbol, curBlock)
+	if e != nil {
+		return "", e
+	}
+
+	borrowMarket, e := s.marketStore.FindBySymbol(ctx, borrow.Symbol)
 	if e != nil {
 		return "", e
 	}
@@ -228,7 +254,8 @@ func (s *accountService) SeizeToken(ctx context.Context, supply *core.Supply, bo
 		return "", e
 	}
 
-	seizeValue := seizeTokens.Mul(supplyPrice)
+	seizePrice := supplyPrice.Sub(supplyPrice.Mul(supplyMarket.LiquidationIncentive))
+	seizeValue := seizeTokens.Mul(seizePrice)
 	repayTokens := seizeValue.Div(borrowPrice)
 
 	trace := id.UUIDFromString(fmt.Sprintf("seizetoken-%s-%d", supply.UserID, curBlock))
@@ -246,7 +273,7 @@ func (s *accountService) SeizeToken(ctx context.Context, supply *core.Supply, bo
 	action := core.NewAction()
 	action[core.ActionKeyService] = core.ActionServiceSeizeToken
 	action[core.ActionKeyUser] = supply.UserID
-	action[core.ActionKeySymbol] = supply.Symbol
+	action[core.ActionKeySymbol] = supplyMarket.Symbol
 
 	memoStr, e := action.Format()
 	if e != nil {
@@ -260,11 +287,6 @@ func (s *accountService) SeizeToken(ctx context.Context, supply *core.Supply, bo
 
 // SeizeAllowedSupplies get current seize allowed supplies
 func (s *accountService) SeizeAllowedSupplies(ctx context.Context) ([]*core.Supply, error) {
-	markets, e := s.markets(ctx)
-	if e != nil {
-		return nil, e
-	}
-
 	supplies, e := s.supplyStore.All(ctx)
 	if e != nil {
 		return nil, e
@@ -292,12 +314,12 @@ func (s *accountService) SeizeAllowedSupplies(ctx context.Context) ([]*core.Supp
 		//
 		surplus, found := surplusLiquidities[supply.UserID]
 		if found {
-			market, found := markets[supply.Symbol]
-			if !found {
+			market, e := s.marketStore.FindByCToken(ctx, supply.CTokenAssetID)
+			if e != nil {
 				continue
 			}
 
-			price, e := s.priceService.GetUnderlyingPrice(ctx, supply.Symbol, curBlock)
+			price, e := s.priceService.GetUnderlyingPrice(ctx, market.Symbol, curBlock)
 			if e != nil {
 				continue
 			}
@@ -310,7 +332,11 @@ func (s *accountService) SeizeAllowedSupplies(ctx context.Context) ([]*core.Supp
 				liquidationIncentive := market.LiquidationIncentive
 				seizePrice := price.Sub(price.Mul(liquidationIncentive))
 
-				maxSeizedValue := supply.CollateTokens.Div(supply.CTokens).Mul(supply.Principal).Mul(seizePrice).Mul(closeFactor)
+				exchangeRate, e := s.marketService.CurExchangeRate(ctx, market)
+				if e != nil {
+					continue
+				}
+				maxSeizedValue := supply.Collaterals.Mul(exchangeRate).Mul(seizePrice).Mul(closeFactor)
 				delta := surplus.Add(maxSeizedValue)
 				surplusLiquidities[supply.UserID] = delta
 			}

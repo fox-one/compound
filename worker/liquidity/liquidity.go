@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/fox-one/mixin-sdk-go"
-	"github.com/fox-one/pkg/logger"
 	"github.com/robfig/cron/v3"
 	"github.com/shopspring/decimal"
 )

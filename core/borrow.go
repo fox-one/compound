@@ -17,11 +17,9 @@ type Borrow struct {
 	Principal decimal.Decimal `sql:"type:decimal(20,8)" json:"principal"`
 	//累计利息，只增不减
 	InterestAccumulated decimal.Decimal `sql:"type:decimal(20,8)" json:"interest_accumulated"`
-	//利息余额，用户每次repay按比率扣除已repay利息
-	InterestBalance decimal.Decimal `sql:"type:decimal(20,8)" json:"interest_balance"`
-	Version         int64           `sql:"default:0" json:"version"`
-	CreatedAt       time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt       time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`
+	Version             int64           `sql:"default:0" json:"version"`
+	CreatedAt           time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt           time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`
 }
 
 var (
@@ -38,6 +36,7 @@ type IBorrowStore interface {
 	FindByUser(ctx context.Context, userID string) ([]*Borrow, error)
 	FindBySymbol(ctx context.Context, symbol string) ([]*Borrow, error)
 	SumOfBorrows(ctx context.Context, symbol string) (decimal.Decimal, error)
+	CountOfBorrows(ctx context.Context, symbol string) (int64, error)
 	Update(ctx context.Context, tx *db.DB, borrow *Borrow) error
 	All(ctx context.Context) ([]*Borrow, error)
 }

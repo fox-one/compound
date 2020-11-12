@@ -2,10 +2,14 @@ package cmd
 
 import (
 	"compound/core"
+	accountservice "compound/service/account"
 	"compound/service/block"
+	borrowservice "compound/service/borrow"
 	marketservice "compound/service/market"
 	oracle "compound/service/oracle"
+	supplyservice "compound/service/supply"
 	"compound/service/wallet"
+	"compound/store/account"
 	"compound/store/borrow"
 	"compound/store/market"
 	"compound/store/supply"
@@ -57,6 +61,7 @@ func provideBlockWallet() *core.Wallet {
 	}
 }
 
+//TODO 不单独提供保留金钱包，以记账方式保存数据库记录
 func provideReserveWallet() *mixin.Client {
 	c, err := mixin.NewFromKeystore(&cfg.BlockWallet.Keystore)
 	if err != nil {
@@ -68,6 +73,7 @@ func provideReserveWallet() *mixin.Client {
 
 // ---------------store-----------------------------------------
 
+// TODO node engine 里不存储用户信息
 func provideUserStore(db *db.DB) core.IUserStore {
 	return user.New(db)
 }
@@ -76,52 +82,85 @@ func providePropertyStore(db *db.DB) property.Store {
 	return propertystore.New(db)
 }
 
-func provideMarketStore() core.IMarketStore {
-	return market.New(provideDatabase())
+func provideMarketStore(db *db.DB) core.IMarketStore {
+	return market.New(db)
 }
 
-func provideSupplyStore() core.ISupplyStore {
-	return supply.New(provideDatabase())
+func provideSupplyStore(db *db.DB) core.ISupplyStore {
+	return supply.New(db)
 }
 
-func provideBorrowStore() core.IBorrowStore {
-	return borrow.New(provideDatabase())
+func provideBorrowStore(db *db.DB) core.IBorrowStore {
+	return borrow.New(db)
+}
+
+func provideAccountStore(redis *redis.Client) core.IAccountStore {
+	return account.New(redis)
 }
 
 // ------------------service------------------------------------
-func provideWalletService() core.IWalletService {
-	return wallet.New(provideMainWallet())
+func provideWalletService(mainWallet *core.Wallet) core.IWalletService {
+	return wallet.New(mainWallet)
 }
 
 func provideBlockService() core.IBlockService {
-	return block.New(provideConfig())
+	return block.New(&cfg)
 }
 
-func providePriceService() core.IPriceOracleService {
-	return oracle.New(provideConfig(),
-		provideRedis(),
-		provideBlockService())
+func providePriceService(redis *redis.Client, blockSrv core.IBlockService) core.IPriceOracleService {
+	return oracle.New(&cfg,
+		redis,
+		blockSrv)
 }
 
-func provideMarketService() core.IMarketService {
-	return marketservice.New(provideRedis(),
-		provideMainWallet(),
-		provideMarketStore(),
-		provideBorrowStore(),
-		provideBlockService(),
-		providePriceService())
+func provideMarketService(redis *redis.Client, mainWallet *core.Wallet, marketStr core.IMarketStore, borrowStr core.IBorrowStore, blockSrv core.IBlockService, priceSrv core.IPriceOracleService) core.IMarketService {
+	return marketservice.New(redis,
+		mainWallet,
+		marketStr,
+		borrowStr,
+		blockSrv,
+		priceSrv)
 }
 
-func provideSupplyService() core.ISupplyService {
-	// return supplyService.New(provideConfig(), provideMainWallet())
-	return nil
+func provideSupplyService(db *db.DB, mainWallet *core.Wallet, blockWallet *core.Wallet, supplyStr core.ISupplyStore, marketStr core.IMarketStore, accountSrv core.IAccountService, priceSrv core.IPriceOracleService, blockSrv core.IBlockService, walletSrv core.IWalletService, marketSrv core.IMarketService) core.ISupplyService {
+	return supplyservice.New(
+		&cfg,
+		db,
+		mainWallet,
+		blockWallet,
+		supplyStr,
+		marketStr,
+		accountSrv,
+		priceSrv,
+		blockSrv,
+		walletSrv,
+		marketSrv,
+	)
 }
 
-func provideBorrowService() core.IBorrowService {
-	// return borrowService.New()
-	return nil
+func provideBorrowService(mainWallet *core.Wallet, blockWallet *core.Wallet, marketStr core.IMarketStore, borrowStr core.IBorrowStore, blockSrv core.IBlockService, priceSrv core.IPriceOracleService, walletSrv core.IWalletService, accountSrv core.IAccountService) core.IBorrowService {
+	return borrowservice.New(
+		&cfg,
+		mainWallet,
+		blockWallet,
+		marketStr,
+		borrowStr,
+		blockSrv,
+		priceSrv,
+		walletSrv,
+		accountSrv,
+	)
 }
 
-func provideAccountService() core.IAccountService {
-	return nil
+func provideAccountService(mainWallet *core.Wallet,
+	marketStore core.IMarketStore,
+	supplyStore core.ISupplyStore,
+	borrowStore core.IBorrowStore,
+	accountStore core.IAccountStore,
+	priceSrv core.IPriceOracleService,
+	blockSrv core.IBlockService,
+	walletService core.IWalletService,
+	marketSrv core.IMarketService) core.IAccountService {
+
+	return accountservice.New(mainWallet, marketStore, supplyStore, borrowStore, accountStore, priceSrv, blockSrv, walletService, marketSrv)
 }

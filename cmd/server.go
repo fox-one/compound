@@ -20,6 +20,25 @@ var serverCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := cmd.Context()
 
+		config := provideConfig()
+		db := provideDatabase()
+		redis := provideRedis()
+		mainWallet := provideMainWallet()
+		blockWallet := provideBlockWallet()
+
+		marketStore := provideMarketStore(db)
+		supplyStore := provideSupplyStore(db)
+		borrowStore := provideBorrowStore(db)
+		accountStore := provideAccountStore(redis)
+
+		walletService := provideWalletService(mainWallet)
+		blockService := provideBlockService()
+		priceService := providePriceService(redis, blockService)
+		marketService := provideMarketService(redis, mainWallet, marketStore, borrowStore, blockService, priceService)
+		accountService := provideAccountService(mainWallet, marketStore, supplyStore, borrowStore, accountStore, priceService, blockService, walletService, marketService)
+		supplyService := provideSupplyService(db, mainWallet, blockWallet, supplyStore, marketStore, accountService, priceService, blockService, walletService, marketService)
+		borrowService := provideBorrowService(mainWallet, blockWallet, marketStore, borrowStore, blockService, priceService, walletService, accountService)
+
 		mux := chi.NewMux()
 		mux.Use(middleware.Recoverer)
 		mux.Use(middleware.StripSlashes)
@@ -30,7 +49,7 @@ var serverCmd = &cobra.Command{
 
 		{
 			//hc
-			mux.Mount("/hc", hc.Handle("1.0.0"))
+			mux.Mount("/hc", hc.Handle(rootCmd.Version))
 		}
 
 		{
@@ -40,7 +59,7 @@ var serverCmd = &cobra.Command{
 
 		{
 			//restful api
-			mux.Mount("/api/v1", rest.Handle(ctx))
+			mux.Mount("/api/v1", rest.Handle(ctx, config, db, redis, mainWallet, blockWallet, marketStore, supplyStore, borrowStore, accountStore, walletService, blockService, priceService, accountService, marketService, supplyService, borrowService))
 		}
 
 		{
@@ -66,5 +85,5 @@ var serverCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(serverCmd)
-	serverCmd.Flags().IntP("port", "p", 9000, "server port")
+	serverCmd.Flags().IntP("port", "p", 80, "server port")
 }

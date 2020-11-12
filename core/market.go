@@ -12,20 +12,12 @@ import (
 type Market struct {
 	AssetID string `sql:"size:36;PRIMARY_KEY" json:"asset_id"`
 	Symbol  string `sql:"size:20;unique_index:symbol_idx" json:"symbol"`
-	Icon    string `sql:"size:256" json:"icon"`
-	//累计借出利息
-	TotalBorrowInterest decimal.Decimal `sql:"type:decimal(20,8)" json:"total_borrow_interest"`
-	//累计存款利息
-	TotalSupplyInterest decimal.Decimal `sql:"type:decimal(20,8)" json:"total_supply_interest"`
 	// 保留金
 	Reserves decimal.Decimal `sql:"type:decimal(20,8)" json:"reserves"`
 	// CToken 累计铸造出来的币的数量
 	CTokens decimal.Decimal `sql:"type:decimal(20,8)" json:"ctokens"`
 	// ctoken asset id
 	CTokenAssetID string `sql:"size:36;unique_index:ctoken_asset_idx" json:"ctoken_asset_id"`
-	// ctoken symbol
-	CTokenSymbol string `sql:"size:20;unique_index:ctoken_symbol_idx" json:"ctoken_symbol"`
-	CTokenIcon   string `sql:"size:256" json:"ctoken_icon"`
 	// 初始兑换率
 	InitExchangeRate decimal.Decimal `sql:"type:decimal(20,8);default:1" json:"init_exchange_rate"`
 	// 平台保留金率 (0, 1), 默认为 0.10
@@ -56,8 +48,9 @@ type Market struct {
 // IMarketStore asset store interface
 type IMarketStore interface {
 	Save(ctx context.Context, tx *db.DB, market *Market) error
-	Find(ctx context.Context, assetID, symbol string) (*Market, error)
-	FindByCToken(ctx context.Context, ctokenAssetID, ctokenSymbol string) (*Market, error)
+	Find(ctx context.Context, assetID string) (*Market, error)
+	FindBySymbol(ctx context.Context, symbol string) (*Market, error)
+	FindByCToken(ctx context.Context, ctokenAssetID string) (*Market, error)
 	All(ctx context.Context) ([]*Market, error)
 	AllAsMap(ctx context.Context) (map[string]*Market, error)
 	Update(ctx context.Context, tx *db.DB, market *Market) error
@@ -84,7 +77,6 @@ type IMarketService interface {
 	CurTotalBorrow(ctx context.Context, market *Market) (decimal.Decimal, error)
 	CurTotalReserves(ctx context.Context, market *Market) (decimal.Decimal, error)
 	CurTotalBorrowInterest(ctx context.Context, market *Market) (decimal.Decimal, error)
-	CurTotalSupplyInterest(ctx context.Context, market *Market) (decimal.Decimal, error)
 
 	Mint(ctx context.Context, market *Market) error
 }

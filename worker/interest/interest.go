@@ -7,6 +7,7 @@ import (
 	"compound/worker"
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -80,21 +81,6 @@ func (w *Worker) onWork(ctx context.Context) error {
 	golimit := concurrency.DefaultGoLimit
 	wg := sync.WaitGroup{}
 
-	// supply interest
-	supplies, e := w.SupplyStore.All(ctx)
-	if e == nil {
-		for _, supply := range supplies {
-			wg.Add(1)
-			golimit.Add()
-			go func(ctx context.Context, markets map[string]*core.Market, supply *core.Supply, currentBlock int64) {
-				defer wg.Done()
-				defer golimit.Done()
-
-				w.calculateSupplyInterest(ctx, markets, supply, currentBlock)
-			}(ctx, markets, supply, currentBlock)
-		}
-	}
-
 	// borrow interest
 	borrows, e := w.BorrowStore.All(ctx)
 	if e == nil {
@@ -113,46 +99,6 @@ func (w *Worker) onWork(ctx context.Context) error {
 	wg.Wait()
 
 	return nil
-}
-
-func (w *Worker) calculateSupplyInterest(ctx context.Context, markets map[string]*core.Market, supply *core.Supply, currentBlock int64) {
-	market, found := markets[supply.Symbol]
-	if !found {
-		return
-	}
-
-	rate, e := w.MarketService.CurSupplyRatePerBlock(ctx, market)
-	if e != nil {
-		return
-	}
-
-	interest := supply.Principal.Mul(rate)
-
-	traceID := id.UUIDFromString(fmt.Sprintf("supply-interest-%s-%s-%d", supply.UserID, supply.Symbol, currentBlock))
-	input := mixin.TransferInput{
-		AssetID:    w.Config.App.BlockAssetID,
-		OpponentID: w.MainWallet.Client.ClientID,
-		Amount:     decimal.NewFromFloat(0.00000001),
-		TraceID:    traceID,
-	}
-
-	if !w.WalletService.VerifyPayment(ctx, &input) {
-		action := core.NewAction()
-		action[core.ActionKeyService] = core.ActionServiceSupplyInterest
-		action[core.ActionKeyUser] = supply.UserID
-		action[core.ActionKeySymbol] = supply.Symbol
-		action[core.ActionKeyAmount] = interest.Truncate(16).String()
-
-		memoStr, e := action.Format()
-		if e != nil {
-			return
-		}
-		input.Memo = memoStr
-		_, e = w.BlockWallet.Client.Transfer(ctx, &input, w.BlockWallet.Pin)
-		if e != nil {
-			return
-		}
-	}
 }
 
 func (w *Worker) calculateBorrowInterest(ctx context.Context, markets map[string]*core.Market, borrow *core.Borrow, currentBlock int64) {
@@ -179,6 +125,7 @@ func (w *Worker) calculateBorrowInterest(ctx context.Context, markets map[string
 	if !w.WalletService.VerifyPayment(ctx, &input) {
 		action := core.NewAction()
 		action[core.ActionKeyService] = core.ActionServiceBorrowInterest
+		action[core.ActionKeyBlock] = strconv.FormatInt(currentBlock, 10)
 		action[core.ActionKeyUser] = borrow.UserID
 		action[core.ActionKeySymbol] = borrow.Symbol
 		action[core.ActionKeyAmount] = interest.Truncate(16).String()

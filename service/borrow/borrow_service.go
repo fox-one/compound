@@ -14,8 +14,8 @@ import (
 
 type borrowService struct {
 	config         *core.Config
-	mainWallet     *mixin.Client
-	blockWallet    *mixin.Client
+	mainWallet     *core.Wallet
+	blockWallet    *core.Wallet
 	marketStore    core.IMarketStore
 	borrowStore    core.IBorrowStore
 	blockService   core.IBlockService
@@ -26,19 +26,25 @@ type borrowService struct {
 
 // New new borrow service
 func New(cfg *core.Config,
-	mainWallet *mixin.Client,
-	blockWallet *mixin.Client,
+	mainWallet *core.Wallet,
+	blockWallet *core.Wallet,
 	marketStore core.IMarketStore,
 	borrowStore core.IBorrowStore,
 	blockService core.IBlockService,
 	priceService core.IPriceOracleService,
 	walletService core.IWalletService,
-	accountServie core.IAccountService) core.IBorrowService {
-	// return &borrowService{
-	// 	config:     cfg,
-	// 	mainWallet: mainWallet,
-	// }
-	return nil
+	accountService core.IAccountService) core.IBorrowService {
+	return &borrowService{
+		config:         cfg,
+		mainWallet:     mainWallet,
+		blockWallet:    blockWallet,
+		marketStore:    marketStore,
+		borrowStore:    borrowStore,
+		blockService:   blockService,
+		priceService:   priceService,
+		walletService:  walletService,
+		accountService: accountService,
+	}
 }
 
 func (s *borrowService) Repay(ctx context.Context, amount decimal.Decimal, userID string, market *core.Market) (string, error) {
@@ -50,7 +56,7 @@ func (s *borrowService) Repay(ctx context.Context, amount decimal.Decimal, userI
 		return "", e
 	}
 
-	return s.walletService.PaySchemaURL(amount, market.AssetID, s.mainWallet.ClientID, id.GenTraceID(), memoStr)
+	return s.walletService.PaySchemaURL(amount, market.AssetID, s.mainWallet.Client.ClientID, id.GenTraceID(), memoStr)
 }
 
 func (s *borrowService) MaxRepay(ctx context.Context, userID string, market *core.Market) (decimal.Decimal, error) {
@@ -75,7 +81,7 @@ func (s *borrowService) Borrow(ctx context.Context, borrowAmount decimal.Decimal
 	trace := id.UUIDFromString(fmt.Sprintf("borrow-%s-%s-%d", userID, market.Symbol, curBlock))
 	input := mixin.TransferInput{
 		AssetID:    s.config.App.BlockAssetID,
-		OpponentID: s.mainWallet.ClientID,
+		OpponentID: s.mainWallet.Client.ClientID,
 		Amount:     decimal.NewFromFloat(0.00000001),
 		TraceID:    trace,
 	}
@@ -97,7 +103,7 @@ func (s *borrowService) Borrow(ctx context.Context, borrowAmount decimal.Decimal
 
 	input.Memo = memoStr
 
-	_, e = s.blockWallet.Transfer(ctx, &input, s.config.BlockWallet.Pin)
+	_, e = s.blockWallet.Client.Transfer(ctx, &input, s.config.BlockWallet.Pin)
 	if e != nil {
 		return e
 	}
@@ -113,7 +119,7 @@ func (s *borrowService) BorrowAllowed(ctx context.Context, borrowAmount decimal.
 		return false
 	}
 
-	marketCash, e := s.mainWallet.ReadAsset(ctx, market.AssetID)
+	marketCash, e := s.mainWallet.Client.ReadAsset(ctx, market.AssetID)
 	if e != nil {
 		log.Errorln(e)
 		return false
@@ -159,7 +165,7 @@ func (s *borrowService) BorrowAllowed(ctx context.Context, borrowAmount decimal.
 }
 
 func (s *borrowService) MaxBorrow(ctx context.Context, userID string, market *core.Market) (decimal.Decimal, error) {
-	marketCash, e := s.mainWallet.ReadAsset(ctx, market.AssetID)
+	marketCash, e := s.mainWallet.Client.ReadAsset(ctx, market.AssetID)
 	if e != nil {
 		return decimal.Zero, e
 	}

@@ -64,6 +64,7 @@ func (s *borrowStore) FindBySymbol(ctx context.Context, symbol string) ([]*core.
 	return borrows, nil
 }
 
+//借出的总量,包含借出的基础资产加上相应利息金额
 func (s *borrowStore) SumOfBorrows(ctx context.Context, symbol string) (decimal.Decimal, error) {
 	var sum decimal.Decimal
 	if e := s.db.View().Model(core.Borrow{}).Select("sum(principal)").Where("symbol=?", symbol).Row().Scan(&sum); e != nil {
@@ -90,4 +91,13 @@ func (s *borrowStore) All(ctx context.Context) ([]*core.Borrow, error) {
 	}
 
 	return borrows, nil
+}
+
+func (s *borrowStore) CountOfBorrows(ctx context.Context, symbol string) (int64, error) {
+	var count int64
+	if e := s.db.View().Model(core.Borrow{}).Select("count(user_id)").Where("symbol=?", symbol).Row().Scan(&count); e != nil {
+		return 0, e
+	}
+
+	return count, nil
 }
