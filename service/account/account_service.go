@@ -130,7 +130,7 @@ func (s *accountService) HasBorrows(ctx context.Context, userID string) (bool, e
 	return false, nil
 }
 
-func (s *accountService) SeizeTokenAllowed(ctx context.Context, supply *core.Supply, borrow *core.Borrow, seizeTokens decimal.Decimal) bool {
+func (s *accountService) SeizeTokenAllowed(ctx context.Context, supply *core.Supply, borrow *core.Borrow, repayAmount decimal.Decimal) bool {
 	if supply.UserID != borrow.UserID {
 		return false
 	}
@@ -151,9 +151,6 @@ func (s *accountService) SeizeTokenAllowed(ctx context.Context, supply *core.Sup
 	}
 
 	maxSeize := supply.Collaterals.Mul(exchangeRate).Mul(supplyMarket.CloseFactor)
-	if seizeTokens.GreaterThan(maxSeize) {
-		return false
-	}
 
 	supplyPrice, e := s.priceService.GetUnderlyingPrice(ctx, supplyMarket.Symbol, curBlock)
 	if e != nil {
@@ -167,10 +164,13 @@ func (s *accountService) SeizeTokenAllowed(ctx context.Context, supply *core.Sup
 	if e != nil {
 		return false
 	}
+
+	repayValue := repayAmount.Mul(borrowPrice)
+
 	seizePrice := supplyPrice.Sub(supplyPrice.Mul(supplyMarket.LiquidationIncentive))
-	seizeValue := seizeTokens.Mul(seizePrice)
-	borrowValue := borrow.Principal.Mul(borrowPrice)
-	if seizeValue.GreaterThan(borrowValue) {
+	maxSeizeValue := maxSeize.Mul(seizePrice)
+
+	if repayValue.GreaterThan(maxSeizeValue) {
 		return false
 	}
 
@@ -196,7 +196,7 @@ func (s *accountService) MaxSeize(ctx context.Context, supply *core.Supply, borr
 	if e != nil {
 		return decimal.Zero, e
 	}
-	
+
 	maxSeize := supply.Collaterals.Mul(exchangeRate).Mul(supplyMarket.CloseFactor)
 
 	supplyPrice, e := s.priceService.GetUnderlyingPrice(ctx, supplyMarket.Symbol, curBlock)
@@ -223,9 +223,9 @@ func (s *accountService) MaxSeize(ctx context.Context, supply *core.Supply, borr
 }
 
 // SeizeToken  seizeTokens: 可以夺取的币的数量
-func (s *accountService) SeizeToken(ctx context.Context, supply *core.Supply, borrow *core.Borrow, seizeTokens decimal.Decimal) (string, error) {
+func (s *accountService) SeizeToken(ctx context.Context, supply *core.Supply, borrow *core.Borrow, repayAmount decimal.Decimal) (string, error) {
 	//同一个block内的同一个人(账号)只允许有一个seize事件，支付borrow的币，夺取supply的币
-	if !s.SeizeTokenAllowed(ctx, supply, borrow, seizeTokens) {
+	if !s.SeizeTokenAllowed(ctx, supply, borrow, repayAmount) {
 		return "", errors.New("seize token not allowed")
 	}
 
@@ -239,30 +239,16 @@ func (s *accountService) SeizeToken(ctx context.Context, supply *core.Supply, bo
 		return "", e
 	}
 
-	supplyPrice, e := s.priceService.GetUnderlyingPrice(ctx, supplyMarket.Symbol, curBlock)
-	if e != nil {
-		return "", e
-	}
-
 	borrowMarket, e := s.marketStore.FindBySymbol(ctx, borrow.Symbol)
 	if e != nil {
 		return "", e
 	}
 
-	borrowPrice, e := s.priceService.GetUnderlyingPrice(ctx, borrow.Symbol, curBlock)
-	if e != nil {
-		return "", e
-	}
-
-	seizePrice := supplyPrice.Sub(supplyPrice.Mul(supplyMarket.LiquidationIncentive))
-	seizeValue := seizeTokens.Mul(seizePrice)
-	repayTokens := seizeValue.Div(borrowPrice)
-
 	trace := id.UUIDFromString(fmt.Sprintf("seizetoken-%s-%d", supply.UserID, curBlock))
 	input := mixin.TransferInput{
 		AssetID:    borrowMarket.AssetID,
 		OpponentID: s.mainWallet.Client.ClientID,
-		Amount:     repayTokens.Truncate(8),
+		Amount:     repayAmount,
 		TraceID:    trace,
 	}
 
@@ -285,9 +271,10 @@ func (s *accountService) SeizeToken(ctx context.Context, supply *core.Supply, bo
 	return s.walletService.PaySchemaURL(input.Amount, input.AssetID, input.OpponentID, input.TraceID, input.Memo)
 }
 
-// SeizeAllowedSupplies get current seize allowed supplies
-func (s *accountService) SeizeAllowedSupplies(ctx context.Context) ([]*core.Supply, error) {
-	supplies, e := s.supplyStore.All(ctx)
+func (s *accountService) SeizeAllowedAccounts(ctx context.Context) ([]*core.Account, error) {
+	accounts := make([]*core.Account, 0)
+
+	users, e := s.borrowStore.Users(ctx)
 	if e != nil {
 		return nil, e
 	}
@@ -297,51 +284,31 @@ func (s *accountService) SeizeAllowedSupplies(ctx context.Context) ([]*core.Supp
 		return nil, e
 	}
 
-	seizeAllowedSupplies := make([]*core.Supply, 0)
-	surplusLiquidities := make(map[string]decimal.Decimal)
-	for _, supply := range supplies {
-		liquidity, found := surplusLiquidities[supply.UserID]
-		if !found {
-			liquidity, e = s.accountStore.FindLiquidity(ctx, supply.UserID, curBlock)
-			if e != nil {
-				continue
-			}
-			// 流动性为0或负的用户加入清算名单
-			if liquidity.LessThanOrEqual(decimal.Zero) {
-				surplusLiquidities[supply.UserID] = liquidity
-			}
+	for _, u := range users {
+		liquidity, e := s.accountStore.FindLiquidity(ctx, u, curBlock)
+		if e != nil {
+			continue
 		}
-		//
-		surplus, found := surplusLiquidities[supply.UserID]
-		if found {
-			market, e := s.marketStore.FindByCToken(ctx, supply.CTokenAssetID)
+		if liquidity.LessThanOrEqual(decimal.Zero) {
+			supplies, e := s.supplyStore.FindByUser(ctx, u)
 			if e != nil {
 				continue
 			}
 
-			price, e := s.priceService.GetUnderlyingPrice(ctx, market.Symbol, curBlock)
+			borrows, e := s.borrowStore.FindByUser(ctx, u)
 			if e != nil {
 				continue
 			}
-
-			if surplus.LessThanOrEqual(decimal.Zero) {
-				// add to seize allow supply list
-				seizeAllowedSupplies = append(seizeAllowedSupplies, supply)
-
-				closeFactor := market.CloseFactor
-				liquidationIncentive := market.LiquidationIncentive
-				seizePrice := price.Sub(price.Mul(liquidationIncentive))
-
-				exchangeRate, e := s.marketService.CurExchangeRate(ctx, market)
-				if e != nil {
-					continue
-				}
-				maxSeizedValue := supply.Collaterals.Mul(exchangeRate).Mul(seizePrice).Mul(closeFactor)
-				delta := surplus.Add(maxSeizedValue)
-				surplusLiquidities[supply.UserID] = delta
+			account := core.Account{
+				UserID:    u,
+				Liquidity: liquidity,
+				Supplies:  supplies,
+				Borrows:   borrows,
 			}
+
+			accounts = append(accounts, &account)
 		}
 	}
 
-	return seizeAllowedSupplies, nil
+	return accounts, nil
 }

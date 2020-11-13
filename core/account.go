@@ -8,13 +8,10 @@ import (
 
 // Account 借贷账户
 type Account struct {
-	UserID string `json:"user_id"`
-	//每个block计算一次
+	UserID    string          `json:"user_id"`
 	Liquidity decimal.Decimal `json:"liquidity"`
-	//实时获取
-	Supplies []*Supply `json:"supplies"`
-	//实时获取
-	Borrows []*Borrow `json:"borrows"`
+	Supplies  []*Supply       `json:"supplies"`
+	Borrows   []*Borrow       `json:"borrows"`
 }
 
 // IAccountStore account store interface
@@ -29,7 +26,7 @@ type IAccountService interface {
 	CalculateAccountLiquidity(ctx context.Context, userID string) (decimal.Decimal, error)
 	HasBorrows(ctx context.Context, userID string) (bool, error)
 	MaxSeize(ctx context.Context, supply *Supply, borrow *Borrow) (decimal.Decimal, error)
-	SeizeTokenAllowed(ctx context.Context, supply *Supply, borrow *Borrow, seizeTokens decimal.Decimal) bool
-	SeizeToken(ctx context.Context, supply *Supply, borrow *Borrow, seizeTokens decimal.Decimal) (string, error)
-	SeizeAllowedSupplies(ctx context.Context) ([]*Supply, error)
+	SeizeTokenAllowed(ctx context.Context, supply *Supply, borrow *Borrow, repayAmount decimal.Decimal) bool
+	SeizeToken(ctx context.Context, supply *Supply, borrow *Borrow, repayAmount decimal.Decimal) (string, error)
+	SeizeAllowedAccounts(ctx context.Context) ([]*Account, error)
 }

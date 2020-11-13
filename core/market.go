@@ -58,14 +58,16 @@ type IMarketStore interface {
 
 // IMarketService market interface
 type IMarketService interface {
-	SaveUtilizationRate(ctx context.Context, symbol string, rate decimal.Decimal, block int64) error
-	GetUtilizationRate(ctx context.Context, symbol string, block int64) (decimal.Decimal, error)
-	SaveBorrowRatePerBlock(ctx context.Context, symbol string, rate decimal.Decimal, block int64) error
+	UpdateBorrowRatePerBlock(ctx context.Context, symbol string, rate decimal.Decimal, block int64) error
 	GetBorrowRatePerBlock(ctx context.Context, symbol string, block int64) (decimal.Decimal, error)
 	GetBorrowRate(ctx context.Context, symbol string, block int64) (decimal.Decimal, error)
-	SaveSupplyRatePerBlock(ctx context.Context, symbol string, rate decimal.Decimal, block int64) error
+	UpdateSupplyRatePerBlock(ctx context.Context, symbol string, rate decimal.Decimal, block int64) error
 	GetSupplyRatePerBlock(ctx context.Context, symbol string, block int64) (decimal.Decimal, error)
 	GetSupplyRate(ctx context.Context, symbol string, block int64) (decimal.Decimal, error)
+	UpdateUtilizationRate(ctx context.Context, symbol string, rate decimal.Decimal, block int64) error
+	GetUtilizationRate(ctx context.Context, symbol string, block int64) (decimal.Decimal, error)
+	UpdateExchangeRate(ctx context.Context, symbol string, block int64) error
+	GetExchangeRate(ctx context.Context, symbol string, block int64) (decimal.Decimal, error)
 
 	CurUtilizationRate(ctx context.Context, market *Market) (decimal.Decimal, error)
 	CurExchangeRate(ctx context.Context, market *Market) (decimal.Decimal, error)
@@ -77,6 +79,4 @@ type IMarketService interface {
 	CurTotalBorrow(ctx context.Context, market *Market) (decimal.Decimal, error)
 	CurTotalReserves(ctx context.Context, market *Market) (decimal.Decimal, error)
 	CurTotalBorrowInterest(ctx context.Context, market *Market) (decimal.Decimal, error)
-
-	Mint(ctx context.Context, market *Market) error
 }

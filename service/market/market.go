@@ -40,33 +40,7 @@ func New(
 	}
 }
 
-func (s *service) SaveUtilizationRate(ctx context.Context, symbol string, rate decimal.Decimal, block int64) error {
-	k := s.utilizationRateCacheKey(symbol, block)
-
-	// not exists, add new
-	if s.Redis.Exists(k).Val() == 0 {
-		//new
-		s.Redis.Set(k, []byte(rate.String()), time.Hour)
-	}
-	return nil
-}
-func (s *service) GetUtilizationRate(ctx context.Context, symbol string, block int64) (decimal.Decimal, error) {
-	k := s.utilizationRateCacheKey(symbol, block)
-
-	bs, e := s.Redis.Get(k).Bytes()
-	if e != nil {
-		return decimal.Zero, e
-	}
-
-	price, e := decimal.NewFromString(string(bs))
-	if e != nil {
-		return decimal.Zero, e
-	}
-
-	return price, nil
-}
-
-func (s *service) SaveBorrowRatePerBlock(ctx context.Context, symbol string, rate decimal.Decimal, block int64) error {
+func (s *service) UpdateBorrowRatePerBlock(ctx context.Context, symbol string, rate decimal.Decimal, block int64) error {
 	k := s.borrowRateCacheKey(symbol, block)
 
 	// not exists, add new
@@ -100,7 +74,7 @@ func (s *service) GetBorrowRate(ctx context.Context, symbol string, block int64)
 	return ratePerBlock.Mul(compound.BlocksPerYear), nil
 }
 
-func (s *service) SaveSupplyRatePerBlock(ctx context.Context, symbol string, rate decimal.Decimal, block int64) error {
+func (s *service) UpdateSupplyRatePerBlock(ctx context.Context, symbol string, rate decimal.Decimal, block int64) error {
 	k := s.supplyRateCacheKey(symbol, block)
 
 	// not exists, add new
@@ -134,6 +108,23 @@ func (s *service) GetSupplyRate(ctx context.Context, symbol string, block int64)
 	return ratePerBlock.Mul(compound.BlocksPerYear), nil
 }
 
+func (s *service) UpdateUtilizationRate(ctx context.Context, symbol string, rate decimal.Decimal, block int64) error {
+	//TODO
+	return nil
+}
+func (s *service) GetUtilizationRate(ctx context.Context, symbol string, block int64) (decimal.Decimal, error) {
+	//TODO
+	return decimal.Zero, nil
+}
+func (s *service) UpdateExchangeRate(ctx context.Context, symbol string, block int64) error {
+	//TODO
+	return nil
+}
+func (s *service) GetExchangeRate(ctx context.Context, symbol string, block int64) (decimal.Decimal, error) {
+	//TODO
+	return decimal.Zero, nil
+}
+
 //资金使用率，同一个block里保持一致，该数据会影响到借款和存款利率的计算
 func (s *service) CurUtilizationRate(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
 	borrows, e := s.borrowStore.SumOfBorrows(ctx, market.Symbol)
@@ -146,7 +137,6 @@ func (s *service) CurUtilizationRate(ctx context.Context, market *core.Market) (
 		return decimal.Zero, e
 	}
 
-	//cash里面不包含准备金，所以不需要减去准备金
 	rate := compound.UtilizationRate(cash.Balance, borrows, market.Reserves)
 	return rate, nil
 }
@@ -165,7 +155,6 @@ func (s *service) CurExchangeRate(ctx context.Context, market *core.Market) (dec
 		return decimal.Zero, nil
 	}
 
-	//cash里面不包含准备金，所以不需要减去准备金
 	rate := compound.GetExchangeRate(cash.Balance, borrows, market.Reserves, market.CTokens, market.InitExchangeRate)
 
 	return rate, nil
@@ -251,15 +240,6 @@ func (s *service) CurTotalBorrowInterest(ctx context.Context, market *core.Marke
 	}
 
 	return totalBorrowInterest, nil
-}
-
-// 铸币
-func (s *service) Mint(ctx context.Context, market *core.Market) error {
-	return nil
-}
-
-func (s *service) utilizationRateCacheKey(symbol string, block int64) string {
-	return fmt.Sprintf("foxone:compound:urate:%s:%d", symbol, block)
 }
 
 func (s *service) borrowRateCacheKey(symbol string, block int64) string {

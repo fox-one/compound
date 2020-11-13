@@ -101,15 +101,6 @@ func (w *Worker) checkAndPushMarketOnChain(ctx context.Context, market *core.Mar
 		memo[core.ActionKeySymbol] = market.Symbol
 		memo[core.ActionKeyBlock] = strconv.FormatInt(currentBlock, 10)
 
-		// utilization rate
-		uRate, err := w.MarketService.CurUtilizationRate(ctx, market)
-		if err != nil {
-			log.Errorln("get utilization rate error:", err)
-			return err
-		}
-
-		memo[core.ActionKeyUtilizationRate] = uRate.Truncate(4).String()
-
 		// borrow rate
 		bRate, err := w.MarketService.CurBorrowRatePerBlock(ctx, market)
 		if err != nil {

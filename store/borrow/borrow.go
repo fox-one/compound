@@ -101,3 +101,12 @@ func (s *borrowStore) CountOfBorrows(ctx context.Context, symbol string) (int64,
 
 	return count, nil
 }
+
+func (s *borrowStore) Users(ctx context.Context) ([]string, error) {
+	var users []string
+	if e := s.db.View().Model(core.Borrow{}).Select("distinct user_id").Pluck("user_id", &users).Error; e != nil {
+		return nil, e
+	}
+
+	return users, nil
+}

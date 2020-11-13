@@ -11,8 +11,6 @@ const (
 	ActionKeySymbol = "sb"
 	// ActionKeyPrice price :decimal
 	ActionKeyPrice = "pr"
-	// ActionKeyUtilizationRate utilization rate :decimal
-	ActionKeyUtilizationRate = "ur"
 	// ActionKeyBorrowRate borrow rate :decimal
 	ActionKeyBorrowRate = "br"
 	// ActionKeySupplyRate supply rate : decimal
@@ -30,8 +28,6 @@ const (
 )
 
 const (
-	// ActionServiceBlock block
-	ActionServiceBlock = "blk"
 	// ActionServicePrice prc
 	ActionServicePrice = "prc"
 	// ActionServiceMarket market

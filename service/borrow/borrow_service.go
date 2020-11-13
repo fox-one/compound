@@ -47,7 +47,7 @@ func New(cfg *core.Config,
 	}
 }
 
-func (s *borrowService) Repay(ctx context.Context, amount decimal.Decimal, userID string, market *core.Market) (string, error) {
+func (s *borrowService) Repay(ctx context.Context, amount decimal.Decimal, market *core.Market) (string, error) {
 	action := make(core.Action)
 	action[core.ActionKeyService] = core.ActionServiceRepay
 

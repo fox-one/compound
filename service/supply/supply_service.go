@@ -54,8 +54,8 @@ func New(cfg *core.Config,
 }
 
 // 赎回
-func (s *supplyService) Redeem(ctx context.Context, redeemTokens decimal.Decimal, userID string, market *core.Market) (string, error) {
-	if !s.RedeemAllowed(ctx, redeemTokens, userID, market) {
+func (s *supplyService) Redeem(ctx context.Context, redeemTokens decimal.Decimal, market *core.Market) (string, error) {
+	if !s.RedeemAllowed(ctx, redeemTokens, market) {
 		return "", errors.New("redeem not allowed")
 	}
 
@@ -70,7 +70,7 @@ func (s *supplyService) Redeem(ctx context.Context, redeemTokens decimal.Decimal
 	return s.walletService.PaySchemaURL(redeemTokens, market.CTokenAssetID, s.mainWallet.Client.ClientID, id.GenTraceID(), str)
 }
 
-func (s *supplyService) RedeemAllowed(ctx context.Context, redeemTokens decimal.Decimal, userID string, market *core.Market) bool {
+func (s *supplyService) RedeemAllowed(ctx context.Context, redeemTokens decimal.Decimal, market *core.Market) bool {
 	exchangeRate, e := s.marketService.CurExchangeRate(ctx, market)
 	if e != nil {
 		return false
@@ -107,7 +107,7 @@ func (s *supplyService) Supply(ctx context.Context, amount decimal.Decimal, mark
 }
 
 //抵押
-func (s *supplyService) Pledge(ctx context.Context, pledgedTokens decimal.Decimal, userID string, market *core.Market) (string, error) {
+func (s *supplyService) Pledge(ctx context.Context, pledgedTokens decimal.Decimal, market *core.Market) (string, error) {
 	memo := make(core.Action)
 	memo[core.ActionKeyService] = core.ActionServicePledge
 
@@ -180,4 +180,10 @@ func (s *supplyService) Unpledge(ctx context.Context, unpledgedTokens decimal.De
 	}
 
 	return nil
+}
+
+// TODO
+func (s *supplyService) MaxUnpledge(ctx context.Context, userID string, market *core.Market) (decimal.Decimal, error) {
+
+	return decimal.Zero, nil
 }

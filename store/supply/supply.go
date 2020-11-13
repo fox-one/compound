@@ -100,3 +100,12 @@ func (s *supplyStore) CountOfSupplies(ctx context.Context, symbol string) (int64
 
 	return count, nil
 }
+
+func (s *supplyStore) Users(ctx context.Context) ([]string, error) {
+	var users []string
+	if e := s.db.View().Model(core.Supply{}).Select("distinct user_id").Pluck("user_id", &users).Error; e != nil {
+		return nil, e
+	}
+
+	return users, nil
+}

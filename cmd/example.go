@@ -41,7 +41,6 @@ var exampleCmd = &cobra.Command{
 		memo[core.ActionKeyService] = core.ActionServiceMarket
 		memo[core.ActionKeySymbol] = "USDT"
 		memo[core.ActionKeyBlock] = "1234567890"
-		memo[core.ActionKeyUtilizationRate] = "0.5667"
 		memo[core.ActionKeyBorrowRate] = "0.0000000002324345"
 		memo[core.ActionKeySupplyRate] = "0.0000000003434535"
 

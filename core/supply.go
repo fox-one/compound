@@ -29,13 +29,15 @@ type ISupplyStore interface {
 	CountOfSupplies(ctx context.Context, symbol string) (int64, error)
 	Update(ctx context.Context, tx *db.DB, supply *Supply) error
 	All(ctx context.Context) ([]*Supply, error)
+	Users(ctx context.Context) ([]string, error)
 }
 
 // ISupplyService supply service interface
 type ISupplyService interface {
-	Redeem(ctx context.Context, redeemTokens decimal.Decimal, userID string, market *Market) (string, error)
-	RedeemAllowed(ctx context.Context, redeemTokens decimal.Decimal, userID string, market *Market) bool
+	Redeem(ctx context.Context, redeemTokens decimal.Decimal, market *Market) (string, error)
+	RedeemAllowed(ctx context.Context, redeemTokens decimal.Decimal, market *Market) bool
 	Supply(ctx context.Context, amount decimal.Decimal, market *Market) (string, error)
-	Pledge(ctx context.Context, pledgedTokens decimal.Decimal, userID string, market *Market) (string, error)
+	Pledge(ctx context.Context, pledgedTokens decimal.Decimal, market *Market) (string, error)
 	Unpledge(ctx context.Context, pledgedTokens decimal.Decimal, userID string, market *Market) error
+	MaxUnpledge(ctx context.Context, userID string, market *Market) (decimal.Decimal, error)
 }

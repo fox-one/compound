@@ -36,37 +36,38 @@ func Handle(ctx context.Context,
 		render.Error(w, twirp.NotFoundError("not found"))
 	})
 
+	// MUST
 	router.Get("/markets", allMarketsHandler(ctx, marketStore, supplyStore, borrowStore, marketService))
+	// MUST
 	router.Get("/markets/{symbol}", marketHandler(ctx, marketStore, supplyStore, borrowStore, marketService))
-
+	// MUST
 	router.Get("/accounts/{user}", accountHandler(ctx, accountService))
 
+	// MUST
 	// supplies?user=xxxxx&symbol=BTC
 	router.Get("/supplies", suppliesHandler(ctx, marketStore, supplyStore, priceService, blockService))
 	// create supply
-	router.Post("/supplies", nil)
+	router.Post("/supplies", supplyHandler(ctx, marketStore, supplyService))
 	// pledge
-	router.Post("/supplies/pledge", nil)
-	// supplies/pledge/max?user=xxx&symbol=BTC
-	router.Get("/supplies/pledge/max", nil)
-	router.Put("/supplies/unpledge", nil)
-	router.Put("/supplies/redeem", nil)
-	// supplies/redeem/max?user=xxxx&symbol=BTC
-	router.Get("/supplies/redeem/max", nil)
+	router.Post("/supplies/pledge", pledgeHandler(ctx, marketStore, supplyService))
+	router.Put("/supplies/unpledge", unpledgeHandler(ctx, marketStore, supplyService))
+	router.Put("/supplies/redeem", redeemHandler(ctx, marketStore, supplyService))
 
+	// MUST
 	// borrows?user=xxxxx&symbol=BTC
-	router.Get("/borrows", nil)
+	router.Get("/borrows", borrowsHandler(ctx, marketStore, borrowStore, priceService, blockService))
 	// create borrow
-	router.Post("/borrows", nil)
+	router.Post("/borrows", borrowHandler(ctx, marketStore, borrowService))
+	router.Put("/borrows/repay", repayHandler(ctx, marketStore, borrowService))
 	// borrows/max?user=xxxx&symbol=BTC
 	router.Get("/borrows/max", nil)
-	router.Put("/borrows/repay", nil)
 	// borrows/repay/max?user=xxxxx&symbol=BTC
 	router.Get("/borrows/repay/max", nil)
 
+	// MUST
 	// liquidities?user=xxxxx
-	router.Get("/liquidities", nil)
-	router.Post("/seizetoken", nil)
+	router.Get("/liquidities", liquiditiesHandler(ctx, accountService))
+	router.Post("/seizetoken", seizeTokenHandler(ctx, marketStore, supplyStore, borrowStore, accountService))
 	router.Get("/seizetoken/max", nil)
 
 	return router

@@ -39,11 +39,12 @@ type IBorrowStore interface {
 	CountOfBorrows(ctx context.Context, symbol string) (int64, error)
 	Update(ctx context.Context, tx *db.DB, borrow *Borrow) error
 	All(ctx context.Context) ([]*Borrow, error)
+	Users(ctx context.Context) ([]string, error)
 }
 
 // IBorrowService supply service interface
 type IBorrowService interface {
-	Repay(ctx context.Context, amount decimal.Decimal, userID string, market *Market) (string, error)
+	Repay(ctx context.Context, amount decimal.Decimal, market *Market) (string, error)
 	MaxRepay(ctx context.Context, userID string, market *Market) (decimal.Decimal, error)
 	Borrow(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *Market) error
 	BorrowAllowed(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *Market) bool
