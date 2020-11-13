@@ -134,7 +134,7 @@ func (w *Worker) checkAndPushMarketOnChain(ctx context.Context, market *core.Mar
 		memo[core.ActionKeySupplyRate] = sRate.Truncate(16).String()
 
 		// format memo to string
-		memoStr, err := w.BlockService.FormatBlockMemo(ctx, memo)
+		memoStr, err := memo.Format()
 		if err != nil {
 			log.Errorln("new block memo error:", err)
 			return err

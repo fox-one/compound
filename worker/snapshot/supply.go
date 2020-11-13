@@ -37,7 +37,7 @@ var handleSupplyEvent = func(ctx context.Context, w *Worker, action core.Action,
 		memo := make(core.Action)
 		memo[core.ActionKeyService] = core.ActionServiceMint
 		memo[core.ActionKeyAmount] = snapshot.Amount.Abs().String()
-		memoStr, e := w.blockService.FormatBlockMemo(ctx, memo)
+		memoStr, e := memo.Format()
 		if e != nil {
 			return e
 		}

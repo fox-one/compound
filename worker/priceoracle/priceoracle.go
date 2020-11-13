@@ -115,7 +115,7 @@ func (w *Worker) checkAndPushPriceOnChain(ctx context.Context, market *core.Mark
 		memo[core.ActionKeyBlock] = strconv.FormatInt(currentBlock, 10)
 		memo[core.ActionKeySymbol] = market.Symbol
 		memo[core.ActionKeyPrice] = ticker.Price.Truncate(8).String()
-		memoStr, err := w.BlockService.FormatBlockMemo(ctx, memo)
+		memoStr, err := memo.Format()
 		if err != nil {
 			log.Errorln("new block memo error:", err)
 			return err

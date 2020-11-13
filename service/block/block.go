@@ -4,7 +4,6 @@ import (
 	"compound/core"
 	"compound/internal/compound"
 	"context"
-	"encoding/json"
 	"time"
 )
 
@@ -34,23 +33,4 @@ func (s *service) GetBlock(ctx context.Context, t time.Time) (int64, error) {
 		return 0, e
 	}
 	return block, nil
-}
-
-func (s *service) FormatBlockMemo(ctx context.Context, memo core.Action) (string, error) {
-	bs, e := json.Marshal(&memo)
-	if e != nil {
-		return "", e
-	}
-
-	return string(bs), nil
-}
-
-func (s *service) ParseBlockMemo(ctx context.Context, memoStr string) (core.Action, error) {
-	var memo core.Action
-	e := json.Unmarshal([]byte(memoStr), &memo)
-	if e != nil {
-		return nil, e
-	}
-
-	return memo, nil
 }

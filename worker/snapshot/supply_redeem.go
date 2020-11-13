@@ -45,7 +45,7 @@ var handleSupplyRedeemEvent = func(ctx context.Context, w *Worker, action core.A
 		memo := make(core.Action)
 		memo[core.ActionKeyService] = core.ActionServiceRedeemTransfer
 		memo[core.ActionKeyCToken] = snapshot.Amount.Abs().String()
-		memoStr, e := w.blockService.FormatBlockMemo(ctx, memo)
+		memoStr, e := memo.Format()
 		if e != nil {
 			return e
 		}

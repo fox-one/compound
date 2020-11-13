@@ -74,7 +74,7 @@ func (w *Worker) onWork(ctx context.Context) error {
 		memo := make(core.Action)
 		memo[core.ActionKeyService] = core.ActionServiceBlock
 		memo[core.ActionKeyBlock] = strconv.FormatInt(currentBlock, 10)
-		memoStr, err := w.BlockService.FormatBlockMemo(ctx, memo)
+		memoStr, err := memo.Format()
 		if err != nil {
 			log.Errorln("new block memo error:", err)
 			return err

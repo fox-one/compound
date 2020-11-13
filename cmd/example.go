@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"compound/core"
-	"context"
 	"fmt"
 
 	"github.com/shopspring/decimal"
@@ -38,7 +37,6 @@ var exampleCmd = &cobra.Command{
 
 		// cmd.Println(string(bs))
 
-		blockService := provideBlockService()
 		memo := make(core.Action)
 		memo[core.ActionKeyService] = core.ActionServiceMarket
 		memo[core.ActionKeySymbol] = "USDT"
@@ -47,7 +45,7 @@ var exampleCmd = &cobra.Command{
 		memo[core.ActionKeyBorrowRate] = "0.0000000002324345"
 		memo[core.ActionKeySupplyRate] = "0.0000000003434535"
 
-		mStr, _ := blockService.FormatBlockMemo(context.Background(), memo)
+		mStr, _ := memo.Format()
 		fmt.Println(mStr)
 		fmt.Println(decimal.NewFromFloat(0.13).Div(decimal.NewFromInt(2102400)))
 
