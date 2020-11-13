@@ -25,10 +25,11 @@ type Worker struct {
 	MarketStore        core.IMarketStore
 	BlockService       core.IBlockService
 	PriceOracleService core.IPriceOracleService
+	WalletService      core.IWalletService
 }
 
 // New new block worker
-func New(mainWallet *core.Wallet, blockWallet *core.Wallet, cfg *core.Config, marketStore core.IMarketStore, blockSrv core.IBlockService, priceSrv core.IPriceOracleService) *Worker {
+func New(mainWallet *core.Wallet, blockWallet *core.Wallet, cfg *core.Config, marketStore core.IMarketStore, blockSrv core.IBlockService, priceSrv core.IPriceOracleService, walletSrv core.IWalletService) *Worker {
 	job := Worker{
 		MainWallet:         mainWallet,
 		BlockWallet:        blockWallet,
@@ -36,6 +37,7 @@ func New(mainWallet *core.Wallet, blockWallet *core.Wallet, cfg *core.Config, ma
 		MarketStore:        marketStore,
 		BlockService:       blockSrv,
 		PriceOracleService: priceSrv,
+		WalletService:      walletSrv,
 	}
 
 	l, _ := time.LoadLocation(job.Config.App.Location)
@@ -100,15 +102,8 @@ func (w *Worker) checkAndPushPriceOnChain(ctx context.Context, market *core.Mark
 		Amount:     decimal.NewFromFloat(0.00000001),
 		TraceID:    traceID,
 	}
-	payment, err := w.MainWallet.Client.VerifyPayment(ctx, transferInput)
-	if err != nil {
-		log.Errorln("verifypayment error:", err)
-		return err
-	}
 
-	if payment.Status == "paid" {
-		log.Infoln("transaction exists")
-	} else {
+	if !w.WalletService.VerifyPayment(ctx, &transferInput) {
 		//create new block
 		memo := make(core.Action)
 		memo[core.ActionKeyService] = core.ActionServicePrice

@@ -40,8 +40,8 @@ var workerCmd = &cobra.Command{
 		borrowService := provideBorrowService(mainWallet, blockWallet, marketStore, borrowStore, blockService, priceService, walletService, accountService)
 
 		workers := []worker.IJob{
-			priceoracle.New(mainWallet, blockWallet, config, marketStore, blockService, priceService),
-			market.New(mainWallet, blockWallet, config, marketStore, blockService, priceService),
+			priceoracle.New(mainWallet, blockWallet, config, marketStore, blockService, priceService, walletService),
+			market.New(mainWallet, blockWallet, config, marketStore, blockService, priceService, walletService),
 			interest.New(config, mainWallet, blockWallet, marketStore, supplyStore, borrowStore, blockService, marketService, walletService),
 			liquidity.New(config, mainWallet, blockWallet, marketStore, supplyStore, borrowStore, blockService, marketService, walletService, accountService),
 			snapshot.New(config, db, mainWallet, blockWallet, propertyStore, marketStore, supplyStore, borrowStore, accountStore, walletService, priceService, blockService, marketService, supplyService, borrowService, accountService),
