@@ -260,6 +260,7 @@ func (s *accountService) SeizeToken(ctx context.Context, supply *core.Supply, bo
 	action[core.ActionKeyService] = core.ActionServiceSeizeToken
 	action[core.ActionKeyUser] = supply.UserID
 	action[core.ActionKeySymbol] = supplyMarket.Symbol
+	action[core.ActionKeyBorrowTrace] = borrow.Trace
 
 	memoStr, e := action.Format()
 	if e != nil {

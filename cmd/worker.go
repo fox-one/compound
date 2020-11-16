@@ -2,9 +2,7 @@ package cmd
 
 import (
 	"compound/worker"
-	"compound/worker/interest"
 	"compound/worker/liquidity"
-	"compound/worker/market"
 	"compound/worker/priceoracle"
 	"compound/worker/snapshot"
 	"os"
@@ -41,8 +39,6 @@ var workerCmd = &cobra.Command{
 
 		workers := []worker.IJob{
 			priceoracle.New(mainWallet, blockWallet, config, marketStore, blockService, priceService, walletService),
-			market.New(mainWallet, blockWallet, config, marketStore, blockService, priceService, walletService),
-			interest.New(config, mainWallet, blockWallet, marketStore, supplyStore, borrowStore, blockService, marketService, walletService),
 			liquidity.New(config, mainWallet, blockWallet, marketStore, supplyStore, borrowStore, blockService, marketService, walletService, accountService),
 			snapshot.New(config, db, mainWallet, blockWallet, propertyStore, marketStore, supplyStore, borrowStore, accountStore, walletService, priceService, blockService, marketService, supplyService, borrowService, accountService),
 		}

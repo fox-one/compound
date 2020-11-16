@@ -10,8 +10,10 @@ import (
 
 // Market market info
 type Market struct {
-	AssetID string `sql:"size:36;PRIMARY_KEY" json:"asset_id"`
-	Symbol  string `sql:"size:20;unique_index:symbol_idx" json:"symbol"`
+	AssetID      string          `sql:"size:36;PRIMARY_KEY" json:"asset_id"`
+	Symbol       string          `sql:"size:20;unique_index:symbol_idx" json:"symbol"`
+	TotalCash    decimal.Decimal `sql:"type:decimal(20,8)" json:"total_cash"`
+	TotalBorrows decimal.Decimal `json:"type:decimal(20,8)" json:"total_borrows"`
 	// 保留金
 	Reserves decimal.Decimal `sql:"type:decimal(20,8)" json:"reserves"`
 	// CToken 累计铸造出来的币的数量
@@ -39,10 +41,14 @@ type Market struct {
 	// Kink
 	Kink decimal.Decimal `sql:"type:decimal(20,8)" json:"kink"`
 	//当前区块高度
-	BlockNumber int64     `json:"block_number"`
-	Version     int64     `sql:"default:0" json:"version"`
-	CreatedAt   time.Time `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt   time.Time `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`
+	BlockNumber        int64           `json:"block_number"`
+	UtilizationRate    decimal.Decimal `sql:"type:decimal(20,16)" json:"utilization_rate"`
+	ExchangeRate       decimal.Decimal `sql:"type:decimal(20,16)" json:"exchange_rate"`
+	SupplyRatePerBlock decimal.Decimal `sql:"type:decimal(20,16)" json:"supply_Rate_per_block"`
+	BorrowRatePerBlock decimal.Decimal `sql:"type:decimal(20,16)" json:"borrow_rate_per_block"`
+	Version            int64           `sql:"default:0" json:"version"`
+	CreatedAt          time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt          time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`
 }
 
 // IMarketStore asset store interface
@@ -66,7 +72,7 @@ type IMarketService interface {
 	GetSupplyRate(ctx context.Context, symbol string, block int64) (decimal.Decimal, error)
 	UpdateUtilizationRate(ctx context.Context, symbol string, rate decimal.Decimal, block int64) error
 	GetUtilizationRate(ctx context.Context, symbol string, block int64) (decimal.Decimal, error)
-	UpdateExchangeRate(ctx context.Context, symbol string, block int64) error
+	UpdateExchangeRate(ctx context.Context, symbol string, rate decimal.Decimal, block int64) error
 	GetExchangeRate(ctx context.Context, symbol string, block int64) (decimal.Decimal, error)
 
 	CurUtilizationRate(ctx context.Context, market *Market) (decimal.Decimal, error)
@@ -75,8 +81,7 @@ type IMarketService interface {
 	CurBorrowRatePerBlock(ctx context.Context, market *Market) (decimal.Decimal, error)
 	CurSupplyRate(ctx context.Context, market *Market) (decimal.Decimal, error)
 	CurSupplyRatePerBlock(ctx context.Context, market *Market) (decimal.Decimal, error)
-	CurTotalCash(ctx context.Context, market *Market) (decimal.Decimal, error)
 	CurTotalBorrow(ctx context.Context, market *Market) (decimal.Decimal, error)
 	CurTotalReserves(ctx context.Context, market *Market) (decimal.Decimal, error)
-	CurTotalBorrowInterest(ctx context.Context, market *Market) (decimal.Decimal, error)
+	KeppFlywheelMoving(ctx context.Context, db *db.DB, market *Market, time time.Time) error
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
+	"github.com/fox-one/pkg/store/db"
 	"github.com/shopspring/decimal"
 )
 
@@ -47,9 +48,15 @@ func New(cfg *core.Config,
 	}
 }
 
-func (s *borrowService) Repay(ctx context.Context, amount decimal.Decimal, market *core.Market) (string, error) {
+func (s *borrowService) Repay(ctx context.Context, amount decimal.Decimal, borrow *core.Borrow) (string, error) {
+	market, e := s.marketStore.FindBySymbol(ctx, borrow.Symbol)
+	if e != nil {
+		return "", e
+	}
+
 	action := make(core.Action)
 	action[core.ActionKeyService] = core.ActionServiceRepay
+	action[core.ActionKeyBorrowTrace] = borrow.Trace
 
 	memoStr, e := action.Format()
 	if e != nil {
@@ -57,15 +64,6 @@ func (s *borrowService) Repay(ctx context.Context, amount decimal.Decimal, marke
 	}
 
 	return s.walletService.PaySchemaURL(amount, market.AssetID, s.mainWallet.Client.ClientID, id.GenTraceID(), memoStr)
-}
-
-func (s *borrowService) MaxRepay(ctx context.Context, userID string, market *core.Market) (decimal.Decimal, error) {
-	borrow, e := s.borrowStore.Find(ctx, userID, market.Symbol)
-	if e != nil {
-		return decimal.Zero, e
-	}
-
-	return borrow.Principal, nil
 }
 
 func (s *borrowService) Borrow(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *core.Market) error {
@@ -119,19 +117,14 @@ func (s *borrowService) BorrowAllowed(ctx context.Context, borrowAmount decimal.
 		return false
 	}
 
-	marketCash, e := s.mainWallet.Client.ReadAsset(ctx, market.AssetID)
-	if e != nil {
-		log.Errorln(e)
-		return false
-	}
-
 	// check borrow cap
-	if marketCash.Balance.LessThan(market.BorrowCap) {
+	supplies := market.TotalCash.Sub(market.Reserves)
+	if supplies.LessThan(market.BorrowCap) {
 		log.Errorln("insufficient market cash")
 		return false
 	}
 
-	if borrowAmount.GreaterThan(marketCash.Balance.Sub(market.BorrowCap)) {
+	if borrowAmount.GreaterThan(supplies.Sub(market.BorrowCap)) {
 		log.Errorln("insufficient market cash")
 		return false
 	}
@@ -165,13 +158,9 @@ func (s *borrowService) BorrowAllowed(ctx context.Context, borrowAmount decimal.
 }
 
 func (s *borrowService) MaxBorrow(ctx context.Context, userID string, market *core.Market) (decimal.Decimal, error) {
-	marketCash, e := s.mainWallet.Client.ReadAsset(ctx, market.AssetID)
-	if e != nil {
-		return decimal.Zero, e
-	}
-
 	// check borrow cap
-	if marketCash.Balance.LessThan(market.BorrowCap) {
+	supplies := market.TotalCash.Sub(market.Reserves)
+	if supplies.LessThan(market.BorrowCap) {
 		return decimal.Zero, errors.New("insufficient market cash")
 	}
 
@@ -194,4 +183,31 @@ func (s *borrowService) MaxBorrow(ctx context.Context, userID string, market *co
 	borrowAmount := liquidity.Div(price)
 
 	return borrowAmount, nil
+}
+
+func (s *borrowService) UpdateMarketInterestIndex(ctx context.Context, db *db.DB, market *core.Market, blockNum int64) error {
+	borrows, e := s.borrowStore.FindBySymbol(ctx, market.Symbol)
+	if e != nil {
+		return e
+	}
+
+	for _, borrow := range borrows {
+		deltaBlocks := blockNum - borrow.BlockNum
+		if deltaBlocks > 0 && borrow.Principal.GreaterThan(decimal.Zero) {
+			index := borrow.InterestIndex
+			if index.LessThanOrEqual(decimal.Zero) {
+				index = decimal.NewFromInt(1)
+			}
+			onePlusBlocksTimesRate := decimal.NewFromInt(1).Add(market.BorrowRatePerBlock.Mul(decimal.NewFromInt(deltaBlocks)))
+			newIndex := index.Mul(onePlusBlocksTimesRate)
+			borrow.InterestIndex = newIndex
+			borrow.BlockNum = blockNum
+
+			e = s.borrowStore.Update(ctx, db, borrow)
+			if e != nil {
+				return e
+			}
+		}
+	}
+	return nil
 }

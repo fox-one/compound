@@ -17,9 +17,9 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 	user := action[core.ActionKeyUser]
 	seizedSymbol := action[core.ActionKeySymbol]
 
-	repayTokens := snapshot.Amount.Abs()
+	repayAmount := snapshot.Amount.Abs()
 
-	curBlock, e := w.blockService.CurrentBlock(ctx)
+	blockNum, e := w.blockService.GetBlock(ctx, snapshot.CreatedAt)
 	if e != nil {
 		return e
 	}
@@ -39,25 +39,25 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 		return e
 	}
 
-	borrow, e := w.borrowStore.Find(ctx, user, borrowMarket.Symbol)
+	borrow, e := w.borrowStore.FindByTrace(ctx, action[core.ActionKeyBorrowTrace])
 	if e != nil {
 		return e
 	}
 
-	borrowPrice, e := w.priceService.GetUnderlyingPrice(ctx, borrowMarket.Symbol, curBlock)
+	borrowPrice, e := w.priceService.GetUnderlyingPrice(ctx, borrowMarket.Symbol, blockNum)
 	if e != nil {
 		return e
 	}
 
-	supplyPrice, e := w.priceService.GetUnderlyingPrice(ctx, seizedSymbol, curBlock)
+	supplyPrice, e := w.priceService.GetUnderlyingPrice(ctx, seizedSymbol, blockNum)
 	if e != nil {
 		return e
 	}
 	seizedPrice := supplyPrice.Sub(supplyPrice.Mul(supplyMarket.LiquidationIncentive))
-	repayValue := repayTokens.Mul(borrowPrice)
-	seizedTokens := repayValue.Div(seizedPrice)
+	repayValue := repayAmount.Mul(borrowPrice)
+	seizedAmount := repayValue.Div(seizedPrice)
 
-	if !w.accountService.SeizeTokenAllowed(ctx, supply, borrow, seizedTokens) {
+	if !w.accountService.SeizeTokenAllowed(ctx, supply, borrow, seizedAmount) {
 		return handleRefundEvent(ctx, w, action, snapshot)
 	}
 
@@ -66,7 +66,7 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 	input := mixin.TransferInput{
 		AssetID:    supplyMarket.AssetID,
 		OpponentID: liquidator,
-		Amount:     seizedTokens,
+		Amount:     seizedAmount,
 		TraceID:    trace,
 	}
 	if !w.walletService.VerifyPayment(ctx, &input) {
@@ -74,7 +74,8 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 		action[core.ActionKeyService] = core.ActionServiceSeizeTokenTransfer
 		action[core.ActionKeyUser] = user
 		action[core.ActionKeySymbol] = borrowMarket.Symbol
-		action[core.ActionKeyAmount] = repayTokens.String()
+		action[core.ActionKeyAmount] = repayAmount.String()
+		action[core.ActionKeyBorrowTrace] = borrow.Trace
 
 		memoStr, e := action.Format()
 		if e != nil {
@@ -93,7 +94,7 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 
 // from system
 var handleSeizeTokenTransferEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
-	seizedTokens := snapshot.Amount.Abs()
+	seizedAmount := snapshot.Amount.Abs()
 	seizedAssetID := snapshot.AssetID
 	seizedUserID := action[core.ActionKeyUser]
 	borrowSymbol := action[core.ActionKeySymbol]
@@ -107,30 +108,58 @@ var handleSeizeTokenTransferEvent = func(ctx context.Context, w *Worker, action 
 		if e != nil {
 			return e
 		}
+
+		changedCTokens := seizedAmount.Div(supplyMarket.ExchangeRate)
 		//update supply
 		supply, e := w.supplyStore.Find(ctx, seizedUserID, supplyMarket.Symbol)
 		if e != nil {
 			return e
 		}
 
-		supply.Collaterals = supply.Collaterals.Sub(seizedTokens)
+		supply.Collaterals = supply.Collaterals.Sub(changedCTokens)
 		if e = w.supplyStore.Update(ctx, tx, supply); e != nil {
 			return e
 		}
 
 		//update market ctokens
-		supplyMarket.CTokens = supplyMarket.CTokens.Sub(seizedTokens).Truncate(8)
+		supplyMarket.TotalCash = supplyMarket.TotalCash.Sub(seizedAmount).Truncate(8)
+		supplyMarket.CTokens = supplyMarket.CTokens.Sub(changedCTokens).Truncate(8)
 		if e = w.marketStore.Update(ctx, tx, supplyMarket); e != nil {
 			return e
 		}
 
+		if e = w.marketService.KeppFlywheelMoving(ctx, tx, supplyMarket, snapshot.CreatedAt); e != nil {
+			return e
+		}
+
+		borrowMarket, e := w.marketStore.FindBySymbol(ctx, borrowSymbol)
+		if e != nil {
+			return e
+		}
+
 		//update borrow
-		borrow, e := w.borrowStore.Find(ctx, seizedUserID, borrowSymbol)
+		borrow, e := w.borrowStore.FindByTrace(ctx, action[core.ActionKeyBorrowTrace])
 		if e != nil {
 			return e
 		}
 		borrow.Principal = borrow.Principal.Sub(repayAmount).Truncate(8)
 		if e = w.borrowStore.Update(ctx, tx, borrow); e != nil {
+			return e
+		}
+
+		newInterest := repayAmount.Mul(borrow.InterestIndex.Sub(decimal.NewFromInt(1)))
+		newPrincipal := repayAmount.Sub(newInterest)
+		reserves := newInterest.Mul(borrowMarket.ReserveFactor)
+
+		borrowMarket.TotalBorrows = borrowMarket.TotalBorrows.Sub(newPrincipal)
+		borrowMarket.TotalCash = borrowMarket.TotalCash.Add(repayAmount)
+		borrowMarket.Reserves = borrowMarket.Reserves.Add(reserves)
+
+		if e = w.marketService.KeppFlywheelMoving(ctx, tx, borrowMarket, snapshot.CreatedAt); e != nil {
+			return e
+		}
+
+		if e = w.borrowService.UpdateMarketInterestIndex(ctx, tx, borrowMarket, borrowMarket.BlockNumber); e != nil {
 			return e
 		}
 

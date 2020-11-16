@@ -10,22 +10,27 @@ import (
 
 // from user, refund if error
 var handleBorrowRepayEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
-	amount := snapshot.Amount.Abs()
-	userID := snapshot.OpponentID
-
-	market, e := w.marketStore.Find(ctx, snapshot.AssetID)
-	if e != nil {
-		return handleRefundEvent(ctx, w, action, snapshot)
-	}
-
-	//update borrow
-	borrow, e := w.borrowStore.Find(ctx, userID, market.Symbol)
-	if e != nil {
-		return handleRefundEvent(ctx, w, action, snapshot)
-	}
-
 	return w.db.Tx(func(tx *db.DB) error {
-		borrow.Principal = borrow.Principal.Sub(amount)
+		repayAmount := snapshot.Amount.Abs()
+		borrowTrace := action[core.ActionKeyBorrowTrace]
+
+		market, e := w.marketStore.Find(ctx, snapshot.AssetID)
+		if e != nil {
+			return handleRefundEvent(ctx, w, action, snapshot)
+		}
+
+		borrow, e := w.borrowStore.FindByTrace(ctx, borrowTrace)
+		if e != nil {
+			return handleRefundEvent(ctx, w, action, snapshot)
+		}
+
+		curInterest := repayAmount.Mul(borrow.InterestIndex.Sub(decimal.NewFromInt(1)))
+		newPrincipal := borrow.Principal.Sub(repayAmount.Sub(curInterest))
+		reserves := curInterest.Mul(market.ReserveFactor)
+
+		//update borrow info
+
+		borrow.Principal = borrow.Principal.Sub(newPrincipal)
 		if borrow.Principal.LessThan(decimal.Zero) {
 			borrow.Principal = decimal.Zero
 		}
@@ -33,7 +38,21 @@ var handleBorrowRepayEvent = func(ctx context.Context, w *Worker, action core.Ac
 			return e
 		}
 
-		//TODO 更新流动性
+		market.TotalBorrows = market.TotalBorrows.Sub(newPrincipal).Truncate(8)
+		market.Reserves = market.Reserves.Add(reserves).Truncate(8)
+		market.TotalCash = market.TotalCash.Add(repayAmount)
+
+		// keep the flywheel moving
+		e = w.marketService.KeppFlywheelMoving(ctx, tx, market, snapshot.CreatedAt)
+		if e != nil {
+			return e
+		}
+
+		//update interest index
+		e = w.borrowService.UpdateMarketInterestIndex(ctx, tx, market, market.BlockNumber)
+		if e != nil {
+			return e
+		}
 
 		return nil
 	})

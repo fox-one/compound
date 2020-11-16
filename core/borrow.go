@@ -11,15 +11,16 @@ import (
 
 // Borrow borrow info
 type Borrow struct {
-	UserID string `sql:"size:36;PRIMARY_KEY" json:"user_id"`
-	Symbol string `sql:"size:20;PRIMARY_KEY" json:"symbol"`
-	//本金 + 利息
-	Principal decimal.Decimal `sql:"type:decimal(20,8)" json:"principal"`
-	//累计利息，只增不减
-	InterestAccumulated decimal.Decimal `sql:"type:decimal(20,8)" json:"interest_accumulated"`
-	Version             int64           `sql:"default:0" json:"version"`
-	CreatedAt           time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt           time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`
+	ID            uint64          `sql:"PRIMARY_KEY;AUTO_INCREMENT" json:"id"`
+	Trace         string          `sql:"size:36;unique_index:trace_idx" json:"trace"`
+	UserID        string          `sql:"size:36" json:"user_id"`
+	Symbol        string          `sql:"size:20" json:"symbol"`
+	Principal     decimal.Decimal `sql:"type:decimal(20,8)" json:"principal"`
+	InterestIndex decimal.Decimal `sql:"type:decimal(20,16);default:1" json:"interest_index"`
+	BlockNum      int64           `json:"block_number"`
+	Version       int64           `sql:"default:0" json:"version"`
+	CreatedAt     time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt     time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`
 }
 
 var (
@@ -32,7 +33,8 @@ var (
 // IBorrowStore supply store interface
 type IBorrowStore interface {
 	Save(ctx context.Context, tx *db.DB, borrow *Borrow) error
-	Find(ctx context.Context, userID string, symbol string) (*Borrow, error)
+	FindByTrace(ctx context.Context, trace string) (*Borrow, error)
+	Find(ctx context.Context, userID string, symbol string) ([]*Borrow, error)
 	FindByUser(ctx context.Context, userID string) ([]*Borrow, error)
 	FindBySymbol(ctx context.Context, symbol string) ([]*Borrow, error)
 	SumOfBorrows(ctx context.Context, symbol string) (decimal.Decimal, error)
@@ -44,18 +46,9 @@ type IBorrowStore interface {
 
 // IBorrowService supply service interface
 type IBorrowService interface {
-	Repay(ctx context.Context, amount decimal.Decimal, market *Market) (string, error)
-	MaxRepay(ctx context.Context, userID string, market *Market) (decimal.Decimal, error)
+	Repay(ctx context.Context, amount decimal.Decimal, borrow *Borrow) (string, error)
 	Borrow(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *Market) error
 	BorrowAllowed(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *Market) bool
 	MaxBorrow(ctx context.Context, userID string, market *Market) (decimal.Decimal, error)
+	UpdateMarketInterestIndex(ctx context.Context, database *db.DB, market *Market, blockNum int64) error
 }
-
-// SeizeTokens()
-// seizeAllowed()
-//
-
-// RepayBorrow()
-// borrowVerify()
-// repayAllowed()
-//LiquidateBorrow()

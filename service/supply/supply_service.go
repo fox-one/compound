@@ -76,14 +76,8 @@ func (s *supplyService) RedeemAllowed(ctx context.Context, redeemTokens decimal.
 		return false
 	}
 	amount := redeemTokens.Mul(exchangeRate)
-
-	// check market cash
-	marketCash, e := s.mainWallet.Client.ReadAsset(ctx, market.AssetID)
-	if e != nil {
-		return false
-	}
-
-	if amount.GreaterThan(marketCash.Balance) {
+	supplies := market.TotalCash.Sub(market.Reserves)
+	if amount.GreaterThan(supplies) {
 		return false
 	}
 
@@ -119,7 +113,7 @@ func (s *supplyService) Pledge(ctx context.Context, pledgedTokens decimal.Decima
 	return s.walletService.PaySchemaURL(pledgedTokens, market.CTokenAssetID, s.mainWallet.Client.ClientID, id.GenTraceID(), memoStr)
 }
 
-//撤销抵押
+//撤销抵押 TODO 由转账触发
 func (s *supplyService) Unpledge(ctx context.Context, unpledgedTokens decimal.Decimal, userID string, market *core.Market) error {
 	supply, e := s.supplyStore.Find(ctx, userID, market.CTokenAssetID)
 	if e != nil {

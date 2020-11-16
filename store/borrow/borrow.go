@@ -37,13 +37,23 @@ func (s *borrowStore) Save(ctx context.Context, tx *db.DB, borrow *core.Borrow) 
 
 	return nil
 }
-func (s *borrowStore) Find(ctx context.Context, userID string, symbol string) (*core.Borrow, error) {
+
+func (s *borrowStore) FindByTrace(ctx context.Context, trace string) (*core.Borrow, error) {
 	var borrow core.Borrow
-	if e := s.db.View().Where("user_id=? and symbol=?", userID, symbol).First(&borrow).Error; e != nil {
+	if e := s.db.View().Where("trace=?", trace).First(&borrow).Error; e != nil {
 		return nil, e
 	}
 
 	return &borrow, nil
+}
+
+func (s *borrowStore) Find(ctx context.Context, userID string, symbol string) ([]*core.Borrow, error) {
+	var borrows []*core.Borrow
+	if e := s.db.View().Where("user_id=? and symbol=?", userID, symbol).Find(&borrows).Error; e != nil {
+		return nil, e
+	}
+
+	return borrows, nil
 }
 
 func (s *borrowStore) FindByUser(ctx context.Context, userID string) ([]*core.Borrow, error) {

@@ -16,7 +16,6 @@ import (
 var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
 	log := logger.FromContext(ctx).WithField("worker", "borrow_event")
 
-	//TODO 优化borrow流程，不需要中转
 	market, e := w.marketStore.FindByCToken(ctx, snapshot.AssetID)
 	if e != nil {
 		log.Errorln("query market error:", e)
@@ -66,37 +65,44 @@ var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action,
 }
 
 var handleBorrowTransferEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
-	userID := snapshot.OpponentID
-	borrowAmount := snapshot.Amount.Abs()
-
-	market, e := w.marketStore.Find(ctx, snapshot.AssetID)
-	if e != nil {
-		return e
-	}
-
 	return w.db.Tx(func(tx *db.DB) error {
-		//update or insert borrow
-		borrow, e := w.borrowStore.Find(ctx, userID, market.Symbol)
-		if e != nil {
-			//insert new
-			borrow := core.Borrow{
-				UserID:    userID,
-				Symbol:    market.Symbol,
-				Principal: borrowAmount,
-			}
+		userID := snapshot.OpponentID
+		borrowAmount := snapshot.Amount.Abs()
 
-			e = w.borrowStore.Save(ctx, tx, &borrow)
-			if e != nil {
-				return e
-			}
-		} else {
-			//update
-			borrow.Principal = borrow.Principal.Add(borrowAmount)
-			e = w.borrowStore.Update(ctx, tx, borrow)
-			if e != nil {
-				return e
-			}
+		market, e := w.marketStore.Find(ctx, snapshot.AssetID)
+		if e != nil {
+			return e
 		}
+
+		market.TotalCash = market.TotalCash.Sub(borrowAmount)
+		market.TotalBorrows = market.TotalBorrows.Add(borrowAmount)
+		// keep the flywheel moving
+		e = w.marketService.KeppFlywheelMoving(ctx, tx, market, snapshot.CreatedAt)
+		if e != nil {
+			return e
+		}
+
+		//update interest index
+		e = w.borrowService.UpdateMarketInterestIndex(ctx, tx, market, market.BlockNumber)
+		if e != nil {
+			return e
+		}
+
+		//insert new
+		borrow := core.Borrow{
+			Trace:         snapshot.TraceID,
+			UserID:        userID,
+			Symbol:        market.Symbol,
+			Principal:     borrowAmount,
+			InterestIndex: decimal.NewFromInt(1),
+			BlockNum:      market.BlockNumber,
+		}
+
+		e = w.borrowStore.Save(ctx, tx, &borrow)
+		if e != nil {
+			return e
+		}
+
 		return nil
 	})
 }

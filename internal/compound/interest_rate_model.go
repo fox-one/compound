@@ -28,16 +28,6 @@ var (
 	ErrUnsupported = errors.New("unsupported")
 )
 
-// GetBorrowRate get borrow rate
-func GetBorrowRate(cash, borrows, reserves decimal.Decimal) decimal.Decimal {
-	return decimal.Zero
-}
-
-// GetSupplyRate get supply rate
-func GetSupplyRate(cash, borrows, reserves, reserveFactor decimal.Decimal) decimal.Decimal {
-	return decimal.Zero
-}
-
 // UtilizationRate utilization rate
 func UtilizationRate(cash, borrows, reserves decimal.Decimal) decimal.Decimal {
 	return borrows.Div(cash.Add(borrows).Sub(reserves))

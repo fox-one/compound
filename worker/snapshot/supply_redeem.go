@@ -32,7 +32,7 @@ var handleSupplyRedeemEvent = func(ctx context.Context, w *Worker, action core.A
 	if e != nil {
 		return e
 	}
-	amount := redeemTokens.Mul(exchangeRate)
+	amount := redeemTokens.Mul(exchangeRate).Truncate(8)
 	trace := id.UUIDFromString(fmt.Sprintf("redeem:%s", snapshot.TraceID))
 	input := mixin.TransferInput{
 		AssetID:    market.AssetID,
@@ -63,26 +63,32 @@ var handleSupplyRedeemEvent = func(ctx context.Context, w *Worker, action core.A
 
 //redeem transfer callback, to user
 var handleRedeemTransferEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
-	assetID := snapshot.AssetID
-
-	reducedCtokens, e := decimal.NewFromString(action[core.ActionKeyCToken])
-	if e != nil {
-		return e
-	}
-
 	return w.db.Tx(func(tx *db.DB) error {
-		//TODO update market ctokens, blockNum
+		assetID := snapshot.AssetID
+		amount := snapshot.Amount.Abs()
+
+		reducedCtokens, e := decimal.NewFromString(action[core.ActionKeyCToken])
+		if e != nil {
+			return e
+		}
+
 		market, e := w.marketStore.Find(ctx, assetID)
 		if e != nil {
 			return e
 		}
+		market.TotalCash = market.TotalCash.Sub(amount)
 		market.CTokens = market.CTokens.Sub(reducedCtokens)
-		e = w.marketStore.Update(ctx, tx, market)
+		// keep the flywheel moving
+		e = w.marketService.KeppFlywheelMoving(ctx, tx, market, snapshot.CreatedAt)
 		if e != nil {
 			return e
 		}
 
-		//TODO 更新当前利率，兑换率，使用率
+		//update interest index
+		e = w.borrowService.UpdateMarketInterestIndex(ctx, tx, market, market.BlockNumber)
+		if e != nil {
+			return e
+		}
 
 		return nil
 	})

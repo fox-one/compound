@@ -36,18 +36,20 @@ func borrowsHandler(ctx context.Context, marketStr core.IMarketStore, borrowStr 
 				render.BadRequest(w, e)
 				return
 			}
-			borrow, e := borrowStr.Find(ctx, params.UserID, params.Symbol)
-			if e != nil {
-				render.BadRequest(w, e)
-				return
-			}
-			v, e := convert2BorrowView(ctx, market, borrow, curBlock, priceSrv)
+			borrows, e := borrowStr.Find(ctx, params.UserID, params.Symbol)
 			if e != nil {
 				render.BadRequest(w, e)
 				return
 			}
 
-			borrowViews = append(borrowViews, v)
+			for _, b := range borrows {
+				v, e := convert2BorrowView(ctx, market, b, curBlock, priceSrv)
+				if e != nil {
+					continue
+				}
+
+				borrowViews = append(borrowViews, v)
+			}
 		} else if params.UserID != "" {
 			borrows, e := borrowStr.FindByUser(ctx, params.UserID)
 			if e != nil {
@@ -143,33 +145,33 @@ func borrowHandler(ctx context.Context, marketStr core.IMarketStore, borrowSrv c
 
 func repayHandler(ctx context.Context, marketStr core.IMarketStore, borrowSrv core.IBorrowService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var params struct {
-			Symbol string          `json:"symbol"`
-			Amount decimal.Decimal `json:"amount"`
-		}
+		// var params struct {
+		// 	Symbol string          `json:"symbol"`
+		// 	Amount decimal.Decimal `json:"amount"`
+		// }
 
-		if e := param.Binding(r, &params); e != nil {
-			render.BadRequest(w, e)
-			return
-		}
+		// if e := param.Binding(r, &params); e != nil {
+		// 	render.BadRequest(w, e)
+		// 	return
+		// }
 
-		market, e := marketStr.FindBySymbol(ctx, strings.ToUpper(params.Symbol))
-		if e != nil {
-			render.BadRequest(w, e)
-			return
-		}
+		// market, e := marketStr.FindBySymbol(ctx, strings.ToUpper(params.Symbol))
+		// if e != nil {
+		// 	render.BadRequest(w, e)
+		// 	return
+		// }
 
-		url, e := borrowSrv.Repay(ctx, params.Amount, market)
-		if e != nil {
-			render.BadRequest(w, e)
-			return
-		}
+		// url, e := borrowSrv.Repay(ctx, params.Amount, market)
+		// if e != nil {
+		// 	render.BadRequest(w, e)
+		// 	return
+		// }
 
-		payURL := views.PayURL{
-			PayURL: url,
-		}
+		// payURL := views.PayURL{
+		// 	PayURL: url,
+		// }
 
-		render.JSON(w, &payURL)
+		render.JSON(w, nil)
 	}
 }
 

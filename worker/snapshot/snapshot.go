@@ -168,13 +168,6 @@ func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) er
 			return handleBorrowTransferEvent(ctx, w, action, snapshot)
 		case core.ActionServiceRepay:
 			return handleBorrowRepayEvent(ctx, w, action, snapshot)
-		case core.ActionServiceBorrowInterest:
-			if snapshot.OpponentID != w.blockWallet.Client.ClientID {
-				return handleRefundEvent(ctx, w, action, snapshot)
-			}
-			return handleBorrowInterestEvent(ctx, w, action, snapshot)
-		case core.ActionServiceReserve:
-			return handleReserveEvent(ctx, w, action, snapshot)
 		case core.ActionServiceSeizeToken:
 			return handleSeizeTokenEvent(ctx, w, action, snapshot)
 		case core.ActionServiceSeizeTokenTransfer:
