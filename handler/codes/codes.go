@@ -8,14 +8,6 @@ import (
 
 const (
 	CustomCodeKey = "custom_code"
-
-	InvalidArguments = 10002
-
-	InsufficientLiquiditySwapped = 20001
-	InsufficientFundsSwapped     = 20002
-	SlippageOutSwapped           = 20003
-	SlippageOutDeposit           = 20004
-	InsufficientFundsDeposit     = 20005
 )
 
 func With(err error, code int) error {
