@@ -88,13 +88,13 @@ func (w *Worker) onWork(ctx context.Context) error {
 func (w *Worker) checkAndPushPriceOnChain(ctx context.Context, market *core.Market, ticker *core.PriceTicker) error {
 	log := logger.FromContext(ctx).WithField("worker", "priceoracle")
 
-	currentBlock, err := w.BlockService.CurrentBlock(ctx)
+	blockNum, err := w.BlockService.GetBlock(ctx, time.Now())
 	if err != nil {
 		log.Errorln(err)
 		return err
 	}
 
-	str := fmt.Sprintf("foxone-compound-price-%s-%d", market.Symbol, currentBlock)
+	str := fmt.Sprintf("foxone-compound-price-%s-%d", market.Symbol, blockNum)
 	traceID := id.UUIDFromString(str)
 	transferInput := mixin.TransferInput{
 		AssetID:    w.Config.App.BlockAssetID,
@@ -107,7 +107,7 @@ func (w *Worker) checkAndPushPriceOnChain(ctx context.Context, market *core.Mark
 		//create new block
 		memo := make(core.Action)
 		memo[core.ActionKeyService] = core.ActionServicePrice
-		memo[core.ActionKeyBlock] = strconv.FormatInt(currentBlock, 10)
+		memo[core.ActionKeyBlock] = strconv.FormatInt(blockNum, 10)
 		memo[core.ActionKeySymbol] = market.Symbol
 		memo[core.ActionKeyPrice] = ticker.Price.Truncate(8).String()
 		memoStr, err := memo.Format()

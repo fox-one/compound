@@ -53,15 +53,9 @@ func marketHandler(ctx context.Context, marketStr core.IMarketStore, supplyStr c
 }
 
 func getMarketView(ctx context.Context, market *core.Market, supplyStr core.ISupplyStore, borrowStr core.IBorrowStore, marketSrv core.IMarketService) *views.Market {
-	exchangeRate, e := marketSrv.CurExchangeRate(ctx, market)
-	if e != nil {
-		exchangeRate = decimal.Zero
-	}
+	exchangeRate := market.ExchangeRate
 
-	utilizationRate, e := marketSrv.CurUtilizationRate(ctx, market)
-	if e != nil {
-		utilizationRate = decimal.Zero
-	}
+	utilizationRate := market.UtilizationRate
 
 	supplyRate, e := marketSrv.CurSupplyRate(ctx, market)
 	if e != nil {

@@ -8,6 +8,7 @@ import (
 	"context"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/shopspring/decimal"
 )
@@ -24,7 +25,7 @@ func borrowsHandler(ctx context.Context, marketStr core.IMarketStore, borrowStr 
 			return
 		}
 
-		curBlock, e := blockSrv.CurrentBlock(ctx)
+		blockNum, e := blockSrv.GetBlock(ctx, time.Now())
 		if e != nil {
 			render.BadRequest(w, e)
 			return
@@ -43,7 +44,7 @@ func borrowsHandler(ctx context.Context, marketStr core.IMarketStore, borrowStr 
 			}
 
 			for _, b := range borrows {
-				v, e := convert2BorrowView(ctx, market, b, curBlock, priceSrv)
+				v, e := convert2BorrowView(ctx, market, b, blockNum, priceSrv)
 				if e != nil {
 					continue
 				}
@@ -63,7 +64,7 @@ func borrowsHandler(ctx context.Context, marketStr core.IMarketStore, borrowStr 
 					continue
 				}
 
-				v, e := convert2BorrowView(ctx, market, b, curBlock, priceSrv)
+				v, e := convert2BorrowView(ctx, market, b, blockNum, priceSrv)
 				if e != nil {
 					continue
 				}
@@ -83,7 +84,7 @@ func borrowsHandler(ctx context.Context, marketStr core.IMarketStore, borrowStr 
 			}
 
 			for _, b := range borrows {
-				v, e := convert2BorrowView(ctx, market, b, curBlock, priceSrv)
+				v, e := convert2BorrowView(ctx, market, b, blockNum, priceSrv)
 				if e != nil {
 					continue
 				}
@@ -102,7 +103,7 @@ func borrowsHandler(ctx context.Context, marketStr core.IMarketStore, borrowStr 
 				if e != nil {
 					continue
 				}
-				v, e := convert2BorrowView(ctx, market, b, curBlock, priceSrv)
+				v, e := convert2BorrowView(ctx, market, b, blockNum, priceSrv)
 				if e != nil {
 					continue
 				}

@@ -145,11 +145,6 @@ func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) er
 				return handleRefundEvent(ctx, w, action, snapshot)
 			}
 			return handlePriceEvent(ctx, w, action, snapshot)
-		case core.ActionServiceMarket:
-			if snapshot.OpponentID != w.blockWallet.Client.ClientID {
-				return handleRefundEvent(ctx, w, action, snapshot)
-			}
-			return handleMarketEvent(ctx, w, action, snapshot)
 		case core.ActionServiceSupply:
 			return handleSupplyEvent(ctx, w, action, snapshot)
 		case core.ActionServiceRedeem:

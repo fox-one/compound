@@ -64,23 +64,8 @@ type IMarketStore interface {
 
 // IMarketService market interface
 type IMarketService interface {
-	UpdateBorrowRatePerBlock(ctx context.Context, symbol string, rate decimal.Decimal, block int64) error
-	GetBorrowRatePerBlock(ctx context.Context, symbol string, block int64) (decimal.Decimal, error)
-	GetBorrowRate(ctx context.Context, symbol string, block int64) (decimal.Decimal, error)
-	UpdateSupplyRatePerBlock(ctx context.Context, symbol string, rate decimal.Decimal, block int64) error
-	GetSupplyRatePerBlock(ctx context.Context, symbol string, block int64) (decimal.Decimal, error)
-	GetSupplyRate(ctx context.Context, symbol string, block int64) (decimal.Decimal, error)
-	UpdateUtilizationRate(ctx context.Context, symbol string, rate decimal.Decimal, block int64) error
-	GetUtilizationRate(ctx context.Context, symbol string, block int64) (decimal.Decimal, error)
-	UpdateExchangeRate(ctx context.Context, symbol string, rate decimal.Decimal, block int64) error
-	GetExchangeRate(ctx context.Context, symbol string, block int64) (decimal.Decimal, error)
-
-	CurUtilizationRate(ctx context.Context, market *Market) (decimal.Decimal, error)
-	CurExchangeRate(ctx context.Context, market *Market) (decimal.Decimal, error)
 	CurBorrowRate(ctx context.Context, market *Market) (decimal.Decimal, error)
-	CurBorrowRatePerBlock(ctx context.Context, market *Market) (decimal.Decimal, error)
 	CurSupplyRate(ctx context.Context, market *Market) (decimal.Decimal, error)
-	CurSupplyRatePerBlock(ctx context.Context, market *Market) (decimal.Decimal, error)
 	CurTotalBorrow(ctx context.Context, market *Market) (decimal.Decimal, error)
 	CurTotalReserves(ctx context.Context, market *Market) (decimal.Decimal, error)
 	KeppFlywheelMoving(ctx context.Context, db *db.DB, market *Market, time time.Time) error

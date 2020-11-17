@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
@@ -71,12 +72,12 @@ func (s *borrowService) Borrow(ctx context.Context, borrowAmount decimal.Decimal
 		return errors.New("borrow not allowed")
 	}
 
-	curBlock, e := s.blockService.CurrentBlock(ctx)
+	blockNum, e := s.blockService.GetBlock(ctx, time.Now())
 	if e != nil {
 		return e
 	}
 
-	trace := id.UUIDFromString(fmt.Sprintf("borrow-%s-%s-%d", userID, market.Symbol, curBlock))
+	trace := id.UUIDFromString(fmt.Sprintf("borrow-%s-%s-%d", userID, market.Symbol, blockNum))
 	input := mixin.TransferInput{
 		AssetID:    s.config.App.BlockAssetID,
 		OpponentID: s.mainWallet.Client.ClientID,
@@ -129,20 +130,20 @@ func (s *borrowService) BorrowAllowed(ctx context.Context, borrowAmount decimal.
 		return false
 	}
 
+	blockNum, e := s.blockService.GetBlock(ctx, time.Now())
+	if e != nil {
+		log.Errorln(e)
+		return false
+	}
+
 	// check liquidity
-	liquidity, e := s.accountService.CalculateAccountLiquidity(ctx, userID)
+	liquidity, e := s.accountService.CalculateAccountLiquidity(ctx, userID, blockNum)
 	if e != nil {
 		log.Errorln(e)
 		return false
 	}
 
-	curBlock, e := s.blockService.CurrentBlock(ctx)
-	if e != nil {
-		log.Errorln(e)
-		return false
-	}
-
-	price, e := s.priceService.GetUnderlyingPrice(ctx, market.Symbol, curBlock)
+	price, e := s.priceService.GetUnderlyingPrice(ctx, market.Symbol, blockNum)
 	if e != nil {
 		log.Errorln(e)
 		return false
@@ -164,18 +165,18 @@ func (s *borrowService) MaxBorrow(ctx context.Context, userID string, market *co
 		return decimal.Zero, errors.New("insufficient market cash")
 	}
 
+	blockNum, e := s.blockService.GetBlock(ctx, time.Now())
+	if e != nil {
+		return decimal.Zero, e
+	}
+
 	// check liquidity
-	liquidity, e := s.accountService.CalculateAccountLiquidity(ctx, userID)
+	liquidity, e := s.accountService.CalculateAccountLiquidity(ctx, userID, blockNum)
 	if e != nil {
 		return decimal.Zero, e
 	}
 
-	curBlock, e := s.blockService.CurrentBlock(ctx)
-	if e != nil {
-		return decimal.Zero, e
-	}
-
-	price, e := s.priceService.GetUnderlyingPrice(ctx, market.Symbol, curBlock)
+	price, e := s.priceService.GetUnderlyingPrice(ctx, market.Symbol, blockNum)
 	if e != nil {
 		return decimal.Zero, e
 	}

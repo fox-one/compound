@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/store/db"
@@ -71,10 +72,8 @@ func (s *supplyService) Redeem(ctx context.Context, redeemTokens decimal.Decimal
 }
 
 func (s *supplyService) RedeemAllowed(ctx context.Context, redeemTokens decimal.Decimal, market *core.Market) bool {
-	exchangeRate, e := s.marketService.CurExchangeRate(ctx, market)
-	if e != nil {
-		return false
-	}
+	exchangeRate := market.ExchangeRate
+
 	amount := redeemTokens.Mul(exchangeRate)
 	supplies := market.TotalCash.Sub(market.Reserves)
 	if amount.GreaterThan(supplies) {
@@ -124,32 +123,29 @@ func (s *supplyService) Unpledge(ctx context.Context, unpledgedTokens decimal.De
 		return errors.New("invalid unpledge tokens")
 	}
 
-	liquidity, e := s.accountService.CalculateAccountLiquidity(ctx, userID)
+	blockNum, e := s.blockService.GetBlock(ctx, time.Now())
 	if e != nil {
 		return e
 	}
 
-	curBlock, e := s.blockService.CurrentBlock(ctx)
+	liquidity, e := s.accountService.CalculateAccountLiquidity(ctx, userID, blockNum)
 	if e != nil {
 		return e
 	}
 
-	price, e := s.priceService.GetUnderlyingPrice(ctx, market.Symbol, curBlock)
+	price, e := s.priceService.GetUnderlyingPrice(ctx, market.Symbol, blockNum)
 	if e != nil {
 		return e
 	}
 
-	exchangeRate, e := s.marketService.CurExchangeRate(ctx, market)
-	if e != nil {
-		return e
-	}
+	exchangeRate := market.ExchangeRate
 
 	unpledgedTokenLiquidity := unpledgedTokens.Mul(exchangeRate).Mul(market.CollateralFactor).Mul(price)
 	if unpledgedTokenLiquidity.GreaterThanOrEqual(liquidity) {
 		return errors.New("insufficient liquidity")
 	}
 
-	trace := id.UUIDFromString(fmt.Sprintf("unpledge-%s-%s-%d", userID, market.Symbol, curBlock))
+	trace := id.UUIDFromString(fmt.Sprintf("unpledge-%s-%s-%d", userID, market.Symbol, blockNum))
 	input := mixin.TransferInput{
 		AssetID:    s.config.App.BlockAssetID,
 		OpponentID: s.mainWallet.Client.ClientID,

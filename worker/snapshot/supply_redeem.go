@@ -28,10 +28,8 @@ var handleSupplyRedeemEvent = func(ctx context.Context, w *Worker, action core.A
 	}
 
 	// transfer asset to user
-	exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
-	if e != nil {
-		return e
-	}
+	exchangeRate := market.ExchangeRate
+
 	amount := redeemTokens.Mul(exchangeRate).Truncate(8)
 	trace := id.UUIDFromString(fmt.Sprintf("redeem:%s", snapshot.TraceID))
 	input := mixin.TransferInput{

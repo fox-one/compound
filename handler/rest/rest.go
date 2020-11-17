@@ -41,7 +41,7 @@ func Handle(ctx context.Context,
 	// MUST
 	router.Get("/markets/{symbol}", marketHandler(ctx, marketStore, supplyStore, borrowStore, marketService))
 	// MUST
-	router.Get("/accounts/{user}", accountHandler(ctx, accountService))
+	router.Get("/accounts/{user}", accountHandler(ctx, blockService, accountService))
 
 	// MUST
 	// supplies?user=xxxxx&symbol=BTC

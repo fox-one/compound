@@ -67,7 +67,7 @@ func New(cfg *core.Config,
 }
 
 func (w *Worker) onWork(ctx context.Context) error {
-	curBlock, e := w.BlockService.CurrentBlock(ctx)
+	blockNum, e := w.BlockService.GetBlock(ctx, time.Now())
 	if e != nil {
 		return e
 	}
@@ -87,7 +87,7 @@ func (w *Worker) onWork(ctx context.Context) error {
 			defer wg.Done()
 			defer golimit.Done()
 			w.calculateLiquidity(ctx, userID, curBlock)
-		}(ctx, borrow.UserID, curBlock)
+		}(ctx, borrow.UserID, blockNum)
 	}
 
 	golimit.Close()
@@ -96,8 +96,8 @@ func (w *Worker) onWork(ctx context.Context) error {
 	return nil
 }
 
-func (w *Worker) calculateLiquidity(ctx context.Context, userID string, curBlock int64) error {
-	trace := id.UUIDFromString(fmt.Sprintf("liquidity-%s-%d", userID, curBlock))
+func (w *Worker) calculateLiquidity(ctx context.Context, userID string, blockNum int64) error {
+	trace := id.UUIDFromString(fmt.Sprintf("liquidity-%s-%d", userID, blockNum))
 	input := mixin.TransferInput{
 		AssetID:    w.Config.App.BlockAssetID,
 		OpponentID: w.MainWallet.Client.ClientID,
@@ -106,13 +106,13 @@ func (w *Worker) calculateLiquidity(ctx context.Context, userID string, curBlock
 	}
 
 	if !w.WalletService.VerifyPayment(ctx, &input) {
-		liquidity, e := w.AccountService.CalculateAccountLiquidity(ctx, userID)
+		liquidity, e := w.AccountService.CalculateAccountLiquidity(ctx, userID, blockNum)
 		if e != nil {
 			return e
 		}
 		memo := make(core.Action)
 		memo[core.ActionKeyService] = core.ActionServiceLiquidity
-		memo[core.ActionKeyBlock] = strconv.FormatInt(curBlock, 10)
+		memo[core.ActionKeyBlock] = strconv.FormatInt(blockNum, 10)
 		memo[core.ActionKeyAmount] = liquidity.Truncate(8).String()
 		memo[core.ActionKeyUser] = userID
 		memoStr, e := memo.Format()

@@ -41,112 +41,13 @@ func New(
 	}
 }
 
-func (s *service) UpdateBorrowRatePerBlock(ctx context.Context, symbol string, rate decimal.Decimal, block int64) error {
-	k := s.borrowRateCacheKey(symbol, block)
-
-	s.Redis.Set(k, []byte(rate.String()), time.Hour)
-
-	return nil
-}
-func (s *service) GetBorrowRatePerBlock(ctx context.Context, symbol string, block int64) (decimal.Decimal, error) {
-	k := s.borrowRateCacheKey(symbol, block)
-
-	bs, e := s.Redis.Get(k).Bytes()
-	if e != nil {
-		return decimal.Zero, e
-	}
-
-	rate, e := decimal.NewFromString(string(bs))
-	if e != nil {
-		return decimal.Zero, e
-	}
-
-	return rate, nil
-}
-func (s *service) GetBorrowRate(ctx context.Context, symbol string, block int64) (decimal.Decimal, error) {
-	ratePerBlock, e := s.GetBorrowRatePerBlock(ctx, symbol, block)
-	if e != nil {
-		return decimal.Zero, e
-	}
-
-	return ratePerBlock.Mul(compound.BlocksPerYear), nil
-}
-
-func (s *service) UpdateSupplyRatePerBlock(ctx context.Context, symbol string, rate decimal.Decimal, block int64) error {
-	k := s.supplyRateCacheKey(symbol, block)
-
-	s.Redis.Set(k, []byte(rate.String()), time.Hour)
-
-	return nil
-}
-func (s *service) GetSupplyRatePerBlock(ctx context.Context, symbol string, block int64) (decimal.Decimal, error) {
-	k := s.supplyRateCacheKey(symbol, block)
-
-	bs, e := s.Redis.Get(k).Bytes()
-	if e != nil {
-		return decimal.Zero, e
-	}
-
-	rate, e := decimal.NewFromString(string(bs))
-	if e != nil {
-		return decimal.Zero, e
-	}
-
-	return rate, nil
-}
-func (s *service) GetSupplyRate(ctx context.Context, symbol string, block int64) (decimal.Decimal, error) {
-	ratePerBlock, e := s.GetSupplyRatePerBlock(ctx, symbol, block)
-	if e != nil {
-		return decimal.Zero, e
-	}
-
-	return ratePerBlock.Mul(compound.BlocksPerYear), nil
-}
-
-func (s *service) UpdateUtilizationRate(ctx context.Context, symbol string, rate decimal.Decimal, block int64) error {
-	k := s.utilizationRateCacheKey(symbol, block)
-	s.Redis.Set(k, []byte(rate.String()), time.Hour)
-	return nil
-}
-func (s *service) GetUtilizationRate(ctx context.Context, symbol string, block int64) (decimal.Decimal, error) {
-	k := s.utilizationRateCacheKey(symbol, block)
-	bs, e := s.Redis.Get(k).Bytes()
-	if e != nil {
-		return decimal.Zero, e
-	}
-
-	rate, e := decimal.NewFromString(string(bs))
-	if e != nil {
-		return decimal.Zero, e
-	}
-
-	return rate, nil
-}
-func (s *service) UpdateExchangeRate(ctx context.Context, symbol string, rate decimal.Decimal, block int64) error {
-	k := s.exchangeRateCacheKey(symbol, block)
-	s.Redis.Set(k, []byte(rate.String()), time.Hour)
-	return nil
-}
-func (s *service) GetExchangeRate(ctx context.Context, symbol string, block int64) (decimal.Decimal, error) {
-	k := s.exchangeRateCacheKey(symbol, block)
-	bs, e := s.Redis.Get(k).Bytes()
-	if e != nil {
-		return decimal.Zero, e
-	}
-	rate, e := decimal.NewFromString(string(bs))
-	if e != nil {
-		return decimal.Zero, e
-	}
-	return rate, nil
-}
-
 //资金使用率，同一个block里保持一致，该数据会影响到借款和存款利率的计算
-func (s *service) CurUtilizationRate(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
+func (s *service) curUtilizationRate(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
 	rate := compound.UtilizationRate(market.TotalCash, market.TotalBorrows, market.Reserves)
 	return rate, nil
 }
 
-func (s *service) CurExchangeRate(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
+func (s *service) curExchangeRate(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
 	if market.CTokens.LessThanOrEqual(decimal.Zero) {
 		return market.InitExchangeRate, nil
 	}
@@ -158,7 +59,7 @@ func (s *service) CurExchangeRate(ctx context.Context, market *core.Market) (dec
 
 // 借款年利率
 func (s *service) CurBorrowRate(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
-	borrowRatePerBlock, e := s.CurBorrowRatePerBlock(ctx, market)
+	borrowRatePerBlock, e := s.curBorrowRatePerBlock(ctx, market)
 	if e != nil {
 		return decimal.Zero, e
 	}
@@ -167,8 +68,8 @@ func (s *service) CurBorrowRate(ctx context.Context, market *core.Market) (decim
 }
 
 // 借款块利率, 同一个block里保持一致
-func (s *service) CurBorrowRatePerBlock(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
-	utilRate, e := s.CurUtilizationRate(ctx, market)
+func (s *service) curBorrowRatePerBlock(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
+	utilRate, e := s.curUtilizationRate(ctx, market)
 	if e != nil {
 		return decimal.Zero, e
 	}
@@ -180,7 +81,7 @@ func (s *service) CurBorrowRatePerBlock(ctx context.Context, market *core.Market
 
 // 存款年利率
 func (s *service) CurSupplyRate(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
-	supplyRatePerBlock, e := s.CurSupplyRatePerBlock(ctx, market)
+	supplyRatePerBlock, e := s.curSupplyRatePerBlock(ctx, market)
 	if e != nil {
 		return decimal.Zero, e
 	}
@@ -189,8 +90,8 @@ func (s *service) CurSupplyRate(ctx context.Context, market *core.Market) (decim
 }
 
 // 存款块利率, 同一个block里保持一致
-func (s *service) CurSupplyRatePerBlock(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
-	utilRate, e := s.CurUtilizationRate(ctx, market)
+func (s *service) curSupplyRatePerBlock(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
+	utilRate, e := s.curUtilizationRate(ctx, market)
 	if e != nil {
 		return decimal.Zero, e
 	}
@@ -216,23 +117,23 @@ func (s *service) KeppFlywheelMoving(ctx context.Context, db *db.DB, market *cor
 		return e
 	}
 	//utilization rate
-	uRate, e := s.CurUtilizationRate(ctx, market)
+	uRate, e := s.curUtilizationRate(ctx, market)
 	if e != nil {
 		return e
 	}
 
 	//exchange rate
-	exchangeRate, e := s.CurExchangeRate(ctx, market)
+	exchangeRate, e := s.curExchangeRate(ctx, market)
 	if e != nil {
 		return e
 	}
 
-	supplyRate, e := s.CurSupplyRatePerBlock(ctx, market)
+	supplyRate, e := s.curSupplyRatePerBlock(ctx, market)
 	if e != nil {
 		return e
 	}
 
-	borrowRate, e := s.CurBorrowRatePerBlock(ctx, market)
+	borrowRate, e := s.curBorrowRatePerBlock(ctx, market)
 	if e != nil {
 		return e
 	}

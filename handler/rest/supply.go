@@ -8,6 +8,7 @@ import (
 	"context"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/shopspring/decimal"
 )
@@ -24,7 +25,7 @@ func suppliesHandler(ctx context.Context, marketStr core.IMarketStore, supplyStr
 			return
 		}
 
-		curBlock, e := blockSrv.CurrentBlock(ctx)
+		blockNum, e := blockSrv.GetBlock(ctx, time.Now())
 		if e != nil {
 			render.BadRequest(w, e)
 			return
@@ -41,7 +42,7 @@ func suppliesHandler(ctx context.Context, marketStr core.IMarketStore, supplyStr
 				render.BadRequest(w, e)
 				return
 			}
-			v, e := convert2SupplyView(ctx, market, supply, curBlock, priceSrv)
+			v, e := convert2SupplyView(ctx, market, supply, blockNum, priceSrv)
 			if e != nil {
 				render.BadRequest(w, e)
 				return
@@ -61,7 +62,7 @@ func suppliesHandler(ctx context.Context, marketStr core.IMarketStore, supplyStr
 					continue
 				}
 
-				v, e := convert2SupplyView(ctx, market, s, curBlock, priceSrv)
+				v, e := convert2SupplyView(ctx, market, s, blockNum, priceSrv)
 				if e != nil {
 					continue
 				}
@@ -81,7 +82,7 @@ func suppliesHandler(ctx context.Context, marketStr core.IMarketStore, supplyStr
 			}
 
 			for _, s := range supplies {
-				v, e := convert2SupplyView(ctx, market, s, curBlock, priceSrv)
+				v, e := convert2SupplyView(ctx, market, s, blockNum, priceSrv)
 				if e != nil {
 					continue
 				}
@@ -100,7 +101,7 @@ func suppliesHandler(ctx context.Context, marketStr core.IMarketStore, supplyStr
 				if e != nil {
 					continue
 				}
-				v, e := convert2SupplyView(ctx, market, s, curBlock, priceSrv)
+				v, e := convert2SupplyView(ctx, market, s, blockNum, priceSrv)
 				if e != nil {
 					continue
 				}

@@ -23,7 +23,7 @@ type IAccountStore interface {
 // IAccountService account service interface
 type IAccountService interface {
 	// calculate account liquidity by real time
-	CalculateAccountLiquidity(ctx context.Context, userID string) (decimal.Decimal, error)
+	CalculateAccountLiquidity(ctx context.Context, userID string, blockNum int64) (decimal.Decimal, error)
 	HasBorrows(ctx context.Context, userID string) (bool, error)
 	MaxSeize(ctx context.Context, supply *Supply, borrow *Borrow) (decimal.Decimal, error)
 	SeizeTokenAllowed(ctx context.Context, supply *Supply, borrow *Borrow, repayAmount decimal.Decimal) bool

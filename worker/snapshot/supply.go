@@ -20,10 +20,7 @@ var handleSupplyEvent = func(ctx context.Context, w *Worker, action core.Action,
 		return handleRefundEvent(ctx, w, action, snapshot)
 	}
 
-	exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
-	if e != nil {
-		return e
-	}
+	exchangeRate := market.ExchangeRate
 	ctokens := snapshot.Amount.Div(exchangeRate).Truncate(8)
 
 	trace := id.UUIDFromString(fmt.Sprintf("mint:%s", snapshot.TraceID))
@@ -113,13 +110,13 @@ var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Actio
 		return nil
 	}
 
-	liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, userID)
+	blockNum, e := w.blockService.GetBlock(ctx, snapshot.CreatedAt)
 	if e != nil {
 		log.Errorln(e)
 		return nil
 	}
 
-	blockNum, e := w.blockService.GetBlock(ctx, snapshot.CreatedAt)
+	liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, userID, blockNum)
 	if e != nil {
 		log.Errorln(e)
 		return nil
