@@ -188,13 +188,5 @@ func (s *borrowService) MaxBorrow(ctx context.Context, userID string, market *co
 }
 
 func (s *borrowService) BorrowBalance(ctx context.Context, borrow *core.Borrow, market *core.Market) (decimal.Decimal, error) {
-	market, e := s.marketStore.FindBySymbol(ctx, borrow.Symbol)
-	if e != nil {
-		return decimal.Zero, e
-	}
-
-	principalTimesIndex := borrow.Principal.Mul(market.BorrowIndex)
-	result := principalTimesIndex.Div(borrow.InterestIndex)
-
-	return result, nil
+	return borrow.Balance(ctx, market)
 }

@@ -27,6 +27,14 @@ var (
 	ErrBorrowsOverCap = errors.New("borrows over market borrow cap")
 )
 
+// Balance caculate borrow balance
+func (b *Borrow) Balance(ctx context.Context, market *Market) (decimal.Decimal, error) {
+	principalTimesIndex := b.Principal.Mul(market.BorrowIndex)
+	result := principalTimesIndex.Div(b.InterestIndex)
+
+	return result, nil
+}
+
 // IBorrowStore supply store interface
 type IBorrowStore interface {
 	Save(ctx context.Context, tx *db.DB, borrow *Borrow) error

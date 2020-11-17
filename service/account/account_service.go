@@ -48,7 +48,6 @@ func New(
 	}
 }
 
-// TODO 调整borrowBalance
 func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID string, blockNum int64) (decimal.Decimal, error) {
 	supplies, e := s.supplyStore.FindByUser(ctx, userID)
 	if e != nil {
@@ -90,8 +89,12 @@ func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID s
 		if e != nil {
 			continue
 		}
-		//TODO 重新计算borrowbalance
-		value := borrow.Principal.Mul(price)
+
+		borrowBalance, e := borrow.Balance(ctx, market)
+		if e != nil {
+			continue
+		}
+		value := borrowBalance.Mul(price)
 		borrowValue = borrowValue.Add(value)
 	}
 
@@ -114,21 +117,6 @@ func (s *accountService) markets(ctx context.Context) (map[string]*core.Market, 
 	}
 
 	return maps, nil
-}
-
-func (s *accountService) HasBorrows(ctx context.Context, userID string) (bool, error) {
-	borrows, e := s.borrowStore.FindByUser(ctx, userID)
-	if e != nil {
-		return false, e
-	}
-
-	for _, b := range borrows {
-		if b.Principal.GreaterThan(decimal.Zero) {
-			return true, nil
-		}
-	}
-
-	return false, nil
 }
 
 func (s *accountService) SeizeTokenAllowed(ctx context.Context, supply *core.Supply, borrow *core.Borrow, repayAmount decimal.Decimal) bool {
