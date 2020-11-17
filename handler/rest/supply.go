@@ -240,7 +240,7 @@ func redeemHandler(ctx context.Context, marketStr core.IMarketStore, supplySrv c
 }
 
 func convert2SupplyView(ctx context.Context, market *core.Market, supply *core.Supply, curBlock int64, priceSrv core.IPriceOracleService) (*views.Supply, error) {
-	price, e := priceSrv.GetUnderlyingPrice(ctx, market.Symbol, curBlock)
+	price, e := priceSrv.GetCurrentUnderlyingPrice(ctx, market)
 	if e != nil {
 		return nil, e
 	}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
+	"github.com/fox-one/pkg/store/db"
 	"github.com/shopspring/decimal"
 )
 
@@ -20,7 +21,11 @@ var handleSupplyEvent = func(ctx context.Context, w *Worker, action core.Action,
 		return handleRefundEvent(ctx, w, action, snapshot)
 	}
 
-	exchangeRate := market.ExchangeRate
+	exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
+	if e != nil {
+		return handleRefundEvent(ctx, w, action, snapshot)
+	}
+
 	ctokens := snapshot.Amount.Div(exchangeRate).Truncate(8)
 
 	trace := id.UUIDFromString(fmt.Sprintf("mint:%s", snapshot.TraceID))
@@ -58,27 +63,39 @@ var handlePledgeEvent = func(ctx context.Context, w *Worker, action core.Action,
 	userID := snapshot.OpponentID
 	ctokenAssetID := snapshot.AssetID
 
-	supply, e := w.supplyStore.Find(ctx, userID, ctokenAssetID)
+	market, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
 	if e != nil {
-		//new
-		supply = &core.Supply{
-			UserID:        userID,
-			CTokenAssetID: ctokenAssetID,
-			Collaterals:   ctokens,
-		}
-		if e = w.supplyStore.Save(ctx, w.db, supply); e != nil {
-			return e
-		}
-	} else {
-		//update supply
-		supply.Collaterals = supply.Collaterals.Add(ctokens)
-		e = w.supplyStore.Update(ctx, w.db, supply)
-		if e != nil {
-			return e
-		}
+		return handleRefundEvent(ctx, w, action, snapshot)
 	}
 
-	return nil
+	return w.db.Tx(func(tx *db.DB) error {
+		//accrue interest
+		if e = w.marketService.AccrueInterest(ctx, tx, market, snapshot.CreatedAt); e != nil {
+			return e
+		}
+
+		supply, e := w.supplyStore.Find(ctx, userID, ctokenAssetID)
+		if e != nil {
+			//new
+			supply = &core.Supply{
+				UserID:        userID,
+				CTokenAssetID: ctokenAssetID,
+				Collaterals:   ctokens,
+			}
+			if e = w.supplyStore.Save(ctx, tx, supply); e != nil {
+				return e
+			}
+		} else {
+			//update supply
+			supply.Collaterals = supply.Collaterals.Add(ctokens)
+			e = w.supplyStore.Update(ctx, tx, supply)
+			if e != nil {
+				return e
+			}
+		}
+
+		return nil
+	})
 }
 
 // from system
@@ -97,6 +114,11 @@ var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Actio
 	if e != nil {
 		log.Errorln(e)
 		return nil
+	}
+
+	//accrue interest
+	if e = w.marketService.AccrueInterest(ctx, w.db, market, snapshot.CreatedAt); e != nil {
+		return e
 	}
 
 	supply, e := w.supplyStore.Find(ctx, userID, market.CTokenAssetID)
@@ -122,13 +144,16 @@ var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Actio
 		return nil
 	}
 
-	price, e := w.priceService.GetUnderlyingPrice(ctx, market.Symbol, blockNum)
+	price, e := w.priceService.GetCurrentUnderlyingPrice(ctx, market)
 	if e != nil {
 		log.Errorln(e)
 		return nil
 	}
 
-	exchangeRate := market.ExchangeRate
+	exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
+	if e != nil {
+		return nil
+	}
 	unpledgedTokenLiquidity := unpledgedTokens.Mul(exchangeRate).Mul(market.CollateralFactor).Mul(price)
 	if unpledgedTokenLiquidity.GreaterThanOrEqual(liquidity) {
 		log.Errorln(errors.New("insufficient liquidity"))
@@ -161,24 +186,37 @@ var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Actio
 	return nil
 }
 
+// from system
 var handleUnpledgeTransferEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
 	userID := snapshot.OpponentID
 	ctokenAssetID := snapshot.AssetID
 	unpledgedCTokens := snapshot.Amount.Abs()
 
-	supply, e := w.supplyStore.Find(ctx, userID, ctokenAssetID)
+	market, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
 	if e != nil {
 		return e
 	}
 
-	supply.Collaterals = supply.Collaterals.Sub(unpledgedCTokens)
-	if supply.Collaterals.LessThan(decimal.Zero) {
-		supply.Collaterals = decimal.Zero
-	}
+	return w.db.Tx(func(tx *db.DB) error {
+		//accrue interest
+		if e = w.marketService.AccrueInterest(ctx, tx, market, snapshot.CreatedAt); e != nil {
+			return e
+		}
 
-	if e = w.supplyStore.Update(ctx, w.db, supply); e != nil {
-		return e
-	}
+		supply, e := w.supplyStore.Find(ctx, userID, ctokenAssetID)
+		if e != nil {
+			return e
+		}
 
-	return nil
+		supply.Collaterals = supply.Collaterals.Sub(unpledgedCTokens)
+		if supply.Collaterals.LessThan(decimal.Zero) {
+			supply.Collaterals = decimal.Zero
+		}
+
+		if e = w.supplyStore.Update(ctx, tx, supply); e != nil {
+			return e
+		}
+
+		return nil
+	})
 }

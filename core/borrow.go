@@ -11,13 +11,10 @@ import (
 
 // Borrow borrow info
 type Borrow struct {
-	ID            uint64          `sql:"PRIMARY_KEY;AUTO_INCREMENT" json:"id"`
-	Trace         string          `sql:"size:36;unique_index:trace_idx" json:"trace"`
-	UserID        string          `sql:"size:36" json:"user_id"`
-	Symbol        string          `sql:"size:20" json:"symbol"`
+	UserID        string          `sql:"size:36;PRIMARY_KEY" json:"user_id"`
+	Symbol        string          `sql:"size:20;PRIMARY_KEY" json:"symbol"`
 	Principal     decimal.Decimal `sql:"type:decimal(20,8)" json:"principal"`
 	InterestIndex decimal.Decimal `sql:"type:decimal(20,16);default:1" json:"interest_index"`
-	BlockNum      int64           `json:"block_number"`
 	Version       int64           `sql:"default:0" json:"version"`
 	CreatedAt     time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt     time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`
@@ -33,8 +30,7 @@ var (
 // IBorrowStore supply store interface
 type IBorrowStore interface {
 	Save(ctx context.Context, tx *db.DB, borrow *Borrow) error
-	FindByTrace(ctx context.Context, trace string) (*Borrow, error)
-	Find(ctx context.Context, userID string, symbol string) ([]*Borrow, error)
+	Find(ctx context.Context, userID string, symbol string) (*Borrow, error)
 	FindByUser(ctx context.Context, userID string) ([]*Borrow, error)
 	FindBySymbol(ctx context.Context, symbol string) ([]*Borrow, error)
 	SumOfBorrows(ctx context.Context, symbol string) (decimal.Decimal, error)
@@ -50,5 +46,5 @@ type IBorrowService interface {
 	Borrow(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *Market) error
 	BorrowAllowed(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *Market) bool
 	MaxBorrow(ctx context.Context, userID string, market *Market) (decimal.Decimal, error)
-	UpdateMarketInterestIndex(ctx context.Context, database *db.DB, market *Market, blockNum int64) error
+	BorrowBalance(ctx context.Context, borrow *Borrow, market *Market) (decimal.Decimal, error)
 }

@@ -2,61 +2,37 @@ package oracle
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"compound/core"
 	"compound/pkg/resthttp"
 
-	"github.com/go-redis/redis"
 	"github.com/shopspring/decimal"
 )
 
 // PriceService price service
 type PriceService struct {
 	Config       *core.Config
-	Redis        *redis.Client
 	BlockService core.IBlockService
 }
 
 // New new oracle price service
-func New(config *core.Config, redis *redis.Client, blockSrv core.IBlockService) core.IPriceOracleService {
+func New(config *core.Config, blockSrv core.IBlockService) core.IPriceOracleService {
 	return &PriceService{
 		Config:       config,
-		Redis:        redis,
 		BlockService: blockSrv,
 	}
 }
 
-// GetUnderlyingPrice get underlying price of asset
-func (s *PriceService) GetUnderlyingPrice(ctx context.Context, symbol string, block int64) (decimal.Decimal, error) {
-	k := s.redisKey(symbol, block)
-
-	bs, e := s.Redis.Get(k).Bytes()
-	if e != nil {
-		return decimal.Zero, e
+// GetCurrentUnderlyingPrice get current price of market
+func (s *PriceService) GetCurrentUnderlyingPrice(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
+	if market.Price.LessThanOrEqual(decimal.Zero) {
+		return decimal.Zero, errors.New("invalid market price")
 	}
 
-	price, e := decimal.NewFromString(string(bs))
-	if e != nil {
-		return decimal.Zero, e
-	}
-
-	return price, nil
-}
-
-// Save save price
-func (s *PriceService) Save(ctx context.Context, symbol string, price decimal.Decimal, block int64) error {
-	k := s.redisKey(symbol, block)
-
-	// not exists, add new
-	if s.Redis.Exists(k).Val() == 0 {
-		//new expired after 24h
-		s.Redis.Set(k, []byte(price.String()), time.Hour*24)
-	}
-
-	return nil
+	return market.Price, nil
 }
 
 // PullPriceTicker pull price ticker
@@ -89,8 +65,4 @@ func (s *PriceService) PullAllPriceTickers(ctx context.Context, t time.Time) ([]
 	}
 
 	return prices, nil
-}
-
-func (s *PriceService) redisKey(symbol string, block int64) string {
-	return fmt.Sprintf("foxone:compound:%s:%d", strings.ToUpper(symbol), block)
 }

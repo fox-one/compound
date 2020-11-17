@@ -30,12 +30,12 @@ var (
 
 // UtilizationRate utilization rate
 func UtilizationRate(cash, borrows, reserves decimal.Decimal) decimal.Decimal {
-	return borrows.Div(cash.Add(borrows).Sub(reserves))
-}
+	total := cash.Add(borrows).Sub(reserves)
+	if total.LessThanOrEqual(decimal.Zero) {
+		return decimal.Zero
+	}
 
-// ReservesNew calculate new reserves
-func ReservesNew(interestAccumulated, reserveFactor decimal.Decimal) decimal.Decimal {
-	return interestAccumulated.Mul(reserveFactor)
+	return borrows.Div(cash.Add(borrows).Sub(reserves))
 }
 
 // GetExchangeRate exchange rate

@@ -72,7 +72,10 @@ func (s *supplyService) Redeem(ctx context.Context, redeemTokens decimal.Decimal
 }
 
 func (s *supplyService) RedeemAllowed(ctx context.Context, redeemTokens decimal.Decimal, market *core.Market) bool {
-	exchangeRate := market.ExchangeRate
+	exchangeRate, e := s.marketService.CurExchangeRate(ctx, market)
+	if e != nil {
+		return false
+	}
 
 	amount := redeemTokens.Mul(exchangeRate)
 	supplies := market.TotalCash.Sub(market.Reserves)
@@ -133,12 +136,15 @@ func (s *supplyService) Unpledge(ctx context.Context, unpledgedTokens decimal.De
 		return e
 	}
 
-	price, e := s.priceService.GetUnderlyingPrice(ctx, market.Symbol, blockNum)
+	price, e := s.priceService.GetCurrentUnderlyingPrice(ctx, market)
 	if e != nil {
 		return e
 	}
 
-	exchangeRate := market.ExchangeRate
+	exchangeRate, e := s.marketService.CurExchangeRate(ctx, market)
+	if e != nil {
+		return e
+	}
 
 	unpledgedTokenLiquidity := unpledgedTokens.Mul(exchangeRate).Mul(market.CollateralFactor).Mul(price)
 	if unpledgedTokenLiquidity.GreaterThanOrEqual(liquidity) {
@@ -173,10 +179,4 @@ func (s *supplyService) Unpledge(ctx context.Context, unpledgedTokens decimal.De
 	}
 
 	return nil
-}
-
-// TODO
-func (s *supplyService) MaxUnpledge(ctx context.Context, userID string, market *core.Market) (decimal.Decimal, error) {
-
-	return decimal.Zero, nil
 }

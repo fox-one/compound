@@ -16,8 +16,7 @@ type PriceTicker struct {
 
 // IPriceOracleService pracle price service interface
 type IPriceOracleService interface {
-	Save(ctx context.Context, symbol string, price decimal.Decimal, block int64) error
-	GetUnderlyingPrice(ctx context.Context, symbol string, block int64) (decimal.Decimal, error)
+	GetCurrentUnderlyingPrice(ctx context.Context, market *Market) (decimal.Decimal, error)
 	PullPriceTicker(ctx context.Context, symbol string, t time.Time) (*PriceTicker, error)
 	PullAllPriceTickers(ctx context.Context, t time.Time) ([]*PriceTicker, error)
 }

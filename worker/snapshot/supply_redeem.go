@@ -19,6 +19,11 @@ var handleSupplyRedeemEvent = func(ctx context.Context, w *Worker, action core.A
 		return handleRefundEvent(ctx, w, action, snapshot)
 	}
 
+	//accrue interest
+	if e = w.marketService.AccrueInterest(ctx, w.db, market, snapshot.CreatedAt); e != nil {
+		return e
+	}
+
 	redeemTokens := snapshot.Amount.Abs()
 
 	// check redeem allowed
@@ -28,7 +33,10 @@ var handleSupplyRedeemEvent = func(ctx context.Context, w *Worker, action core.A
 	}
 
 	// transfer asset to user
-	exchangeRate := market.ExchangeRate
+	exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
+	if e != nil {
+		return handleRefundEvent(ctx, w, action, snapshot)
+	}
 
 	amount := redeemTokens.Mul(exchangeRate).Truncate(8)
 	trace := id.UUIDFromString(fmt.Sprintf("redeem:%s", snapshot.TraceID))
@@ -65,7 +73,7 @@ var handleRedeemTransferEvent = func(ctx context.Context, w *Worker, action core
 		assetID := snapshot.AssetID
 		amount := snapshot.Amount.Abs()
 
-		reducedCtokens, e := decimal.NewFromString(action[core.ActionKeyCToken])
+		redeemedCtokens, e := decimal.NewFromString(action[core.ActionKeyCToken])
 		if e != nil {
 			return e
 		}
@@ -74,17 +82,14 @@ var handleRedeemTransferEvent = func(ctx context.Context, w *Worker, action core
 		if e != nil {
 			return e
 		}
-		market.TotalCash = market.TotalCash.Sub(amount)
-		market.CTokens = market.CTokens.Sub(reducedCtokens)
-		// keep the flywheel moving
-		e = w.marketService.KeppFlywheelMoving(ctx, tx, market, snapshot.CreatedAt)
-		if e != nil {
+		//accrue interest
+		if e = w.marketService.AccrueInterest(ctx, tx, market, snapshot.CreatedAt); e != nil {
 			return e
 		}
 
-		//update interest index
-		e = w.borrowService.UpdateMarketInterestIndex(ctx, tx, market, market.BlockNumber)
-		if e != nil {
+		market.TotalCash = market.TotalCash.Sub(amount)
+		market.CTokens = market.CTokens.Sub(redeemedCtokens)
+		if e = w.marketStore.Update(ctx, tx, market); e != nil {
 			return e
 		}
 

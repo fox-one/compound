@@ -3,23 +3,25 @@ package snapshot
 import (
 	"compound/core"
 	"context"
-	"strconv"
 
 	"github.com/shopspring/decimal"
 )
 
 var handlePriceEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
-	block, err := strconv.ParseInt(action[core.ActionKeyBlock], 10, 64)
-	if err != nil {
-		return err
-	}
-
 	symbol := action[core.ActionKeySymbol]
-	price, err := decimal.NewFromString(action[core.ActionKeyPrice])
-	if err != nil {
-		return err
+	price, e := decimal.NewFromString(action[core.ActionKeyPrice])
+	if e != nil {
+		return e
 	}
 
-	w.priceService.Save(ctx, symbol, price, block)
+	market, e := w.marketStore.FindBySymbol(ctx, symbol)
+	if e != nil {
+		return e
+	}
+	market.Price = price
+	if e = w.marketStore.Update(ctx, w.db, market); e != nil {
+		return e
+	}
+
 	return nil
 }

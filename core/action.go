@@ -25,8 +25,6 @@ const (
 	ActionKeyStatus = "st"
 	// ActionKeyUser user
 	ActionKeyUser = "usr"
-	// ActionKeyBorrowTrace borrow trace
-	ActionKeyBorrowTrace = "btr"
 )
 
 const (

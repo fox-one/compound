@@ -33,11 +33,11 @@ var serverCmd = &cobra.Command{
 
 		walletService := provideWalletService(mainWallet)
 		blockService := provideBlockService()
-		priceService := providePriceService(redis, blockService)
+		priceService := providePriceService(blockService)
 		marketService := provideMarketService(redis, mainWallet, marketStore, borrowStore, blockService, priceService)
 		accountService := provideAccountService(mainWallet, marketStore, supplyStore, borrowStore, accountStore, priceService, blockService, walletService, marketService)
 		supplyService := provideSupplyService(db, mainWallet, blockWallet, supplyStore, marketStore, accountService, priceService, blockService, walletService, marketService)
-		borrowService := provideBorrowService(mainWallet, blockWallet, marketStore, borrowStore, blockService, priceService, walletService, accountService)
+		borrowService := provideBorrowService(mainWallet, blockWallet, marketStore, borrowStore, blockService, priceService, walletService, accountService, marketService)
 
 		mux := chi.NewMux()
 		mux.Use(middleware.Recoverer)

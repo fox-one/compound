@@ -46,6 +46,8 @@ type Market struct {
 	ExchangeRate       decimal.Decimal `sql:"type:decimal(20,16)" json:"exchange_rate"`
 	SupplyRatePerBlock decimal.Decimal `sql:"type:decimal(20,16)" json:"supply_Rate_per_block"`
 	BorrowRatePerBlock decimal.Decimal `sql:"type:decimal(20,16)" json:"borrow_rate_per_block"`
+	Price              decimal.Decimal `sql:"type:decimal(20,16)" json:"price"`
+	BorrowIndex        decimal.Decimal `sql:"type:decimal(28,16)" json:"borrow_index"`
 	Version            int64           `sql:"default:0" json:"version"`
 	CreatedAt          time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt          time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`
@@ -64,9 +66,13 @@ type IMarketStore interface {
 
 // IMarketService market interface
 type IMarketService interface {
+	CurUtilizationRate(ctx context.Context, market *Market) (decimal.Decimal, error)
+	CurExchangeRate(ctx context.Context, market *Market) (decimal.Decimal, error)
+	CurBorrowRatePerBlock(ctx context.Context, market *Market) (decimal.Decimal, error)
+	CurSupplyRatePerBlock(ctx context.Context, market *Market) (decimal.Decimal, error)
 	CurBorrowRate(ctx context.Context, market *Market) (decimal.Decimal, error)
 	CurSupplyRate(ctx context.Context, market *Market) (decimal.Decimal, error)
-	CurTotalBorrow(ctx context.Context, market *Market) (decimal.Decimal, error)
+	CurTotalBorrows(ctx context.Context, market *Market) (decimal.Decimal, error)
 	CurTotalReserves(ctx context.Context, market *Market) (decimal.Decimal, error)
-	KeppFlywheelMoving(ctx context.Context, db *db.DB, market *Market, time time.Time) error
+	AccrueInterest(ctx context.Context, db *db.DB, market *Market, time time.Time) error
 }

@@ -39,5 +39,4 @@ type ISupplyService interface {
 	Supply(ctx context.Context, amount decimal.Decimal, market *Market) (string, error)
 	Pledge(ctx context.Context, pledgedTokens decimal.Decimal, market *Market) (string, error)
 	Unpledge(ctx context.Context, pledgedTokens decimal.Decimal, userID string, market *Market) error
-	MaxUnpledge(ctx context.Context, userID string, market *Market) (decimal.Decimal, error)
 }

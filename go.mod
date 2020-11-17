@@ -9,11 +9,12 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/drone/signal v1.0.0
 	github.com/fatih/structs v1.1.0 // indirect
+	github.com/fox-one/hfox v1.0.22 // indirect
 	github.com/fox-one/mixin-sdk-go v1.0.11
-	github.com/fox-one/pkg v1.5.1
+	github.com/fox-one/pkg v1.5.2
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
-	github.com/go-chi/chi v4.1.1+incompatible
-	github.com/go-redis/redis v6.15.7+incompatible
+	github.com/go-chi/chi v4.1.2+incompatible
+	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-resty/resty/v2 v2.3.0
 	github.com/gofrs/uuid v3.3.0+incompatible
 	github.com/gorilla/schema v1.1.0
@@ -27,18 +28,16 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rs/cors v1.7.0
 	github.com/shopspring/decimal v1.2.0
-	github.com/sirupsen/logrus v1.5.0
-	github.com/spf13/afero v1.4.0 // indirect
+	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cast v1.3.1
-	github.com/spf13/cobra v1.0.0
+	github.com/spf13/cobra v1.1.1
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.7.1 // indirect
 	github.com/stretchr/testify v1.6.1
-	github.com/twitchtv/twirp v5.11.0+incompatible
+	github.com/twitchtv/twirp v7.1.0+incompatible
 	github.com/yiplee/structs v1.0.3
-	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
-	golang.org/x/sys v0.0.0-20200928205150-006507a75852 // indirect
+	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
 	gopkg.in/ini.v1 v1.61.0 // indirect
 	gopkg.in/redis.v5 v5.2.9
 	gopkg.in/yaml.v2 v2.3.0 // indirect

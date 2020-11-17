@@ -10,7 +10,6 @@ import (
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
-	"github.com/fox-one/pkg/store/db"
 	"github.com/shopspring/decimal"
 )
 
@@ -24,6 +23,7 @@ type borrowService struct {
 	priceService   core.IPriceOracleService
 	walletService  core.IWalletService
 	accountService core.IAccountService
+	marketService  core.IMarketService
 }
 
 // New new borrow service
@@ -35,7 +35,8 @@ func New(cfg *core.Config,
 	blockService core.IBlockService,
 	priceService core.IPriceOracleService,
 	walletService core.IWalletService,
-	accountService core.IAccountService) core.IBorrowService {
+	accountService core.IAccountService,
+	marketService core.IMarketService) core.IBorrowService {
 	return &borrowService{
 		config:         cfg,
 		mainWallet:     mainWallet,
@@ -46,6 +47,7 @@ func New(cfg *core.Config,
 		priceService:   priceService,
 		walletService:  walletService,
 		accountService: accountService,
+		marketService:  marketService,
 	}
 }
 
@@ -57,7 +59,6 @@ func (s *borrowService) Repay(ctx context.Context, amount decimal.Decimal, borro
 
 	action := make(core.Action)
 	action[core.ActionKeyService] = core.ActionServiceRepay
-	action[core.ActionKeyBorrowTrace] = borrow.Trace
 
 	memoStr, e := action.Format()
 	if e != nil {
@@ -143,7 +144,7 @@ func (s *borrowService) BorrowAllowed(ctx context.Context, borrowAmount decimal.
 		return false
 	}
 
-	price, e := s.priceService.GetUnderlyingPrice(ctx, market.Symbol, blockNum)
+	price, e := s.priceService.GetCurrentUnderlyingPrice(ctx, market)
 	if e != nil {
 		log.Errorln(e)
 		return false
@@ -176,7 +177,7 @@ func (s *borrowService) MaxBorrow(ctx context.Context, userID string, market *co
 		return decimal.Zero, e
 	}
 
-	price, e := s.priceService.GetUnderlyingPrice(ctx, market.Symbol, blockNum)
+	price, e := s.priceService.GetCurrentUnderlyingPrice(ctx, market)
 	if e != nil {
 		return decimal.Zero, e
 	}
@@ -186,29 +187,14 @@ func (s *borrowService) MaxBorrow(ctx context.Context, userID string, market *co
 	return borrowAmount, nil
 }
 
-func (s *borrowService) UpdateMarketInterestIndex(ctx context.Context, db *db.DB, market *core.Market, blockNum int64) error {
-	borrows, e := s.borrowStore.FindBySymbol(ctx, market.Symbol)
+func (s *borrowService) BorrowBalance(ctx context.Context, borrow *core.Borrow, market *core.Market) (decimal.Decimal, error) {
+	market, e := s.marketStore.FindBySymbol(ctx, borrow.Symbol)
 	if e != nil {
-		return e
+		return decimal.Zero, e
 	}
 
-	for _, borrow := range borrows {
-		deltaBlocks := blockNum - borrow.BlockNum
-		if deltaBlocks > 0 && borrow.Principal.GreaterThan(decimal.Zero) {
-			index := borrow.InterestIndex
-			if index.LessThanOrEqual(decimal.Zero) {
-				index = decimal.NewFromInt(1)
-			}
-			onePlusBlocksTimesRate := decimal.NewFromInt(1).Add(market.BorrowRatePerBlock.Mul(decimal.NewFromInt(deltaBlocks)))
-			newIndex := index.Mul(onePlusBlocksTimesRate)
-			borrow.InterestIndex = newIndex
-			borrow.BlockNum = blockNum
+	principalTimesIndex := borrow.Principal.Mul(market.BorrowIndex)
+	result := principalTimesIndex.Div(borrow.InterestIndex)
 
-			e = s.borrowStore.Update(ctx, db, borrow)
-			if e != nil {
-				return e
-			}
-		}
-	}
-	return nil
+	return result, nil
 }

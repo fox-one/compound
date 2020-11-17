@@ -13,7 +13,6 @@ import (
 	"compound/store/borrow"
 	"compound/store/market"
 	"compound/store/supply"
-	"compound/store/user"
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/property"
@@ -72,12 +71,6 @@ func provideReserveWallet() *mixin.Client {
 }
 
 // ---------------store-----------------------------------------
-
-// TODO node engine 里不存储用户信息
-func provideUserStore(db *db.DB) core.IUserStore {
-	return user.New(db)
-}
-
 func providePropertyStore(db *db.DB) property.Store {
 	return propertystore.New(db)
 }
@@ -107,10 +100,8 @@ func provideBlockService() core.IBlockService {
 	return block.New(&cfg)
 }
 
-func providePriceService(redis *redis.Client, blockSrv core.IBlockService) core.IPriceOracleService {
-	return oracle.New(&cfg,
-		redis,
-		blockSrv)
+func providePriceService(blockSrv core.IBlockService) core.IPriceOracleService {
+	return oracle.New(&cfg, blockSrv)
 }
 
 func provideMarketService(redis *redis.Client, mainWallet *core.Wallet, marketStr core.IMarketStore, borrowStr core.IBorrowStore, blockSrv core.IBlockService, priceSrv core.IPriceOracleService) core.IMarketService {
@@ -138,7 +129,7 @@ func provideSupplyService(db *db.DB, mainWallet *core.Wallet, blockWallet *core.
 	)
 }
 
-func provideBorrowService(mainWallet *core.Wallet, blockWallet *core.Wallet, marketStr core.IMarketStore, borrowStr core.IBorrowStore, blockSrv core.IBlockService, priceSrv core.IPriceOracleService, walletSrv core.IWalletService, accountSrv core.IAccountService) core.IBorrowService {
+func provideBorrowService(mainWallet *core.Wallet, blockWallet *core.Wallet, marketStr core.IMarketStore, borrowStr core.IBorrowStore, blockSrv core.IBlockService, priceSrv core.IPriceOracleService, walletSrv core.IWalletService, accountSrv core.IAccountService, marketSrv core.IMarketService) core.IBorrowService {
 	return borrowservice.New(
 		&cfg,
 		mainWallet,
@@ -149,6 +140,7 @@ func provideBorrowService(mainWallet *core.Wallet, blockWallet *core.Wallet, mar
 		priceSrv,
 		walletSrv,
 		accountSrv,
+		marketSrv,
 	)
 }
 

@@ -8,111 +8,110 @@ import (
 	"context"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/shopspring/decimal"
 )
 
 func borrowsHandler(ctx context.Context, marketStr core.IMarketStore, borrowStr core.IBorrowStore, priceSrv core.IPriceOracleService, blockSrv core.IBlockService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var params struct {
-			UserID string `json:"user"`
-			Symbol string `json:"symbol"`
-		}
+		// 	var params struct {
+		// 		UserID string `json:"user"`
+		// 		Symbol string `json:"symbol"`
+		// 	}
 
-		if e := param.Binding(r, &params); e != nil {
-			render.BadRequest(w, e)
-			return
-		}
+		// 	if e := param.Binding(r, &params); e != nil {
+		// 		render.BadRequest(w, e)
+		// 		return
+		// 	}
 
-		blockNum, e := blockSrv.GetBlock(ctx, time.Now())
-		if e != nil {
-			render.BadRequest(w, e)
-			return
-		}
-		borrowViews := make([]*views.Borrow, 0)
-		if params.Symbol != "" && params.UserID != "" {
-			market, e := marketStr.FindBySymbol(ctx, strings.ToUpper(params.Symbol))
-			if e != nil {
-				render.BadRequest(w, e)
-				return
-			}
-			borrows, e := borrowStr.Find(ctx, params.UserID, params.Symbol)
-			if e != nil {
-				render.BadRequest(w, e)
-				return
-			}
+		// 	blockNum, e := blockSrv.GetBlock(ctx, time.Now())
+		// 	if e != nil {
+		// 		render.BadRequest(w, e)
+		// 		return
+		// 	}
+		// 	borrowViews := make([]*views.Borrow, 0)
+		// 	if params.Symbol != "" && params.UserID != "" {
+		// 		market, e := marketStr.FindBySymbol(ctx, strings.ToUpper(params.Symbol))
+		// 		if e != nil {
+		// 			render.BadRequest(w, e)
+		// 			return
+		// 		}
+		// 		borrows, e := borrowStr.Find(ctx, params.UserID, params.Symbol)
+		// 		if e != nil {
+		// 			render.BadRequest(w, e)
+		// 			return
+		// 		}
 
-			for _, b := range borrows {
-				v, e := convert2BorrowView(ctx, market, b, blockNum, priceSrv)
-				if e != nil {
-					continue
-				}
+		// 		for _, b := range borrows {
+		// 			v, e := convert2BorrowView(ctx, market, b, blockNum, priceSrv)
+		// 			if e != nil {
+		// 				continue
+		// 			}
 
-				borrowViews = append(borrowViews, v)
-			}
-		} else if params.UserID != "" {
-			borrows, e := borrowStr.FindByUser(ctx, params.UserID)
-			if e != nil {
-				render.BadRequest(w, e)
-				return
-			}
+		// 			borrowViews = append(borrowViews, v)
+		// 		}
+		// 	} else if params.UserID != "" {
+		// 		borrows, e := borrowStr.FindByUser(ctx, params.UserID)
+		// 		if e != nil {
+		// 			render.BadRequest(w, e)
+		// 			return
+		// 		}
 
-			for _, b := range borrows {
-				market, e := marketStr.FindBySymbol(ctx, b.Symbol)
-				if e != nil {
-					continue
-				}
+		// 		for _, b := range borrows {
+		// 			market, e := marketStr.FindBySymbol(ctx, b.Symbol)
+		// 			if e != nil {
+		// 				continue
+		// 			}
 
-				v, e := convert2BorrowView(ctx, market, b, blockNum, priceSrv)
-				if e != nil {
-					continue
-				}
+		// 			v, e := convert2BorrowView(ctx, market, b, blockNum, priceSrv)
+		// 			if e != nil {
+		// 				continue
+		// 			}
 
-				borrowViews = append(borrowViews, v)
-			}
-		} else if params.Symbol != "" {
-			market, e := marketStr.FindBySymbol(ctx, strings.ToUpper(params.Symbol))
-			if e != nil {
-				render.BadRequest(w, e)
-				return
-			}
-			borrows, e := borrowStr.FindBySymbol(ctx, market.Symbol)
-			if e != nil {
-				render.BadRequest(w, e)
-				return
-			}
+		// 			borrowViews = append(borrowViews, v)
+		// 		}
+		// 	} else if params.Symbol != "" {
+		// 		market, e := marketStr.FindBySymbol(ctx, strings.ToUpper(params.Symbol))
+		// 		if e != nil {
+		// 			render.BadRequest(w, e)
+		// 			return
+		// 		}
+		// 		borrows, e := borrowStr.FindBySymbol(ctx, market.Symbol)
+		// 		if e != nil {
+		// 			render.BadRequest(w, e)
+		// 			return
+		// 		}
 
-			for _, b := range borrows {
-				v, e := convert2BorrowView(ctx, market, b, blockNum, priceSrv)
-				if e != nil {
-					continue
-				}
+		// 		for _, b := range borrows {
+		// 			v, e := convert2BorrowView(ctx, market, b, blockNum, priceSrv)
+		// 			if e != nil {
+		// 				continue
+		// 			}
 
-				borrowViews = append(borrowViews, v)
-			}
-		} else {
-			//all
-			borrows, e := borrowStr.All(ctx)
-			if e != nil {
-				render.BadRequest(w, e)
-			}
+		// 			borrowViews = append(borrowViews, v)
+		// 		}
+		// 	} else {
+		// 		//all
+		// 		borrows, e := borrowStr.All(ctx)
+		// 		if e != nil {
+		// 			render.BadRequest(w, e)
+		// 		}
 
-			for _, b := range borrows {
-				market, e := marketStr.FindBySymbol(ctx, b.Symbol)
-				if e != nil {
-					continue
-				}
-				v, e := convert2BorrowView(ctx, market, b, blockNum, priceSrv)
-				if e != nil {
-					continue
-				}
+		// 		for _, b := range borrows {
+		// 			market, e := marketStr.FindBySymbol(ctx, b.Symbol)
+		// 			if e != nil {
+		// 				continue
+		// 			}
+		// 			v, e := convert2BorrowView(ctx, market, b, blockNum, priceSrv)
+		// 			if e != nil {
+		// 				continue
+		// 			}
 
-				borrowViews = append(borrowViews, v)
-			}
-		}
+		// 			borrowViews = append(borrowViews, v)
+		// 		}
+		// 	}
 
-		render.JSON(w, borrowViews)
+		// 	render.JSON(w, borrowViews)
 	}
 }
 
@@ -177,7 +176,7 @@ func repayHandler(ctx context.Context, marketStr core.IMarketStore, borrowSrv co
 }
 
 func convert2BorrowView(ctx context.Context, market *core.Market, borrow *core.Borrow, curBlock int64, priceSrv core.IPriceOracleService) (*views.Borrow, error) {
-	price, e := priceSrv.GetUnderlyingPrice(ctx, market.Symbol, curBlock)
+	price, e := priceSrv.GetCurrentUnderlyingPrice(ctx, market)
 	if e != nil {
 		return nil, e
 	}

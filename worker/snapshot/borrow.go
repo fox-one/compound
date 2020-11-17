@@ -74,31 +74,44 @@ var handleBorrowTransferEvent = func(ctx context.Context, w *Worker, action core
 			return e
 		}
 
+		//update interest
+		if e = w.marketService.AccrueInterest(ctx, tx, market, snapshot.CreatedAt); e != nil {
+			return e
+		}
+
 		market.TotalCash = market.TotalCash.Sub(borrowAmount)
 		market.TotalBorrows = market.TotalBorrows.Add(borrowAmount)
-		// keep the flywheel moving
-		e = w.marketService.KeppFlywheelMoving(ctx, tx, market, snapshot.CreatedAt)
+		// update market
+		if e = w.marketStore.Update(ctx, tx, market); e != nil {
+			return e
+		}
+
+		borrow, e := w.borrowStore.Find(ctx, userID, market.Symbol)
+		if e != nil {
+			//new
+			borrow := core.Borrow{
+				UserID:        userID,
+				Symbol:        market.Symbol,
+				Principal:     borrowAmount,
+				InterestIndex: market.BorrowIndex}
+
+			if e = w.borrowStore.Save(ctx, tx, &borrow); e != nil {
+				return e
+			}
+
+			return nil
+		}
+
+		//update
+		borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, market)
 		if e != nil {
 			return e
 		}
 
-		//update interest index
-		e = w.borrowService.UpdateMarketInterestIndex(ctx, tx, market, market.BlockNumber)
-		if e != nil {
-			return e
-		}
-
-		//insert new
-		borrow := core.Borrow{
-			Trace:         snapshot.TraceID,
-			UserID:        userID,
-			Symbol:        market.Symbol,
-			Principal:     borrowAmount,
-			InterestIndex: decimal.NewFromInt(1),
-			BlockNum:      market.BlockNumber,
-		}
-
-		e = w.borrowStore.Save(ctx, tx, &borrow)
+		newBorrowBalance := borrowBalance.Add(borrowAmount)
+		borrow.Principal = newBorrowBalance
+		borrow.InterestIndex = market.BorrowIndex
+		e = w.borrowStore.Update(ctx, tx, borrow)
 		if e != nil {
 			return e
 		}

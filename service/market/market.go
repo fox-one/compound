@@ -3,7 +3,6 @@ package market
 import (
 	"compound/core"
 	"compound/internal/compound"
-	"fmt"
 	"time"
 
 	"context"
@@ -41,13 +40,46 @@ func New(
 	}
 }
 
+func (s *service) CurUtilizationRate(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
+	ur := market.UtilizationRate
+	if ur.LessThanOrEqual(decimal.Zero) {
+		return decimal.Zero, nil
+	}
+
+	return ur, nil
+}
+func (s *service) CurExchangeRate(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
+	er := market.ExchangeRate
+	if er.LessThanOrEqual(decimal.Zero) {
+		return market.InitExchangeRate, nil
+	}
+
+	return er, nil
+}
+func (s *service) CurBorrowRatePerBlock(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
+	br := market.BorrowRatePerBlock
+	if br.LessThanOrEqual(decimal.Zero) {
+		return s.curBorrowRatePerBlockInternal(ctx, market)
+	}
+
+	return br, nil
+}
+func (s *service) CurSupplyRatePerBlock(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
+	sr := market.SupplyRatePerBlock
+	if sr.LessThanOrEqual(decimal.Zero) {
+		return s.curSupplyRatePerBlockInternal(ctx, market)
+	}
+
+	return sr, nil
+}
+
 //资金使用率，同一个block里保持一致，该数据会影响到借款和存款利率的计算
-func (s *service) curUtilizationRate(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
+func (s *service) curUtilizationRateInternal(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
 	rate := compound.UtilizationRate(market.TotalCash, market.TotalBorrows, market.Reserves)
 	return rate, nil
 }
 
-func (s *service) curExchangeRate(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
+func (s *service) curExchangeRateInternal(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
 	if market.CTokens.LessThanOrEqual(decimal.Zero) {
 		return market.InitExchangeRate, nil
 	}
@@ -59,7 +91,7 @@ func (s *service) curExchangeRate(ctx context.Context, market *core.Market) (dec
 
 // 借款年利率
 func (s *service) CurBorrowRate(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
-	borrowRatePerBlock, e := s.curBorrowRatePerBlock(ctx, market)
+	borrowRatePerBlock, e := s.curBorrowRatePerBlockInternal(ctx, market)
 	if e != nil {
 		return decimal.Zero, e
 	}
@@ -68,8 +100,8 @@ func (s *service) CurBorrowRate(ctx context.Context, market *core.Market) (decim
 }
 
 // 借款块利率, 同一个block里保持一致
-func (s *service) curBorrowRatePerBlock(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
-	utilRate, e := s.curUtilizationRate(ctx, market)
+func (s *service) curBorrowRatePerBlockInternal(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
+	utilRate, e := s.curUtilizationRateInternal(ctx, market)
 	if e != nil {
 		return decimal.Zero, e
 	}
@@ -81,7 +113,7 @@ func (s *service) curBorrowRatePerBlock(ctx context.Context, market *core.Market
 
 // 存款年利率
 func (s *service) CurSupplyRate(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
-	supplyRatePerBlock, e := s.curSupplyRatePerBlock(ctx, market)
+	supplyRatePerBlock, e := s.curSupplyRatePerBlockInternal(ctx, market)
 	if e != nil {
 		return decimal.Zero, e
 	}
@@ -90,8 +122,8 @@ func (s *service) CurSupplyRate(ctx context.Context, market *core.Market) (decim
 }
 
 // 存款块利率, 同一个block里保持一致
-func (s *service) curSupplyRatePerBlock(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
-	utilRate, e := s.curUtilizationRate(ctx, market)
+func (s *service) curSupplyRatePerBlockInternal(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
+	utilRate, e := s.curUtilizationRateInternal(ctx, market)
 	if e != nil {
 		return decimal.Zero, e
 	}
@@ -102,7 +134,7 @@ func (s *service) curSupplyRatePerBlock(ctx context.Context, market *core.Market
 }
 
 // 总借出量
-func (s *service) CurTotalBorrow(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
+func (s *service) CurTotalBorrows(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
 	return market.TotalBorrows, nil
 }
 
@@ -117,23 +149,23 @@ func (s *service) KeppFlywheelMoving(ctx context.Context, db *db.DB, market *cor
 		return e
 	}
 	//utilization rate
-	uRate, e := s.curUtilizationRate(ctx, market)
+	uRate, e := s.curUtilizationRateInternal(ctx, market)
 	if e != nil {
 		return e
 	}
 
 	//exchange rate
-	exchangeRate, e := s.curExchangeRate(ctx, market)
+	exchangeRate, e := s.curExchangeRateInternal(ctx, market)
 	if e != nil {
 		return e
 	}
 
-	supplyRate, e := s.curSupplyRatePerBlock(ctx, market)
+	supplyRate, e := s.curSupplyRatePerBlockInternal(ctx, market)
 	if e != nil {
 		return e
 	}
 
-	borrowRate, e := s.curBorrowRatePerBlock(ctx, market)
+	borrowRate, e := s.curBorrowRatePerBlockInternal(ctx, market)
 	if e != nil {
 		return e
 	}
@@ -152,18 +184,63 @@ func (s *service) KeppFlywheelMoving(ctx context.Context, db *db.DB, market *cor
 	return nil
 }
 
-func (s *service) borrowRateCacheKey(symbol string, block int64) string {
-	return fmt.Sprintf("foxone:compound:brate:%s:%d", symbol, block)
-}
+func (s *service) AccrueInterest(ctx context.Context, db *db.DB, market *core.Market, time time.Time) error {
+	blockNumberPrior := market.BlockNumber
 
-func (s *service) supplyRateCacheKey(symbol string, block int64) string {
-	return fmt.Sprintf("foxone:compound:srate:%s:%d", symbol, block)
-}
+	blockNum, e := s.blockSrv.GetBlock(ctx, time)
+	if e != nil {
+		return e
+	}
 
-func (s *service) utilizationRateCacheKey(symbol string, block int64) string {
-	return fmt.Sprintf("foxone:compound:urate:%s:%d", symbol, block)
-}
+	blockDelta := blockNum - blockNumberPrior
+	if blockDelta > 0 {
+		borrowRate, e := s.curBorrowRatePerBlockInternal(ctx, market)
+		if e != nil {
+			return e
+		}
 
-func (s *service) exchangeRateCacheKey(symbol string, block int64) string {
-	return fmt.Sprintf("foxone:compound:erate:%s:%d", symbol, block)
+		timesBorrowRate := borrowRate.Mul(decimal.NewFromInt(blockDelta))
+		interestAccumulated := market.TotalBorrows.Mul(timesBorrowRate)
+		totalBorrowsNew := interestAccumulated.Add(market.TotalBorrows)
+		totalReservesNew := interestAccumulated.Mul(market.ReserveFactor).Add(market.Reserves)
+		borrowIndexNew := market.BorrowIndex.Add(timesBorrowRate.Mul(market.BorrowIndex))
+
+		market.BlockNumber = blockNum
+		market.TotalBorrows = totalBorrowsNew
+		market.Reserves = totalReservesNew
+		market.BorrowIndex = borrowIndexNew
+	}
+
+	//utilization rate
+	uRate, e := s.curUtilizationRateInternal(ctx, market)
+	if e != nil {
+		return e
+	}
+
+	//exchange rate
+	exchangeRate, e := s.curExchangeRateInternal(ctx, market)
+	if e != nil {
+		return e
+	}
+
+	supplyRate, e := s.curSupplyRatePerBlockInternal(ctx, market)
+	if e != nil {
+		return e
+	}
+
+	borrowRate, e := s.curBorrowRatePerBlockInternal(ctx, market)
+	if e != nil {
+		return e
+	}
+
+	market.UtilizationRate = uRate
+	market.ExchangeRate = exchangeRate
+	market.SupplyRatePerBlock = supplyRate
+	market.BorrowRatePerBlock = borrowRate
+
+	e = s.marketStore.Update(ctx, db, market)
+	if e != nil {
+		return e
+	}
+	return nil
 }
