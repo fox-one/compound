@@ -4,9 +4,11 @@ import (
 	"compound/core"
 	"compound/pkg/id"
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/fox-one/mixin-sdk-go"
+	"github.com/fox-one/pkg/logger"
 	"github.com/shopspring/decimal"
 )
 
@@ -84,20 +86,99 @@ var handlePledgeEvent = func(ctx context.Context, w *Worker, action core.Action,
 
 // from system
 var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
+	log := logger.FromContext(ctx).WithField("worker", "unpledge")
+
+	userID := action[core.ActionKeyUser]
+	symbol := action[core.ActionKeySymbol]
+	unpledgedTokens, e := decimal.NewFromString(action[core.ActionKeyCToken])
+	if e != nil {
+		log.Errorln(e)
+		return nil
+	}
+
+	market, e := w.marketStore.FindBySymbol(ctx, symbol)
+	if e != nil {
+		log.Errorln(e)
+		return nil
+	}
+
+	supply, e := w.supplyStore.Find(ctx, userID, market.CTokenAssetID)
+	if e != nil {
+		log.Errorln(e)
+		return nil
+	}
+
+	if unpledgedTokens.GreaterThanOrEqual(supply.Collaterals) {
+		log.Errorln(errors.New("insufficient collaterals"))
+		return nil
+	}
+
+	liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, userID)
+	if e != nil {
+		log.Errorln(e)
+		return nil
+	}
+
+	blockNum, e := w.blockService.GetBlock(ctx, snapshot.CreatedAt)
+	if e != nil {
+		log.Errorln(e)
+		return nil
+	}
+
+	price, e := w.priceService.GetUnderlyingPrice(ctx, market.Symbol, blockNum)
+	if e != nil {
+		log.Errorln(e)
+		return nil
+	}
+
+	exchangeRate := market.ExchangeRate
+	unpledgedTokenLiquidity := unpledgedTokens.Mul(exchangeRate).Mul(market.CollateralFactor).Mul(price)
+	if unpledgedTokenLiquidity.GreaterThanOrEqual(liquidity) {
+		log.Errorln(errors.New("insufficient liquidity"))
+		return nil
+	}
+
+	trace := id.UUIDFromString(fmt.Sprintf("unpledge-%s", snapshot.TraceID))
+	input := mixin.TransferInput{
+		AssetID:    market.CTokenAssetID,
+		OpponentID: userID,
+		Amount:     unpledgedTokens,
+		TraceID:    trace,
+	}
+
+	if !w.walletService.VerifyPayment(ctx, &input) {
+		action := core.NewAction()
+		action[core.ActionKeyService] = core.ActionServiceUnpledgeTransfer
+
+		memoStr, e := action.Format()
+		if e != nil {
+			return e
+		}
+		input.Memo = memoStr
+		_, e = w.mainWallet.Client.Transfer(ctx, &input, w.mainWallet.Pin)
+		if e != nil {
+			return e
+		}
+	}
+
+	return nil
+}
+
+var handleUnpledgeTransferEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
 	userID := snapshot.OpponentID
-	unpledgedTokens := snapshot.Amount.Abs()
 	ctokenAssetID := snapshot.AssetID
+	unpledgedCTokens := snapshot.Amount.Abs()
 
 	supply, e := w.supplyStore.Find(ctx, userID, ctokenAssetID)
 	if e != nil {
 		return e
 	}
 
-	//update supply
-	supply.Collaterals = supply.Collaterals.Sub(unpledgedTokens)
+	supply.Collaterals = supply.Collaterals.Sub(unpledgedCTokens)
 	if supply.Collaterals.LessThan(decimal.Zero) {
 		supply.Collaterals = decimal.Zero
 	}
+
 	if e = w.supplyStore.Update(ctx, w.db, supply); e != nil {
 		return e
 	}

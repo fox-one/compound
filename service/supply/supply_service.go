@@ -113,7 +113,7 @@ func (s *supplyService) Pledge(ctx context.Context, pledgedTokens decimal.Decima
 	return s.walletService.PaySchemaURL(pledgedTokens, market.CTokenAssetID, s.mainWallet.Client.ClientID, id.GenTraceID(), memoStr)
 }
 
-//撤销抵押 TODO 由转账触发
+//撤销抵押
 func (s *supplyService) Unpledge(ctx context.Context, unpledgedTokens decimal.Decimal, userID string, market *core.Market) error {
 	supply, e := s.supplyStore.Find(ctx, userID, market.CTokenAssetID)
 	if e != nil {
@@ -151,15 +151,18 @@ func (s *supplyService) Unpledge(ctx context.Context, unpledgedTokens decimal.De
 
 	trace := id.UUIDFromString(fmt.Sprintf("unpledge-%s-%s-%d", userID, market.Symbol, curBlock))
 	input := mixin.TransferInput{
-		AssetID:    market.CTokenAssetID,
-		OpponentID: userID,
-		Amount:     unpledgedTokens,
+		AssetID:    s.config.App.BlockAssetID,
+		OpponentID: s.mainWallet.Client.ClientID,
+		Amount:     decimal.NewFromFloat(0.00000001),
 		TraceID:    trace,
 	}
 
 	if !s.walletService.VerifyPayment(ctx, &input) {
 		memo := make(core.Action)
 		memo[core.ActionKeyService] = core.ActionServiceUnpledge
+		memo[core.ActionKeyUser] = userID
+		memo[core.ActionKeySymbol] = market.Symbol
+		memo[core.ActionKeyCToken] = unpledgedTokens.Truncate(8).String()
 
 		memoStr, e := memo.Format()
 		if e != nil {
@@ -167,7 +170,7 @@ func (s *supplyService) Unpledge(ctx context.Context, unpledgedTokens decimal.De
 		}
 
 		input.Memo = memoStr
-		_, e = s.mainWallet.Client.Transfer(ctx, &input, s.config.BlockWallet.Pin)
+		_, e = s.blockWallet.Client.Transfer(ctx, &input, s.blockWallet.Pin)
 		if e != nil {
 			return e
 		}

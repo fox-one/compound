@@ -52,6 +52,8 @@ const (
 	ActionServicePledge = "plg"
 	// ActionServiceUnpledge unpledge
 	ActionServiceUnpledge = "uplg"
+	// ActionServiceUnpledgeTransfer unpledge transfer
+	ActionServiceUnpledgeTransfer = "uplg-tran"
 	// ActionServiceBorrowInterest borrow interest
 	ActionServiceBorrowInterest = "b-inter"
 	// ActionServiceReserve reserve
