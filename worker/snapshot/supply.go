@@ -103,7 +103,7 @@ var handlePledgeEvent = func(ctx context.Context, w *Worker, action core.Action,
 var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
 	log := logger.FromContext(ctx).WithField("worker", "unpledge")
 
-	userID := snapshot.OpponentID
+	userID := action[core.ActionKeyUser]
 	symbol := strings.ToUpper(action[core.ActionKeySymbol])
 	unpledgedTokens, e := decimal.NewFromString(action[core.ActionKeyCToken])
 	if e != nil {

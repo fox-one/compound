@@ -34,8 +34,6 @@ const (
 const (
 	// ActionServicePrice prc
 	ActionServicePrice = "prc"
-	// ActionServiceMarket market
-	ActionServiceMarket = "mkt"
 	// ActionServiceSupply supply
 	ActionServiceSupply = "spl"
 	// ActionServiceBorrow brw
@@ -66,6 +64,22 @@ const (
 	ActionServiceSeizeTokenTransfer = "seize-tran"
 	// ActionServiceRefund refund
 	ActionServiceRefund = "rfd"
+	// ActionServiceRequestMarket query market
+	ActionServiceRequestMarket = "r-mkt"
+	// ActionServiceMarketResponse market response
+	ActionServiceMarketResponse = "mkt-r"
+	// ActionServiceRequestSupply request supply
+	ActionServiceRequestSupply = "r-spl"
+	// ActionServiceSuppyResponse supply response
+	ActionServiceSuppyResponse = "spl-r"
+	// ActionServiceRequestBorrow request borrow
+	ActionServiceRequestBorrow = "r-brw"
+	// ActionServiceBorrowResponse borrow response
+	ActionServiceBorrowResponse = "brw-r"
+	// ActionServiceRequestLiquidity request liquidity
+	ActionServiceRequestLiquidity = "r-lqd"
+	// ActionServiceLiquidityResponse liquidity response
+	ActionServiceLiquidityResponse = "lqd-r"
 )
 
 // Action action
