@@ -12,6 +12,22 @@ type Config struct {
 	MainWallet  MainWallet  `json:"mixin"`
 	GasWallet   GasWallet   `json:"gas_wallet"`
 	PriceOracle PriceOracle `json:"price_oracle"`
+	Admins      []string    `json:"admins"`
+}
+
+// IsAdmin check if the user is admin
+func (c *Config) IsAdmin(userID string) bool {
+	if len(c.Admins) <= 0 {
+		return false
+	}
+
+	for _, a := range c.Admins {
+		if a == userID {
+			return true
+		}
+	}
+
+	return false
 }
 
 // MainWallet mixin dapp config

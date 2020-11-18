@@ -9,6 +9,7 @@ import (
 )
 
 var handlePriceEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
+	//防止链上价格恶意更改
 	if snapshot.OpponentID != w.blockWallet.Client.ClientID {
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrOperationForbidden)
 	}

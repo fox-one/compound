@@ -38,7 +38,7 @@ var exampleCmd = &cobra.Command{
 		// cmd.Println(string(bs))
 
 		memo := make(core.Action)
-		memo[core.ActionKeyService] = core.ActionServiceMarket
+		memo[core.ActionKeyService] = core.ActionServiceAddMarket
 		memo[core.ActionKeySymbol] = "USDT"
 		memo[core.ActionKeyBlock] = "1234567890"
 		memo[core.ActionKeyBorrowRate] = "0.0000000002324345"

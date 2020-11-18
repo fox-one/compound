@@ -8,7 +8,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/bluele/gcache"
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/property"
 	"github.com/fox-one/pkg/store/db"
@@ -18,22 +17,22 @@ import (
 // Worker snapshot worker
 type Worker struct {
 	worker.BaseJob
-	config         *core.Config
-	db             *db.DB
-	mainWallet     *core.Wallet
-	blockWallet    *core.Wallet
-	propertyStore  property.Store
-	marketStore    core.IMarketStore
-	supplyStore    core.ISupplyStore
-	borrowStore    core.IBorrowStore
-	walletService  core.IWalletService
-	blockService   core.IBlockService
-	priceService   core.IPriceOracleService
-	marketService  core.IMarketService
-	supplyService  core.ISupplyService
-	borrowService  core.IBorrowService
-	accountService core.IAccountService
-	snapshotCache  gcache.Cache
+	config                   *core.Config
+	db                       *db.DB
+	mainWallet               *core.Wallet
+	blockWallet              *core.Wallet
+	propertyStore            property.Store
+	marketStore              core.IMarketStore
+	supplyStore              core.ISupplyStore
+	borrowStore              core.IBorrowStore
+	walletService            core.IWalletService
+	blockService             core.IBlockService
+	priceService             core.IPriceOracleService
+	marketService            core.IMarketService
+	supplyService            core.ISupplyService
+	borrowService            core.IBorrowService
+	accountService           core.IAccountService
+	transactionEventHandlers map[string]handleTransactionEventFunc
 }
 
 const (
@@ -59,23 +58,45 @@ func New(
 	borrowService core.IBorrowService,
 	accountService core.IAccountService,
 ) *Worker {
+	//add transaction event handle
+	handlers := make(map[string]handleTransactionEventFunc)
+	handlers[core.ActionServicePrice] = handlePriceEvent
+	handlers[core.ActionServiceSupply] = handleSupplyEvent
+	handlers[core.ActionServiceRedeem] = handleSupplyRedeemEvent
+	handlers[core.ActionServiceRedeemTransfer] = handleRedeemTransferEvent
+	handlers[core.ActionServiceMint] = handleMintEvent
+	handlers[core.ActionServicePledge] = handlePledgeEvent
+	handlers[core.ActionServiceUnpledge] = handleUnpledgeEvent
+	handlers[core.ActionServiceUnpledgeTransfer] = handleUnpledgeTransferEvent
+	handlers[core.ActionServiceBorrow] = handleBorrowEvent
+	handlers[core.ActionServiceBorrowTransfer] = handleBorrowTransferEvent
+	handlers[core.ActionServiceRepay] = handleBorrowRepayEvent
+	handlers[core.ActionServiceSeizeToken] = handleSeizeTokenEvent
+	handlers[core.ActionServiceSeizeTokenTransfer] = handleSeizeTokenTransferEvent
+	handlers[core.ActionServiceRequestLiquidity] = handleRequestAccountLiquidityEvent
+	handlers[core.ActionServiceRequestMarket] = handleRequestMarketEvent
+	handlers[core.ActionServiceRequestSupply] = handleRequestSupplyEvent
+	handlers[core.ActionServiceRequestBorrow] = handleRequestBorrowEvent
+	handlers[core.ActionServiceAddMarket] = handleAddMarketEvent
+	handlers[core.ActionServiceUpdateMarket] = handleUpdateMarketEvent
+
 	job := Worker{
-		config:         config,
-		db:             db,
-		mainWallet:     mainWallet,
-		blockWallet:    blockWallet,
-		propertyStore:  propertyStore,
-		marketStore:    marketStore,
-		supplyStore:    supplyStore,
-		borrowStore:    borrowStore,
-		walletService:  walletService,
-		blockService:   blockService,
-		priceService:   priceSrv,
-		marketService:  marketSrv,
-		supplyService:  supplyService,
-		borrowService:  borrowService,
-		accountService: accountService,
-		snapshotCache:  gcache.New(limit).LRU().Build(),
+		config:                   config,
+		db:                       db,
+		mainWallet:               mainWallet,
+		blockWallet:              blockWallet,
+		propertyStore:            propertyStore,
+		marketStore:              marketStore,
+		supplyStore:              supplyStore,
+		borrowStore:              borrowStore,
+		walletService:            walletService,
+		blockService:             blockService,
+		priceService:             priceSrv,
+		marketService:            marketSrv,
+		supplyService:            supplyService,
+		borrowService:            borrowService,
+		accountService:           accountService,
+		transactionEventHandlers: handlers,
 	}
 
 	l, _ := time.LoadLocation(job.config.App.Location)
@@ -135,39 +156,17 @@ func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) er
 		if e != nil {
 			return nil
 		}
+
 		service := action[core.ActionKeyService]
-		switch service {
-		case core.ActionServicePrice:
-			return handlePriceEvent(ctx, w, action, snapshot)
-		case core.ActionServiceSupply:
-			return handleSupplyEvent(ctx, w, action, snapshot)
-		case core.ActionServiceRedeem:
-			return handleSupplyRedeemEvent(ctx, w, action, snapshot)
-		case core.ActionServiceRedeemTransfer:
-			return handleRedeemTransferEvent(ctx, w, action, snapshot)
-		case core.ActionServiceMint:
-			return handleMintEvent(ctx, w, action, snapshot)
-		case core.ActionServicePledge:
-			return handlePledgeEvent(ctx, w, action, snapshot)
-		case core.ActionServiceUnpledge:
-			return handleUnpledgeEvent(ctx, w, action, snapshot)
-		case core.ActionServiceUnpledgeTransfer:
-			return handleUnpledgeTransferEvent(ctx, w, action, snapshot)
-		case core.ActionServiceBorrow:
-			return handleBorrowEvent(ctx, w, action, snapshot)
-		case core.ActionServiceBorrowTransfer:
-			return handleBorrowTransferEvent(ctx, w, action, snapshot)
-		case core.ActionServiceRepay:
-			return handleBorrowRepayEvent(ctx, w, action, snapshot)
-		case core.ActionServiceSeizeToken:
-			return handleSeizeTokenEvent(ctx, w, action, snapshot)
-		case core.ActionServiceSeizeTokenTransfer:
-			return handleSeizeTokenTransferEvent(ctx, w, action, snapshot)
-		default:
-			return handleRefundEvent(ctx, w, action, snapshot, core.ErrUnknown)
+
+		handlerTransactionEvent, found := w.transactionEventHandlers[service]
+		if found {
+			return handlerTransactionEvent(ctx, w, action, snapshot)
 		}
+
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrUnknown)
 	}
 	return nil
 }
 
-type handleTransactionEvent func(ctx context.Context, w *Worker, action *core.Action, snapshot *core.Snapshot) error
+type handleTransactionEventFunc func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error

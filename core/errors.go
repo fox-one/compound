@@ -10,6 +10,8 @@ const (
 	ErrUnknown ErrorCode = 100000
 	// ErrOperationForbidden operation forbidden
 	ErrOperationForbidden ErrorCode = 100001
+	// ErrInvalidArgument invalid argument
+	ErrInvalidArgument ErrorCode = 100002
 
 	// ErrMarketNotFound no market
 	ErrMarketNotFound ErrorCode = 100100

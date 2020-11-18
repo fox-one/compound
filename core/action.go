@@ -29,6 +29,50 @@ const (
 	ActionKeyErrorCode = "ec"
 	// ActionKeyReferTrace refer trace
 	ActionKeyReferTrace = "rftr"
+	// ActionKeyAssetID asset id
+	ActionKeyAssetID = "aid"
+	// ActionKeyTotalCash total cash
+	ActionKeyTotalCash = "tc"
+	// ActionKeyTotalBorrows total borrows
+	ActionKeyTotalBorrows = "tbs"
+	// ActionKeyReserves reserves
+	ActionKeyReserves = "rvs"
+	// ActionKeyCTokens ctokens
+	ActionKeyCTokens = "ctks"
+	// ActionKeyCTokenAssetID ctoken asset id
+	ActionKeyCTokenAssetID = "ctid"
+	// ActionKeyInitExchangeRate exchange rate
+	ActionKeyInitExchangeRate = "ier"
+	// ActionKeyReserveFactor reserve factor
+	ActionKeyReserveFactor = "rf"
+	// ActionKeyLiquidationIncentive liquidation incentive
+	ActionKeyLiquidationIncentive = "lqi"
+	// ActionKeyBorrowCap borrow cap
+	ActionKeyBorrowCap = "bc"
+	// ActionKeyCollateralFactor collateral factor
+	ActionKeyCollateralFactor = "cf"
+	// ActionKeyCloseFactor close factor
+	ActionKeyCloseFactor = "clf"
+	// ActionKeyBaseRate base rate
+	ActionKeyBaseRate = "brt"
+	// ActionKeyMultiPlier mutliplier
+	ActionKeyMultiPlier = "mp"
+	// ActionKeyJumpMultiPlier jump multiplier
+	ActionKeyJumpMultiPlier = "jmp"
+	// ActionKeyKink kink
+	ActionKeyKink = "kk"
+	// ActionKeyUtilizationRate utilization rate
+	ActionKeyUtilizationRate = "ur"
+	// ActionKeyExchangeRate exchange rate
+	ActionKeyExchangeRate = "er"
+	// ActionKeyBorowIndex borrow index
+	ActionKeyBorowIndex = "bi"
+	// ActionKeyLiquidity liquidity
+	ActionKeyLiquidity = "lq"
+	// ActionKeyInterestIndex interest index
+	ActionKeyInterestIndex = "ii"
+	// ActionKeyBorrowBalance borrow balance
+	ActionKeyBorrowBalance = "bb"
 )
 
 const (
@@ -80,6 +124,10 @@ const (
 	ActionServiceRequestLiquidity = "r-lqd"
 	// ActionServiceLiquidityResponse liquidity response
 	ActionServiceLiquidityResponse = "lqd-r"
+	// ActionServiceUpdateMarket update market
+	ActionServiceUpdateMarket = "u-mkt"
+	// ActionServiceAddMarket add market
+	ActionServiceAddMarket = "a-mkt"
 )
 
 // Action action
