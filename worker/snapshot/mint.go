@@ -8,7 +8,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// send ctoken to user
+// from system send ctoken to user
 var handleMintEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
 	return w.db.Tx(func(tx *db.DB) error {
 		market, e := w.marketStore.FindByCToken(ctx, snapshot.AssetID)

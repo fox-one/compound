@@ -10,15 +10,9 @@ type Config struct {
 	App         App         `json:"app"`
 	DB          db.Config   `json:"db"`
 	MainWallet  MainWallet  `json:"mixin"`
-	BlockWallet BlockWallet `json:"block_wallet"`
+	GasWallet   GasWallet   `json:"gas_wallet"`
 	PriceOracle PriceOracle `json:"price_oracle"`
 }
-
-// Redis redis config
-// type Redis struct {
-// 	Addr string `json:"addr,omitempty"`
-// 	DB   int    `json:"db,omitempty"`
-// }
 
 // MainWallet mixin dapp config
 type MainWallet struct {
@@ -29,25 +23,18 @@ type MainWallet struct {
 
 // App app config
 type App struct {
-	AESKey       string `json:"aes_key"`
-	BlockAssetID string `json:"block_asset_id"`
-	Genesis      int64  `json:"genesis"`
-	Location     string `json:"location"`
+	AESKey     string `json:"aes_key"`
+	GasAssetID string `json:"gas_asset_id"`
+	Genesis    int64  `json:"genesis"`
+	Location   string `json:"location"`
 }
 
-// BlockWallet block wallet
-type BlockWallet struct {
+// GasWallet gas wallet
+type GasWallet struct {
 	mixin.Keystore
 	ClientSecret string `json:"client_secret"`
 	Pin          string `json:"pin"`
 }
-
-// ReserveWallet reserve wallet config
-// type ReserveWallet struct {
-// 	mixin.Keystore
-// 	ClientSecret string `json:"client_secret"`
-// 	Pin          string `json:"pin"`
-// }
 
 // PriceOracle price oracle config
 type PriceOracle struct {

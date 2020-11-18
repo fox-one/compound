@@ -5,6 +5,7 @@ import (
 	"compound/pkg/id"
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
@@ -12,27 +13,30 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// from system, ignore if error
 var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
 	log := logger.FromContext(ctx).WithField("worker", "borrow_event")
 
-	market, e := w.marketStore.FindByCToken(ctx, snapshot.AssetID)
+	symbol := strings.ToUpper(action[core.ActionKeySymbol])
+	userID := snapshot.OpponentID
+	amount, e := decimal.NewFromString(action[core.ActionKeyAmount])
 	if e != nil {
-		log.Errorln("query market error:", e)
-		return nil
+		log.Errorln("parse amount error:", e)
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrInvalidAmount)
 	}
 
-	// symbol := action[core.ActionKeySymbol]
-	userID := action[core.ActionKeyUser]
-	amount, err := decimal.NewFromString(action[core.ActionKeyAmount])
-	if err != nil {
-		log.Errorln("parse amount error:", e)
-		return nil
+	market, e := w.marketStore.FindByCToken(ctx, symbol)
+	if e != nil {
+		log.Errorln("query market error:", e)
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
+	}
+
+	if e = w.marketService.AccrueInterest(ctx, w.db, market, snapshot.CreatedAt); e != nil {
+		return e
 	}
 
 	if !w.borrowService.BorrowAllowed(ctx, amount, userID, market) {
 		log.Errorln("borrow not allowed")
-		return nil
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrBorrowNotAllowed)
 	}
 
 	//transfer borrow asset to user
@@ -50,14 +54,14 @@ var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action,
 		memoStr, e := memo.Format()
 		if e != nil {
 			log.Errorln("memo format error:", e)
-			return nil
+			return e
 		}
 
 		input.Memo = memoStr
 		_, e = w.mainWallet.Client.Transfer(ctx, &input, w.mainWallet.Pin)
 		if e != nil {
 			log.Errorln("transfer borrow asset to user error:", e)
-			return nil
+			return e
 		}
 	}
 
@@ -102,7 +106,7 @@ var handleBorrowTransferEvent = func(ctx context.Context, w *Worker, action core
 			return nil
 		}
 
-		//update
+		//update borrow account
 		borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, market)
 		if e != nil {
 			return e

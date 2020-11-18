@@ -10,7 +10,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-var handleRefundEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
+var handleRefundEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot, errCode core.ErrorCode) error {
 	if snapshot.Amount.LessThanOrEqual(decimal.Zero) {
 		return nil
 	}
@@ -26,6 +26,8 @@ var handleRefundEvent = func(ctx context.Context, w *Worker, action core.Action,
 	if !w.walletService.VerifyPayment(ctx, &input) {
 		action := core.NewAction()
 		action[core.ActionKeyService] = core.ActionServiceRefund
+		action[core.ActionKeyReferTrace] = snapshot.TraceID
+		action[core.ActionKeyErrorCode] = errCode.String()
 		memoStr, e := action.Format()
 		if e != nil {
 			return e

@@ -153,9 +153,9 @@ func (s *supplyService) Unpledge(ctx context.Context, unpledgedTokens decimal.De
 
 	trace := id.UUIDFromString(fmt.Sprintf("unpledge-%s-%s-%d", userID, market.Symbol, blockNum))
 	input := mixin.TransferInput{
-		AssetID:    s.config.App.BlockAssetID,
+		AssetID:    s.config.App.GasAssetID,
 		OpponentID: s.mainWallet.Client.ClientID,
-		Amount:     decimal.NewFromFloat(0.00000001),
+		Amount:     core.GasCost,
 		TraceID:    trace,
 	}
 

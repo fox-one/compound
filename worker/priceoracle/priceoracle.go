@@ -97,9 +97,9 @@ func (w *Worker) checkAndPushPriceOnChain(ctx context.Context, market *core.Mark
 	str := fmt.Sprintf("foxone-compound-price-%s-%d", market.Symbol, blockNum)
 	traceID := id.UUIDFromString(str)
 	transferInput := mixin.TransferInput{
-		AssetID:    w.Config.App.BlockAssetID,
+		AssetID:    w.Config.App.GasAssetID,
 		OpponentID: w.MainWallet.Client.ClientID,
-		Amount:     decimal.NewFromFloat(0.00000001),
+		Amount:     core.GasCost,
 		TraceID:    traceID,
 	}
 

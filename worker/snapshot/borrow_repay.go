@@ -19,17 +19,17 @@ var handleBorrowRepayEvent = func(ctx context.Context, w *Worker, action core.Ac
 
 		market, e := w.marketStore.Find(ctx, snapshot.AssetID)
 		if e != nil {
-			return handleRefundEvent(ctx, w, action, snapshot)
+			return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
 		}
 
 		//update interest
 		if e = w.marketService.AccrueInterest(ctx, tx, market, snapshot.CreatedAt); e != nil {
-			return handleRefundEvent(ctx, w, action, snapshot)
+			return e
 		}
 
 		borrow, e := w.borrowStore.Find(ctx, userID, market.Symbol)
 		if e != nil {
-			return handleRefundEvent(ctx, w, action, snapshot)
+			return handleRefundEvent(ctx, w, action, snapshot, core.ErrBorrowNotFound)
 		}
 
 		//update borrow info
@@ -60,13 +60,13 @@ var handleBorrowRepayEvent = func(ctx context.Context, w *Worker, action core.Ac
 
 		if redundantAmount.GreaterThan(decimal.Zero) {
 			refundAmount := redundantAmount.Truncate(8)
-			//refund to user
+			//refund redundant amount to user
 			refundTrace := id.UUIDFromString(fmt.Sprintf("repay-refund-%s", snapshot.TraceID))
-			input := mixin.TransferInput {
-				AssetID: snapshot.AssetID,
+			input := mixin.TransferInput{
+				AssetID:    snapshot.AssetID,
 				OpponentID: userID,
-				Amount: refundAmount,
-				TraceID: refundTrace,
+				Amount:     refundAmount,
+				TraceID:    refundTrace,
 			}
 
 			if !w.walletService.VerifyPayment(ctx, &input) {

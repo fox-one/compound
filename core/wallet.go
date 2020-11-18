@@ -8,6 +8,11 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+var (
+	// GasCost gas cost
+	GasCost = decimal.NewFromFloat(0.00000001)
+)
+
 // Wallet wallet
 type Wallet struct {
 	Client *mixin.Client `json:"client"`

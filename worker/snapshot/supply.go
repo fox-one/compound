@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
@@ -13,17 +14,17 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// from user
+// from user transfer
 var handleSupplyEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
 	market, e := w.marketStore.Find(ctx, snapshot.AssetID)
 	if e != nil {
 		//refund to user
-		return handleRefundEvent(ctx, w, action, snapshot)
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
 	}
 
 	exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
 	if e != nil {
-		return handleRefundEvent(ctx, w, action, snapshot)
+		return e
 	}
 
 	ctokens := snapshot.Amount.Div(exchangeRate).Truncate(8)
@@ -65,7 +66,7 @@ var handlePledgeEvent = func(ctx context.Context, w *Worker, action core.Action,
 
 	market, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
 	if e != nil {
-		return handleRefundEvent(ctx, w, action, snapshot)
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
 	}
 
 	return w.db.Tx(func(tx *db.DB) error {
@@ -98,22 +99,28 @@ var handlePledgeEvent = func(ctx context.Context, w *Worker, action core.Action,
 	})
 }
 
-// from system
+// from system, transfer unpledged ctoken to user
 var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
 	log := logger.FromContext(ctx).WithField("worker", "unpledge")
 
-	userID := action[core.ActionKeyUser]
-	symbol := action[core.ActionKeySymbol]
+	userID := snapshot.OpponentID
+	symbol := strings.ToUpper(action[core.ActionKeySymbol])
 	unpledgedTokens, e := decimal.NewFromString(action[core.ActionKeyCToken])
 	if e != nil {
 		log.Errorln(e)
-		return nil
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrInvalidAmount)
 	}
 
 	market, e := w.marketStore.FindBySymbol(ctx, symbol)
 	if e != nil {
 		log.Errorln(e)
-		return nil
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
+	}
+
+	supply, e := w.supplyStore.Find(ctx, userID, market.CTokenAssetID)
+	if e != nil {
+		log.Errorln(e)
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrSupplyNotFound)
 	}
 
 	//accrue interest
@@ -121,43 +128,38 @@ var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Actio
 		return e
 	}
 
-	supply, e := w.supplyStore.Find(ctx, userID, market.CTokenAssetID)
-	if e != nil {
-		log.Errorln(e)
-		return nil
-	}
-
 	if unpledgedTokens.GreaterThanOrEqual(supply.Collaterals) {
 		log.Errorln(errors.New("insufficient collaterals"))
-		return nil
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrInsufficientCollaterals)
 	}
 
 	blockNum, e := w.blockService.GetBlock(ctx, snapshot.CreatedAt)
 	if e != nil {
 		log.Errorln(e)
-		return nil
+		return e
 	}
 
+	// check liqudity
 	liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, userID, blockNum)
 	if e != nil {
 		log.Errorln(e)
-		return nil
+		return e
 	}
 
 	price, e := w.priceService.GetCurrentUnderlyingPrice(ctx, market)
 	if e != nil {
 		log.Errorln(e)
-		return nil
+		return e
 	}
 
 	exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
 	if e != nil {
-		return nil
+		return e
 	}
 	unpledgedTokenLiquidity := unpledgedTokens.Mul(exchangeRate).Mul(market.CollateralFactor).Mul(price)
 	if unpledgedTokenLiquidity.GreaterThanOrEqual(liquidity) {
 		log.Errorln(errors.New("insufficient liquidity"))
-		return nil
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrInsufficientLiquidity)
 	}
 
 	trace := id.UUIDFromString(fmt.Sprintf("unpledge-%s", snapshot.TraceID))

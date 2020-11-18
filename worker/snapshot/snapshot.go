@@ -138,9 +138,6 @@ func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) er
 		service := action[core.ActionKeyService]
 		switch service {
 		case core.ActionServicePrice:
-			if snapshot.OpponentID != w.blockWallet.Client.ClientID {
-				return handleRefundEvent(ctx, w, action, snapshot)
-			}
 			return handlePriceEvent(ctx, w, action, snapshot)
 		case core.ActionServiceSupply:
 			return handleSupplyEvent(ctx, w, action, snapshot)
@@ -167,7 +164,7 @@ func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) er
 		case core.ActionServiceSeizeTokenTransfer:
 			return handleSeizeTokenTransferEvent(ctx, w, action, snapshot)
 		default:
-			return handleRefundEvent(ctx, w, action, snapshot)
+			return handleRefundEvent(ctx, w, action, snapshot, core.ErrUnknown)
 		}
 	}
 	return nil

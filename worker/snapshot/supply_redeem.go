@@ -16,7 +16,7 @@ var handleSupplyRedeemEvent = func(ctx context.Context, w *Worker, action core.A
 	ctokenAssetID := snapshot.AssetID
 	market, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
 	if e != nil {
-		return handleRefundEvent(ctx, w, action, snapshot)
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
 	}
 
 	//accrue interest
@@ -29,13 +29,13 @@ var handleSupplyRedeemEvent = func(ctx context.Context, w *Worker, action core.A
 	// check redeem allowed
 	allowed := w.supplyService.RedeemAllowed(ctx, redeemTokens, market)
 	if !allowed {
-		return handleRefundEvent(ctx, w, action, snapshot)
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrRedeemNotAllowed)
 	}
 
 	// transfer asset to user
 	exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
 	if e != nil {
-		return handleRefundEvent(ctx, w, action, snapshot)
+		return e
 	}
 
 	amount := redeemTokens.Mul(exchangeRate).Truncate(8)

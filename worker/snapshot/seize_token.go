@@ -21,12 +21,12 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 
 	supplyMarket, e := w.marketStore.FindBySymbol(ctx, seizedSymbol)
 	if e != nil {
-		return handleRefundEvent(ctx, w, action, snapshot)
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
 	}
 
 	borrowMarket, e := w.marketStore.Find(ctx, snapshot.AssetID)
 	if e != nil {
-		return handleRefundEvent(ctx, w, action, snapshot)
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
 	}
 
 	//supply market accrue interest
@@ -41,12 +41,12 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 
 	supply, e := w.supplyStore.Find(ctx, user, supplyMarket.CTokenAssetID)
 	if e != nil {
-		return e
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrSupplyNotFound)
 	}
 
 	borrow, e := w.borrowStore.Find(ctx, user, borrowMarket.Symbol)
 	if e != nil {
-		return e
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrBorrowNotFound)
 	}
 
 	borrowPrice, e := w.priceService.GetCurrentUnderlyingPrice(ctx, borrowMarket)
@@ -64,7 +64,7 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 
 	// refund to liquidator if seize not allowed
 	if !w.accountService.SeizeTokenAllowed(ctx, supply, borrow, seizedAmount, snapshot.CreatedAt) {
-		return handleRefundEvent(ctx, w, action, snapshot)
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrSeizeNotAllowed)
 	}
 
 	//seize token successful,send seized token to liquidator

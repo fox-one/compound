@@ -39,20 +39,20 @@ func provideMainWallet() *core.Wallet {
 }
 
 func provideBlockWallet() *core.Wallet {
-	c, err := mixin.NewFromKeystore(&cfg.BlockWallet.Keystore)
+	c, err := mixin.NewFromKeystore(&cfg.GasWallet.Keystore)
 	if err != nil {
 		panic(err)
 	}
 
 	return &core.Wallet{
 		Client: c,
-		Pin:    provideConfig().BlockWallet.Pin,
+		Pin:    provideConfig().GasWallet.Pin,
 	}
 }
 
 //TODO 不单独提供保留金钱包，以记账方式保存数据库记录
 func provideReserveWallet() *mixin.Client {
-	c, err := mixin.NewFromKeystore(&cfg.BlockWallet.Keystore)
+	c, err := mixin.NewFromKeystore(&cfg.GasWallet.Keystore)
 	if err != nil {
 		panic(err)
 	}

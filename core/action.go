@@ -25,6 +25,10 @@ const (
 	ActionKeyStatus = "st"
 	// ActionKeyUser user
 	ActionKeyUser = "usr"
+	// ActionKeyErrorCode error code
+	ActionKeyErrorCode = "ec"
+	// ActionKeyReferTrace refer trace
+	ActionKeyReferTrace = "rftr"
 )
 
 const (

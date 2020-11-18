@@ -80,9 +80,9 @@ func (s *borrowService) Borrow(ctx context.Context, borrowAmount decimal.Decimal
 
 	trace := id.UUIDFromString(fmt.Sprintf("borrow-%s-%s-%d", userID, market.Symbol, blockNum))
 	input := mixin.TransferInput{
-		AssetID:    s.config.App.BlockAssetID,
+		AssetID:    s.config.App.GasAssetID,
 		OpponentID: s.mainWallet.Client.ClientID,
-		Amount:     decimal.NewFromFloat(0.00000001),
+		Amount:     core.GasCost,
 		TraceID:    trace,
 	}
 
@@ -103,7 +103,7 @@ func (s *borrowService) Borrow(ctx context.Context, borrowAmount decimal.Decimal
 
 	input.Memo = memoStr
 
-	_, e = s.blockWallet.Client.Transfer(ctx, &input, s.config.BlockWallet.Pin)
+	_, e = s.blockWallet.Client.Transfer(ctx, &input, s.config.GasWallet.Pin)
 	if e != nil {
 		return e
 	}
