@@ -9,13 +9,13 @@ import (
 
 func liquiditiesHandler(ctx context.Context, accountSrv core.IAccountService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		accounts, e := accountSrv.SeizeAllowedAccounts(ctx)
-		if e != nil {
-			render.BadRequest(w, e)
-			return
-		}
+		// accounts, e := accountSrv.SeizeAllowedAccounts(ctx)
+		// if e != nil {
+		// 	render.BadRequest(w, e)
+		// 	return
+		// }
 
-		render.JSON(w, accounts)
+		render.JSON(w, nil)
 	}
 }
 

@@ -8,7 +8,6 @@ import (
 
 	"github.com/fox-one/pkg/store/db"
 	"github.com/go-chi/chi"
-	"github.com/go-redis/redis"
 	"github.com/twitchtv/twirp"
 )
 
@@ -16,13 +15,11 @@ import (
 func Handle(ctx context.Context,
 	config *core.Config,
 	db *db.DB,
-	redis *redis.Client,
 	mainWallet *core.Wallet,
 	blockWallet *core.Wallet,
 	marketStore core.IMarketStore,
 	supplyStore core.ISupplyStore,
 	borrowStore core.IBorrowStore,
-	accountStore core.IAccountStore,
 	walletService core.IWalletService,
 	blockService core.IBlockService,
 	priceService core.IPriceOracleService,

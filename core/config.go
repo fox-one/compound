@@ -7,19 +7,18 @@ import (
 
 // Config compound config
 type Config struct {
-	DB          db.Config   `json:"db"`
-	Redis       Redis       `json:"redis,omitempty"`
-	MainWallet  MainWallet  `json:"mixin"`
 	App         App         `json:"app"`
+	DB          db.Config   `json:"db"`
+	MainWallet  MainWallet  `json:"mixin"`
 	BlockWallet BlockWallet `json:"block_wallet"`
 	PriceOracle PriceOracle `json:"price_oracle"`
 }
 
 // Redis redis config
-type Redis struct {
-	Addr string `json:"addr,omitempty"`
-	DB   int    `json:"db,omitempty"`
-}
+// type Redis struct {
+// 	Addr string `json:"addr,omitempty"`
+// 	DB   int    `json:"db,omitempty"`
+// }
 
 // MainWallet mixin dapp config
 type MainWallet struct {

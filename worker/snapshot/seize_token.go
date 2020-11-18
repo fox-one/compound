@@ -62,11 +62,12 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 	repayValue := repayAmount.Mul(borrowPrice)
 	seizedAmount := repayValue.Div(seizedPrice)
 
+	// refund to liquidator if seize not allowed
 	if !w.accountService.SeizeTokenAllowed(ctx, supply, borrow, seizedAmount, snapshot.CreatedAt) {
 		return handleRefundEvent(ctx, w, action, snapshot)
 	}
 
-	//seize token successful,send seized token to user
+	//seize token successful,send seized token to liquidator
 	trace := id.UUIDFromString(fmt.Sprintf("seizetoken-transfer-%s", snapshot.TraceID))
 	input := mixin.TransferInput{
 		AssetID:    supplyMarket.AssetID,
@@ -181,7 +182,7 @@ var handleSeizeTokenTransferEvent = func(ctx context.Context, w *Worker, action 
 		}
 
 		if redundantAmount.GreaterThan(decimal.Zero) {
-			//refund to liquidator
+			//refund redundant assets to liquidator
 			refundAmount := redundantAmount.Truncate(8)
 
 			refundTrace := id.UUIDFromString(fmt.Sprintf("liquidate-refund-%s", snapshot.TraceID))

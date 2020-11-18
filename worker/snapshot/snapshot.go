@@ -26,7 +26,6 @@ type Worker struct {
 	marketStore    core.IMarketStore
 	supplyStore    core.ISupplyStore
 	borrowStore    core.IBorrowStore
-	accountStore   core.IAccountStore
 	walletService  core.IWalletService
 	blockService   core.IBlockService
 	priceService   core.IPriceOracleService
@@ -52,7 +51,6 @@ func New(
 	marketStore core.IMarketStore,
 	supplyStore core.ISupplyStore,
 	borrowStore core.IBorrowStore,
-	accountStore core.IAccountStore,
 	walletService core.IWalletService,
 	priceSrv core.IPriceOracleService,
 	blockService core.IBlockService,
@@ -70,7 +68,6 @@ func New(
 		marketStore:    marketStore,
 		supplyStore:    supplyStore,
 		borrowStore:    borrowStore,
-		accountStore:   accountStore,
 		walletService:  walletService,
 		blockService:   blockService,
 		priceService:   priceSrv,

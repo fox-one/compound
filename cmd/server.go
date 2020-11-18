@@ -22,20 +22,18 @@ var serverCmd = &cobra.Command{
 
 		config := provideConfig()
 		db := provideDatabase()
-		redis := provideRedis()
 		mainWallet := provideMainWallet()
 		blockWallet := provideBlockWallet()
 
 		marketStore := provideMarketStore(db)
 		supplyStore := provideSupplyStore(db)
 		borrowStore := provideBorrowStore(db)
-		accountStore := provideAccountStore(redis)
 
 		walletService := provideWalletService(mainWallet)
 		blockService := provideBlockService()
 		priceService := providePriceService(blockService)
-		marketService := provideMarketService(redis, mainWallet, marketStore, borrowStore, blockService, priceService)
-		accountService := provideAccountService(mainWallet, marketStore, supplyStore, borrowStore, accountStore, priceService, blockService, walletService, marketService)
+		marketService := provideMarketService(mainWallet, marketStore, borrowStore, blockService, priceService)
+		accountService := provideAccountService(mainWallet, marketStore, supplyStore, borrowStore, priceService, blockService, walletService, marketService)
 		supplyService := provideSupplyService(db, mainWallet, blockWallet, supplyStore, marketStore, accountService, priceService, blockService, walletService, marketService)
 		borrowService := provideBorrowService(mainWallet, blockWallet, marketStore, borrowStore, blockService, priceService, walletService, accountService, marketService)
 
@@ -59,7 +57,7 @@ var serverCmd = &cobra.Command{
 
 		{
 			//restful api
-			mux.Mount("/api/v1", rest.Handle(ctx, config, db, redis, mainWallet, blockWallet, marketStore, supplyStore, borrowStore, accountStore, walletService, blockService, priceService, accountService, marketService, supplyService, borrowService))
+			mux.Mount("/api/v1", rest.Handle(ctx, config, db, mainWallet, blockWallet, marketStore, supplyStore, borrowStore, walletService, blockService, priceService, accountService, marketService, supplyService, borrowService))
 		}
 
 		{

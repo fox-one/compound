@@ -5,7 +5,6 @@ import (
 	"compound/pkg/id"
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/fox-one/mixin-sdk-go"
@@ -17,7 +16,6 @@ type accountService struct {
 	marketStore   core.IMarketStore
 	supplyStore   core.ISupplyStore
 	borrowStore   core.IBorrowStore
-	accountStore  core.IAccountStore
 	priceService  core.IPriceOracleService
 	blockService  core.IBlockService
 	walletService core.IWalletService
@@ -30,7 +28,6 @@ func New(
 	marketStore core.IMarketStore,
 	supplyStore core.ISupplyStore,
 	borrowStore core.IBorrowStore,
-	accountStore core.IAccountStore,
 	priceSrv core.IPriceOracleService,
 	blockSrv core.IBlockService,
 	walletService core.IWalletService,
@@ -217,16 +214,9 @@ func (s *accountService) MaxSeize(ctx context.Context, supply *core.Supply, borr
 	return maxSeize, nil
 }
 
-// SeizeToken  seizeTokens: 可以夺取的币的数量
 func (s *accountService) SeizeToken(ctx context.Context, supply *core.Supply, borrow *core.Borrow, repayAmount decimal.Decimal) (string, error) {
-	//同一个block内的同一个人(账号)只允许有一个seize事件，支付borrow的币，夺取supply的币
 	if !s.SeizeTokenAllowed(ctx, supply, borrow, repayAmount, time.Now()) {
 		return "", errors.New("seize token not allowed")
-	}
-
-	blockNum, e := s.blockService.GetBlock(ctx, time.Now())
-	if e != nil {
-		return "", e
 	}
 
 	supplyMarket, e := s.marketStore.FindByCToken(ctx, supply.CTokenAssetID)
@@ -239,7 +229,7 @@ func (s *accountService) SeizeToken(ctx context.Context, supply *core.Supply, bo
 		return "", e
 	}
 
-	trace := id.UUIDFromString(fmt.Sprintf("seizetoken-%s-%d", supply.UserID, blockNum))
+	trace := id.GenTraceID()
 	input := mixin.TransferInput{
 		AssetID:    borrowMarket.AssetID,
 		OpponentID: s.mainWallet.Client.ClientID,
@@ -264,46 +254,4 @@ func (s *accountService) SeizeToken(ctx context.Context, supply *core.Supply, bo
 	input.Memo = memoStr
 
 	return s.walletService.PaySchemaURL(input.Amount, input.AssetID, input.OpponentID, input.TraceID, input.Memo)
-}
-
-func (s *accountService) SeizeAllowedAccounts(ctx context.Context) ([]*core.Account, error) {
-	accounts := make([]*core.Account, 0)
-
-	users, e := s.borrowStore.Users(ctx)
-	if e != nil {
-		return nil, e
-	}
-
-	blockNum, e := s.blockService.GetBlock(ctx, time.Now())
-	if e != nil {
-		return nil, e
-	}
-
-	for _, u := range users {
-		liquidity, e := s.accountStore.FindLiquidity(ctx, u, blockNum)
-		if e != nil {
-			continue
-		}
-		if liquidity.LessThanOrEqual(decimal.Zero) {
-			supplies, e := s.supplyStore.FindByUser(ctx, u)
-			if e != nil {
-				continue
-			}
-
-			borrows, e := s.borrowStore.FindByUser(ctx, u)
-			if e != nil {
-				continue
-			}
-			account := core.Account{
-				UserID:    u,
-				Liquidity: liquidity,
-				Supplies:  supplies,
-				Borrows:   borrows,
-			}
-
-			accounts = append(accounts, &account)
-		}
-	}
-
-	return accounts, nil
 }

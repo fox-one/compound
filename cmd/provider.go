@@ -9,7 +9,6 @@ import (
 	oracle "compound/service/oracle"
 	supplyservice "compound/service/supply"
 	"compound/service/wallet"
-	"compound/store/account"
 	"compound/store/borrow"
 	"compound/store/market"
 	"compound/store/supply"
@@ -18,19 +17,10 @@ import (
 	"github.com/fox-one/pkg/property"
 	"github.com/fox-one/pkg/store/db"
 	propertystore "github.com/fox-one/pkg/store/property"
-
-	"github.com/go-redis/redis"
 )
 
 func provideDatabase() *db.DB {
 	return db.MustOpen(cfg.DB)
-}
-
-func provideRedis() *redis.Client {
-	return redis.NewClient(&redis.Options{
-		Addr: cfg.Redis.Addr,
-		DB:   cfg.Redis.DB,
-	})
 }
 
 func provideConfig() *core.Config {
@@ -87,10 +77,6 @@ func provideBorrowStore(db *db.DB) core.IBorrowStore {
 	return borrow.New(db)
 }
 
-func provideAccountStore(redis *redis.Client) core.IAccountStore {
-	return account.New(redis)
-}
-
 // ------------------service------------------------------------
 func provideWalletService(mainWallet *core.Wallet) core.IWalletService {
 	return wallet.New(mainWallet)
@@ -104,8 +90,8 @@ func providePriceService(blockSrv core.IBlockService) core.IPriceOracleService {
 	return oracle.New(&cfg, blockSrv)
 }
 
-func provideMarketService(redis *redis.Client, mainWallet *core.Wallet, marketStr core.IMarketStore, borrowStr core.IBorrowStore, blockSrv core.IBlockService, priceSrv core.IPriceOracleService) core.IMarketService {
-	return marketservice.New(redis,
+func provideMarketService(mainWallet *core.Wallet, marketStr core.IMarketStore, borrowStr core.IBorrowStore, blockSrv core.IBlockService, priceSrv core.IPriceOracleService) core.IMarketService {
+	return marketservice.New(
 		mainWallet,
 		marketStr,
 		borrowStr,
@@ -148,11 +134,10 @@ func provideAccountService(mainWallet *core.Wallet,
 	marketStore core.IMarketStore,
 	supplyStore core.ISupplyStore,
 	borrowStore core.IBorrowStore,
-	accountStore core.IAccountStore,
 	priceSrv core.IPriceOracleService,
 	blockSrv core.IBlockService,
 	walletService core.IWalletService,
 	marketSrv core.IMarketService) core.IAccountService {
 
-	return accountservice.New(mainWallet, marketStore, supplyStore, borrowStore, accountStore, priceSrv, blockSrv, walletService, marketSrv)
+	return accountservice.New(mainWallet, marketStore, supplyStore, borrowStore, priceSrv, blockSrv, walletService, marketSrv)
 }

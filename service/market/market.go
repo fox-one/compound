@@ -8,12 +8,10 @@ import (
 	"context"
 
 	"github.com/fox-one/pkg/store/db"
-	"github.com/go-redis/redis"
 	"github.com/shopspring/decimal"
 )
 
 type service struct {
-	Redis       *redis.Client
 	mainWallet  *core.Wallet
 	marketStore core.IMarketStore
 	borrowStore core.IBorrowStore
@@ -23,7 +21,6 @@ type service struct {
 
 // New new market service
 func New(
-	redis *redis.Client,
 	mainWallet *core.Wallet,
 	marketStr core.IMarketStore,
 	borrowStore core.IBorrowStore,
@@ -31,7 +28,6 @@ func New(
 	priceSrv core.IPriceOracleService,
 ) core.IMarketService {
 	return &service{
-		Redis:       redis,
 		mainWallet:  mainWallet,
 		marketStore: marketStr,
 		borrowStore: borrowStore,

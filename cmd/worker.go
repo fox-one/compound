@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"compound/worker"
-	"compound/worker/liquidity"
 	"compound/worker/priceoracle"
 	"compound/worker/snapshot"
 	"os"
@@ -19,7 +18,6 @@ var workerCmd = &cobra.Command{
 
 		config := provideConfig()
 		db := provideDatabase()
-		redis := provideRedis()
 		mainWallet := provideMainWallet()
 		blockWallet := provideBlockWallet()
 
@@ -27,20 +25,18 @@ var workerCmd = &cobra.Command{
 		marketStore := provideMarketStore(db)
 		supplyStore := provideSupplyStore(db)
 		borrowStore := provideBorrowStore(db)
-		accountStore := provideAccountStore(redis)
 
 		walletService := provideWalletService(mainWallet)
 		blockService := provideBlockService()
 		priceService := providePriceService(blockService)
-		marketService := provideMarketService(redis, mainWallet, marketStore, borrowStore, blockService, priceService)
-		accountService := provideAccountService(mainWallet, marketStore, supplyStore, borrowStore, accountStore, priceService, blockService, walletService, marketService)
+		marketService := provideMarketService(mainWallet, marketStore, borrowStore, blockService, priceService)
+		accountService := provideAccountService(mainWallet, marketStore, supplyStore, borrowStore, priceService, blockService, walletService, marketService)
 		supplyService := provideSupplyService(db, mainWallet, blockWallet, supplyStore, marketStore, accountService, priceService, blockService, walletService, marketService)
 		borrowService := provideBorrowService(mainWallet, blockWallet, marketStore, borrowStore, blockService, priceService, walletService, accountService, marketService)
 
 		workers := []worker.IJob{
 			priceoracle.New(mainWallet, blockWallet, config, marketStore, blockService, priceService, walletService),
-			liquidity.New(config, mainWallet, blockWallet, marketStore, supplyStore, borrowStore, blockService, marketService, walletService, accountService),
-			snapshot.New(config, db, mainWallet, blockWallet, propertyStore, marketStore, supplyStore, borrowStore, accountStore, walletService, priceService, blockService, marketService, supplyService, borrowService, accountService),
+			snapshot.New(config, db, mainWallet, blockWallet, propertyStore, marketStore, supplyStore, borrowStore, walletService, priceService, blockService, marketService, supplyService, borrowService, accountService),
 		}
 
 		for _, w := range workers {
