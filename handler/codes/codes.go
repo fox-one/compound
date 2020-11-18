@@ -7,9 +7,14 @@ import (
 )
 
 const (
+	// CustomCodeKey code key
 	CustomCodeKey = "custom_code"
+
+	// InvalidArguments invalid arguments
+	InvalidArguments = 100001
 )
 
+// With with specified error
 func With(err error, code int) error {
 	twerr, ok := err.(twirp.Error)
 	if !ok {
@@ -19,6 +24,7 @@ func With(err error, code int) error {
 	return twerr.WithMeta(CustomCodeKey, strconv.Itoa(code))
 }
 
+// Get get error code
 func Get(code twirp.ErrorCode) int {
 	switch code {
 	case twirp.InvalidArgument:

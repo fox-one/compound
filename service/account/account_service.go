@@ -119,11 +119,27 @@ func (s *accountService) markets(ctx context.Context) (map[string]*core.Market, 
 	return maps, nil
 }
 
-func (s *accountService) SeizeTokenAllowed(ctx context.Context, supply *core.Supply, borrow *core.Borrow, repayAmount decimal.Decimal) bool {
+func (s *accountService) SeizeTokenAllowed(ctx context.Context, supply *core.Supply, borrow *core.Borrow, repayAmount decimal.Decimal, time time.Time) bool {
 	if supply.UserID != borrow.UserID {
 		return false
 	}
 
+	blockNum, e := s.blockService.GetBlock(ctx, time)
+	if e != nil {
+		return false
+	}
+
+	// check liquidity
+	liquidity, e := s.CalculateAccountLiquidity(ctx, borrow.UserID, blockNum)
+	if e != nil {
+		return false
+	}
+
+	if liquidity.GreaterThan(decimal.Zero) {
+		return false
+	}
+
+	// check seize value
 	supplyMarket, e := s.marketStore.FindByCToken(ctx, supply.CTokenAssetID)
 	if e != nil {
 		return false
@@ -204,7 +220,7 @@ func (s *accountService) MaxSeize(ctx context.Context, supply *core.Supply, borr
 // SeizeToken  seizeTokens: 可以夺取的币的数量
 func (s *accountService) SeizeToken(ctx context.Context, supply *core.Supply, borrow *core.Borrow, repayAmount decimal.Decimal) (string, error) {
 	//同一个block内的同一个人(账号)只允许有一个seize事件，支付borrow的币，夺取supply的币
-	if !s.SeizeTokenAllowed(ctx, supply, borrow, repayAmount) {
+	if !s.SeizeTokenAllowed(ctx, supply, borrow, repayAmount, time.Now()) {
 		return "", errors.New("seize token not allowed")
 	}
 

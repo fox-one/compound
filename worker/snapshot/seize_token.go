@@ -21,19 +21,20 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 
 	supplyMarket, e := w.marketStore.FindBySymbol(ctx, seizedSymbol)
 	if e != nil {
-		return e
-	}
-	//accrue interest
-	if e = w.marketService.AccrueInterest(ctx, w.db, supplyMarket, snapshot.CreatedAt); e != nil {
-		return e
+		return handleRefundEvent(ctx, w, action, snapshot)
 	}
 
 	borrowMarket, e := w.marketStore.Find(ctx, snapshot.AssetID)
 	if e != nil {
+		return handleRefundEvent(ctx, w, action, snapshot)
+	}
+
+	//supply market accrue interest
+	if e = w.marketService.AccrueInterest(ctx, w.db, supplyMarket, snapshot.CreatedAt); e != nil {
 		return e
 	}
 
-	//accrue interest
+	//borrow market accrue interest
 	if e = w.marketService.AccrueInterest(ctx, w.db, borrowMarket, snapshot.CreatedAt); e != nil {
 		return e
 	}
@@ -61,7 +62,7 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 	repayValue := repayAmount.Mul(borrowPrice)
 	seizedAmount := repayValue.Div(seizedPrice)
 
-	if !w.accountService.SeizeTokenAllowed(ctx, supply, borrow, seizedAmount) {
+	if !w.accountService.SeizeTokenAllowed(ctx, supply, borrow, seizedAmount, snapshot.CreatedAt) {
 		return handleRefundEvent(ctx, w, action, snapshot)
 	}
 
