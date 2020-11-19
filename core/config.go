@@ -9,7 +9,7 @@ import (
 type Config struct {
 	App         App         `json:"app"`
 	DB          db.Config   `json:"db"`
-	MainWallet  MainWallet  `json:"mixin"`
+	MainWallet  MainWallet  `json:"main_wallet"`
 	GasWallet   GasWallet   `json:"gas_wallet"`
 	PriceOracle PriceOracle `json:"price_oracle"`
 	Admins      []string    `json:"admins"`

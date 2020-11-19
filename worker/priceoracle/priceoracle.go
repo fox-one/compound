@@ -60,6 +60,11 @@ func (w *Worker) onWork(ctx context.Context) error {
 		return err
 	}
 
+	if len(markets) <= 0 {
+		log.Infoln("no market found!!!")
+		return nil
+	}
+
 	wg := sync.WaitGroup{}
 	for _, m := range markets {
 		wg.Add(1)

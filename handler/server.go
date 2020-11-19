@@ -2,7 +2,6 @@ package handler
 
 import (
 	"compound/core"
-	"compound/handler/auth"
 	"compound/handler/render"
 	"net/http"
 
@@ -12,28 +11,16 @@ import (
 
 // Server server
 type Server struct {
-	session core.Session
-	cfg     *core.Config
+	cfg *core.Config
 }
 
 // New new server function
 func New(
-	session core.Session,
 	cfg *core.Config,
 ) Server {
 	return Server{
-		session: session,
-		cfg:     cfg,
+		cfg: cfg,
 	}
-}
-
-//HandleRPC handle rpc
-func (s Server) HandleRPC() http.Handler {
-	r := chi.NewRouter()
-	r.Use(resetRoutePath)
-	r.Use(auth.HandleAuthentication(s.session))
-	// r.Mount()
-	return r
 }
 
 // HandleRestAPI handle restful apis

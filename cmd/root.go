@@ -65,7 +65,7 @@ func initConfig() {
 		panic(err)
 	}
 
-	fmt.Println("load config successful!!")
+	logrus.Infoln("load config successful!!")
 }
 
 func initLog() {
