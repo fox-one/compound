@@ -17,7 +17,8 @@ var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action,
 	log := logger.FromContext(ctx).WithField("worker", "borrow_event")
 
 	symbol := strings.ToUpper(action[core.ActionKeySymbol])
-	userID := action[core.ActionKeyUser]
+	userID = snapshot.OpponentID
+
 	amount, e := decimal.NewFromString(action[core.ActionKeyAmount])
 	if e != nil {
 		log.Errorln("parse amount error:", e)
