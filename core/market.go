@@ -21,13 +21,13 @@ type Market struct {
 	// ctoken asset id
 	CTokenAssetID string `sql:"size:36;unique_index:ctoken_asset_idx" json:"ctoken_asset_id"`
 	// 初始兑换率
-	InitExchangeRate decimal.Decimal `sql:"type:decimal(20,8);default:1" json:"init_exchange_rate"`
+	InitExchangeRate decimal.Decimal `sql:"type:decimal(20,8);default:0" json:"init_exchange_rate"`
 	// 平台保留金率 (0, 1), 默认为 0.10
 	ReserveFactor decimal.Decimal `sql:"type:decimal(20,8)" json:"reserve_factor"`
 	// 清算激励因子 (0, 1), 一般为0.1
 	LiquidationIncentive decimal.Decimal `sql:"type:decimal(20,8)" json:"liquidation_incentive"`
 	// 资金池的最小资金量
-	BorrowCap decimal.Decimal `sql:"type:decimal(20,8);default:1" json:"borrow_cap"`
+	BorrowCap decimal.Decimal `sql:"type:decimal(20,8);default:0" json:"borrow_cap"`
 	//抵押因子 = 可借贷价值 / 抵押资产价值，目前compound设置为0.75. 稳定币(USDT)的抵押率是0,即不可抵押
 	CollateralFactor decimal.Decimal `sql:"type:decimal(20,8)" json:"collateral_factor"`
 	//触发清算因子 [0.05, 0.9] 清算人最大可清算的资产比例
