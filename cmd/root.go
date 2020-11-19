@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/fox-one/pkg/store/db"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/yiplee/structs"
@@ -28,7 +29,7 @@ func init() {
 		onInitialize(initConfig, initLog)
 	})
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file. default is ./config/.config.yaml")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file. default is ./config/config.yaml")
 	rootCmd.PersistentFlags().BoolVar(&debugMode, "debug", false, "enable or disable debug model")
 }
 
@@ -48,7 +49,7 @@ func onInitialize(fs ...func()) {
 
 func initConfig() {
 	if cfgFile == "" {
-		filename := "./config/.config.yaml"
+		filename := "./config/config.yaml"
 		fmt.Println(filename)
 		info, err := os.Stat(filename)
 		if !os.IsNotExist(err) && !info.IsDir() {
@@ -75,6 +76,16 @@ func initLog() {
 	}
 
 	structs.DefaultTagName = "json"
+}
+
+func migrateDB() {
+	database := provideDatabase()
+	defer database.Close()
+
+	if err := db.Migrate(database); err != nil {
+		logrus.Errorln("migrate db error:", err)
+		return
+	}
 }
 
 // Run run command
