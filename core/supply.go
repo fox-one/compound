@@ -10,13 +10,13 @@ import (
 
 // Supply supply info
 type Supply struct {
-	UserID        string `sql:"size:36;PRIMARY_KEY" json:"user_id"`
-	CTokenAssetID string `sql:"size:20;PRIMARY_KEY" json:"ctoken_asset_id"`
-	// 抵押量 ctokens
-	Collaterals decimal.Decimal `sql:"type:decimal(20,8)" json:"collaterals"`
-	Version     int64           `sql:"default:0" json:"version"`
-	CreatedAt   time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
-	UpdatedAt   time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`
+	UserID        string          `sql:"size:36;PRIMARY_KEY" json:"user_id"`
+	Symbol        string          `sql:"size:20;PRIMARY_KEY" json:"symbol"`
+	CTokenAssetID string          `sql:"size:36;PRIMARY_KEY" json:"ctoken_asset_id"`
+	Collaterals   decimal.Decimal `sql:"type:decimal(20,8)" json:"collaterals"`
+	Version       int64           `sql:"default:0" json:"version"`
+	CreatedAt     time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt     time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`
 }
 
 // ISupplyStore supply store interface

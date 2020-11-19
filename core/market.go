@@ -13,7 +13,7 @@ type Market struct {
 	AssetID      string          `sql:"size:36;PRIMARY_KEY" json:"asset_id"`
 	Symbol       string          `sql:"size:20;unique_index:symbol_idx" json:"symbol"`
 	TotalCash    decimal.Decimal `sql:"type:decimal(20,8)" json:"total_cash"`
-	TotalBorrows decimal.Decimal `json:"type:decimal(20,8)" json:"total_borrows"`
+	TotalBorrows decimal.Decimal `sql:"type:decimal(20,8)" json:"total_borrows"`
 	// 保留金
 	Reserves decimal.Decimal `sql:"type:decimal(20,8)" json:"reserves"`
 	// CToken 累计铸造出来的币的数量
@@ -42,8 +42,8 @@ type Market struct {
 	Kink decimal.Decimal `sql:"type:decimal(20,8)" json:"kink"`
 	//当前区块高度
 	BlockNumber        int64           `json:"block_number"`
-	UtilizationRate    decimal.Decimal `sql:"type:decimal(20,16)" json:"utilization_rate"`
-	ExchangeRate       decimal.Decimal `sql:"type:decimal(20,16)" json:"exchange_rate"`
+	UtilizationRate    decimal.Decimal `sql:"type:decimal(20,8)" json:"utilization_rate"`
+	ExchangeRate       decimal.Decimal `sql:"type:decimal(20,8)" json:"exchange_rate"`
 	SupplyRatePerBlock decimal.Decimal `sql:"type:decimal(20,16)" json:"supply_Rate_per_block"`
 	BorrowRatePerBlock decimal.Decimal `sql:"type:decimal(20,16)" json:"borrow_rate_per_block"`
 	Price              decimal.Decimal `sql:"type:decimal(20,8)" json:"price"`
