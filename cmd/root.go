@@ -26,7 +26,7 @@ var rootCmd = cobra.Command{
 
 func init() {
 	cobra.OnInitialize(func() {
-		onInitialize(initConfig, initLog)
+		onInitialize(initConfig, initLog, migrateDB)
 	})
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file. default is ./config/config.yaml")
