@@ -10,6 +10,7 @@ import (
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/store/db"
+	"github.com/jinzhu/gorm"
 	"github.com/shopspring/decimal"
 )
 
@@ -93,18 +94,20 @@ var handleBorrowTransferEvent = func(ctx context.Context, w *Worker, action core
 
 		borrow, e := w.borrowStore.Find(ctx, userID, market.Symbol)
 		if e != nil {
-			//new
-			borrow := core.Borrow{
-				UserID:        userID,
-				Symbol:        market.Symbol,
-				Principal:     borrowAmount,
-				InterestIndex: market.BorrowIndex}
+			if gorm.IsRecordNotFoundError(e) {
+				//new
+				borrow := core.Borrow{
+					UserID:        userID,
+					Symbol:        market.Symbol,
+					Principal:     borrowAmount,
+					InterestIndex: market.BorrowIndex}
 
-			if e = w.borrowStore.Save(ctx, tx, &borrow); e != nil {
-				return e
+				if e = w.borrowStore.Save(ctx, tx, &borrow); e != nil {
+					return e
+				}
+				return nil
 			}
-
-			return nil
+			return e
 		}
 
 		//update borrow account

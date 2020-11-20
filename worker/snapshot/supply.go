@@ -11,6 +11,7 @@ import (
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/store/db"
+	"github.com/jinzhu/gorm"
 	"github.com/shopspring/decimal"
 )
 
@@ -77,23 +78,26 @@ var handlePledgeEvent = func(ctx context.Context, w *Worker, action core.Action,
 
 		supply, e := w.supplyStore.Find(ctx, userID, ctokenAssetID)
 		if e != nil {
-			//new
-			supply = &core.Supply{
-				UserID:        userID,
-				Symbol:        market.Symbol,
-				CTokenAssetID: ctokenAssetID,
-				Collaterals:   ctokens,
+			if gorm.IsRecordNotFoundError(e) {
+				//new
+				supply = &core.Supply{
+					UserID:        userID,
+					Symbol:        market.Symbol,
+					CTokenAssetID: ctokenAssetID,
+					Collaterals:   ctokens,
+				}
+				if e = w.supplyStore.Save(ctx, tx, supply); e != nil {
+					return e
+				}
+				return nil
 			}
-			if e = w.supplyStore.Save(ctx, tx, supply); e != nil {
-				return e
-			}
-		} else {
-			//update supply
-			supply.Collaterals = supply.Collaterals.Add(ctokens)
-			e = w.supplyStore.Update(ctx, tx, supply)
-			if e != nil {
-				return e
-			}
+			return e
+		}
+		//update supply
+		supply.Collaterals = supply.Collaterals.Add(ctokens)
+		e = w.supplyStore.Update(ctx, tx, supply)
+		if e != nil {
+			return e
 		}
 
 		return nil
