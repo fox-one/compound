@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/store/db"
 	"github.com/shopspring/decimal"
 )
@@ -14,7 +13,7 @@ import (
 // from user
 var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
 	liquidator := snapshot.OpponentID
-	user := action[core.ActionKeyUser]
+	userID := action[core.ActionKeyUser]
 	seizedSymbol := action[core.ActionKeySymbol]
 
 	repayAmount := snapshot.Amount.Abs()
@@ -39,12 +38,12 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 		return e
 	}
 
-	supply, e := w.supplyStore.Find(ctx, user, supplyMarket.CTokenAssetID)
+	supply, e := w.supplyStore.Find(ctx, userID, supplyMarket.CTokenAssetID)
 	if e != nil {
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrSupplyNotFound)
 	}
 
-	borrow, e := w.borrowStore.Find(ctx, user, borrowMarket.Symbol)
+	borrow, e := w.borrowStore.Find(ctx, userID, borrowMarket.Symbol)
 	if e != nil {
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrBorrowNotFound)
 	}
@@ -67,68 +66,7 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrSeizeNotAllowed)
 	}
 
-	//seize token successful,send seized token to liquidator
-	trace := id.UUIDFromString(fmt.Sprintf("seizetoken-transfer-%s", snapshot.TraceID))
-	input := mixin.TransferInput{
-		AssetID:    supplyMarket.AssetID,
-		OpponentID: liquidator,
-		Amount:     seizedAmount,
-		TraceID:    trace,
-	}
-	if !w.walletService.VerifyPayment(ctx, &input) {
-		action := core.NewAction()
-		action[core.ActionKeyService] = core.ActionServiceSeizeTokenTransfer
-		action[core.ActionKeyUser] = user
-		action[core.ActionKeySymbol] = borrowMarket.Symbol
-		action[core.ActionKeyAmount] = repayAmount.String()
-
-		memoStr, e := action.Format()
-		if e != nil {
-			return e
-		}
-		input.Memo = memoStr
-
-		_, e = w.mainWallet.Client.Transfer(ctx, &input, w.mainWallet.Pin)
-		if e != nil {
-			return e
-		}
-	}
-
-	return nil
-}
-
-// from system
-var handleSeizeTokenTransferEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
-	seizedAmount := snapshot.Amount.Abs()
-	seizedAssetID := snapshot.AssetID
-	seizedUserID := action[core.ActionKeyUser]
-	borrowSymbol := action[core.ActionKeySymbol]
-	repayAmount, e := decimal.NewFromString(action[core.ActionKeyAmount])
-	if e != nil {
-		return e
-	}
-
 	return w.db.Tx(func(tx *db.DB) error {
-		supplyMarket, e := w.marketStore.Find(ctx, seizedAssetID)
-		if e != nil {
-			return e
-		}
-
-		//accrue interest
-		if e = w.marketService.AccrueInterest(ctx, tx, supplyMarket, snapshot.CreatedAt); e != nil {
-			return e
-		}
-
-		borrowMarket, e := w.marketStore.FindBySymbol(ctx, borrowSymbol)
-		if e != nil {
-			return e
-		}
-
-		//accrue interest
-		if e = w.marketService.AccrueInterest(ctx, tx, borrowMarket, snapshot.CreatedAt); e != nil {
-			return e
-		}
-
 		exchangeRate, e := w.marketService.CurExchangeRate(ctx, supplyMarket)
 		if e != nil {
 			return e
@@ -136,7 +74,7 @@ var handleSeizeTokenTransferEvent = func(ctx context.Context, w *Worker, action 
 
 		changedCTokens := seizedAmount.Div(exchangeRate)
 		//update supply
-		supply, e := w.supplyStore.Find(ctx, seizedUserID, supplyMarket.Symbol)
+		supply, e := w.supplyStore.Find(ctx, userID, supplyMarket.Symbol)
 		if e != nil {
 			return e
 		}
@@ -146,7 +84,7 @@ var handleSeizeTokenTransferEvent = func(ctx context.Context, w *Worker, action 
 			return e
 		}
 
-		//update market ctokens
+		//update supply market ctokens
 		supplyMarket.TotalCash = supplyMarket.TotalCash.Sub(seizedAmount).Truncate(8)
 		supplyMarket.CTokens = supplyMarket.CTokens.Sub(changedCTokens).Truncate(8)
 		if e = w.marketStore.Update(ctx, tx, supplyMarket); e != nil {
@@ -154,7 +92,7 @@ var handleSeizeTokenTransferEvent = func(ctx context.Context, w *Worker, action 
 		}
 
 		// update borrow account and borrow market
-		borrow, e := w.borrowStore.Find(ctx, seizedUserID, borrowSymbol)
+		borrow, e := w.borrowStore.Find(ctx, userID, borrowMarket.Symbol)
 		if e != nil {
 			return e
 		}
@@ -181,29 +119,47 @@ var handleSeizeTokenTransferEvent = func(ctx context.Context, w *Worker, action 
 			return e
 		}
 
+		//transfer seized asset to user
+		action := core.NewAction()
+		action[core.ActionKeyService] = core.ActionServiceSeizeTokenTransfer
+
+		memoStr, e := action.Format()
+		if e != nil {
+			return e
+		}
+		trace := id.UUIDFromString(fmt.Sprintf("seizetoken-transfer-%s", snapshot.TraceID))
+		transfer := core.Transfer{
+			AssetID:    supplyMarket.AssetID,
+			OpponentID: liquidator,
+			Amount:     seizedAmount,
+			TraceID:    trace,
+			Memo:       memoStr,
+		}
+		if e = w.transferStore.Create(ctx, tx, &transfer); e != nil {
+			return e
+		}
+
+		//refund redundant assets to liquidator
 		if redundantAmount.GreaterThan(decimal.Zero) {
-			//refund redundant assets to liquidator
 			refundAmount := redundantAmount.Truncate(8)
 
+			action := core.NewAction()
+			action[core.ActionKeyService] = core.ActionServiceRefund
+			memoStr, e := action.Format()
+			if e != nil {
+				return e
+			}
 			refundTrace := id.UUIDFromString(fmt.Sprintf("liquidate-refund-%s", snapshot.TraceID))
-			input := mixin.TransferInput{
+			transfer := core.Transfer{
 				AssetID:    snapshot.AssetID,
 				OpponentID: snapshot.OpponentID,
 				Amount:     refundAmount,
 				TraceID:    refundTrace,
+				Memo:       memoStr,
 			}
 
-			if !w.walletService.VerifyPayment(ctx, &input) {
-				action := core.NewAction()
-				action[core.ActionKeyService] = core.ActionServiceRefund
-				memoStr, e := action.Format()
-				if e != nil {
-					return e
-				}
-				input.Memo = memoStr
-				if _, e = w.mainWallet.Client.Transfer(ctx, &input, w.mainWallet.Pin); e != nil {
-					return e
-				}
+			if e = w.transferStore.Create(ctx, tx, &transfer); e != nil {
+				return e
 			}
 		}
 

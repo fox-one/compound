@@ -12,6 +12,7 @@ import (
 	"compound/store/borrow"
 	"compound/store/market"
 	"compound/store/supply"
+	"compound/store/transfer"
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/property"
@@ -65,6 +66,10 @@ func provideSupplyStore(db *db.DB) core.ISupplyStore {
 
 func provideBorrowStore(db *db.DB) core.IBorrowStore {
 	return borrow.New(db)
+}
+
+func provideTransferStore(db *db.DB) core.ITransferStore {
+	return transfer.New(db)
 }
 
 // ------------------service------------------------------------

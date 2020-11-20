@@ -5,10 +5,7 @@ import (
 	"compound/pkg/id"
 	"context"
 	"errors"
-	"fmt"
-	"time"
 
-	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/store/db"
 	"github.com/shopspring/decimal"
 )
@@ -117,66 +114,5 @@ func (s *supplyService) Pledge(ctx context.Context, pledgedTokens decimal.Decima
 
 //撤销抵押
 func (s *supplyService) Unpledge(ctx context.Context, unpledgedTokens decimal.Decimal, userID string, market *core.Market) error {
-	supply, e := s.supplyStore.Find(ctx, userID, market.CTokenAssetID)
-	if e != nil {
-		return e
-	}
-
-	if unpledgedTokens.GreaterThanOrEqual(supply.Collaterals) {
-		return errors.New("invalid unpledge tokens")
-	}
-
-	blockNum, e := s.blockService.GetBlock(ctx, time.Now())
-	if e != nil {
-		return e
-	}
-
-	liquidity, e := s.accountService.CalculateAccountLiquidity(ctx, userID, blockNum)
-	if e != nil {
-		return e
-	}
-
-	price, e := s.priceService.GetCurrentUnderlyingPrice(ctx, market)
-	if e != nil {
-		return e
-	}
-
-	exchangeRate, e := s.marketService.CurExchangeRate(ctx, market)
-	if e != nil {
-		return e
-	}
-
-	unpledgedTokenLiquidity := unpledgedTokens.Mul(exchangeRate).Mul(market.CollateralFactor).Mul(price)
-	if unpledgedTokenLiquidity.GreaterThanOrEqual(liquidity) {
-		return errors.New("insufficient liquidity")
-	}
-
-	trace := id.UUIDFromString(fmt.Sprintf("unpledge-%s-%s-%d", userID, market.Symbol, blockNum))
-	input := mixin.TransferInput{
-		AssetID:    s.config.App.GasAssetID,
-		OpponentID: s.mainWallet.Client.ClientID,
-		Amount:     core.GasCost,
-		TraceID:    trace,
-	}
-
-	if !s.walletService.VerifyPayment(ctx, &input) {
-		memo := make(core.Action)
-		memo[core.ActionKeyService] = core.ActionServiceUnpledge
-		memo[core.ActionKeyUser] = userID
-		memo[core.ActionKeySymbol] = market.Symbol
-		memo[core.ActionKeyCToken] = unpledgedTokens.Truncate(8).String()
-
-		memoStr, e := memo.Format()
-		if e != nil {
-			return e
-		}
-
-		input.Memo = memoStr
-		_, e = s.blockWallet.Client.Transfer(ctx, &input, s.blockWallet.Pin)
-		if e != nil {
-			return e
-		}
-	}
-
 	return nil
 }

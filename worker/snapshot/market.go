@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/fox-one/mixin-sdk-go"
+	"github.com/fox-one/pkg/store/db"
 	"github.com/shopspring/decimal"
 )
 
@@ -29,17 +29,9 @@ var handleRequestMarketEvent = func(ctx context.Context, w *Worker, action core.
 		return e
 	}
 
-	// base info
-	trace := id.UUIDFromString(fmt.Sprintf("market-base-%s", snapshot.TraceID))
-	input := mixin.TransferInput{
-		AssetID:    w.config.App.GasAssetID,
-		OpponentID: snapshot.OpponentID,
-		Amount:     core.GasCost,
-		TraceID:    trace,
-	}
-
-	if !w.walletService.VerifyPayment(ctx, &input) {
-		action := core.NewAction()
+	return w.db.Tx(func(tx *db.DB) error {
+		// base info
+		action = core.NewAction()
 		action[core.ActionKeyService] = core.ActionServiceMarketResponse
 		action[core.ActionKeySymbol] = symbol
 		action[core.ActionKeyTotalCash] = market.TotalCash.String()
@@ -51,22 +43,20 @@ var handleRequestMarketEvent = func(ctx context.Context, w *Worker, action core.
 		if e != nil {
 			return e
 		}
-		input.Memo = memoStr
-		if _, e = w.mainWallet.Client.Transfer(ctx, &input, w.mainWallet.Pin); e != nil {
+		trace := id.UUIDFromString(fmt.Sprintf("market-base-%s", snapshot.TraceID))
+		input := core.Transfer{
+			AssetID:    w.config.App.GasAssetID,
+			OpponentID: snapshot.OpponentID,
+			Amount:     core.GasCost,
+			TraceID:    trace,
+			Memo:       memoStr,
+		}
+
+		if e = w.transferStore.Create(ctx, tx, &input); e != nil {
 			return e
 		}
-	}
 
-	// rate info
-	trace = id.UUIDFromString(fmt.Sprintf("market-rate-%s", snapshot.TraceID))
-	input = mixin.TransferInput{
-		AssetID:    w.config.App.GasAssetID,
-		OpponentID: snapshot.OpponentID,
-		Amount:     core.GasCost,
-		TraceID:    trace,
-	}
-
-	if !w.walletService.VerifyPayment(ctx, &input) {
+		// rate info
 		sRate, e := w.marketService.CurSupplyRate(ctx, market)
 		if e != nil {
 			return e
@@ -75,24 +65,32 @@ var handleRequestMarketEvent = func(ctx context.Context, w *Worker, action core.
 		if e != nil {
 			return e
 		}
-		action := core.NewAction()
+		action = core.NewAction()
 		action[core.ActionKeyService] = core.ActionServiceMarketResponse
 		action[core.ActionKeySymbol] = symbol
 		action[core.ActionKeyUtilizationRate] = market.UtilizationRate.String()
 		action[core.ActionKeyExchangeRate] = market.ExchangeRate.String()
 		action[core.ActionKeySupplyRate] = sRate.Truncate(8).String()
 		action[core.ActionKeyBorrowRate] = bRate.Truncate(8).String()
-		memoStr, e := action.Format()
+		memoStr, e = action.Format()
 		if e != nil {
 			return e
 		}
-		input.Memo = memoStr
-		if _, e = w.mainWallet.Client.Transfer(ctx, &input, w.mainWallet.Pin); e != nil {
+		trace = id.UUIDFromString(fmt.Sprintf("market-rate-%s", snapshot.TraceID))
+		input = core.Transfer{
+			AssetID:    w.config.App.GasAssetID,
+			OpponentID: snapshot.OpponentID,
+			Amount:     core.GasCost,
+			TraceID:    trace,
+			Memo:       memoStr,
+		}
+
+		if e = w.transferStore.Create(ctx, tx, &input); e != nil {
 			return e
 		}
-	}
 
-	return nil
+		return nil
+	})
 }
 
 var handleUpdateMarketEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {

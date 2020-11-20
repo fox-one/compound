@@ -22,6 +22,7 @@ type Worker struct {
 	mainWallet               *core.Wallet
 	blockWallet              *core.Wallet
 	propertyStore            property.Store
+	transferStore            core.ITransferStore
 	marketStore              core.IMarketStore
 	supplyStore              core.ISupplyStore
 	borrowStore              core.IBorrowStore
@@ -47,6 +48,7 @@ func New(
 	mainWallet *core.Wallet,
 	blockWallet *core.Wallet,
 	propertyStore property.Store,
+	transferStore core.ITransferStore,
 	marketStore core.IMarketStore,
 	supplyStore core.ISupplyStore,
 	borrowStore core.IBorrowStore,
@@ -63,16 +65,11 @@ func New(
 	handlers[core.ActionServicePrice] = handlePriceEvent
 	handlers[core.ActionServiceSupply] = handleSupplyEvent
 	handlers[core.ActionServiceRedeem] = handleSupplyRedeemEvent
-	handlers[core.ActionServiceRedeemTransfer] = handleRedeemTransferEvent
-	handlers[core.ActionServiceMint] = handleMintEvent
 	handlers[core.ActionServicePledge] = handlePledgeEvent
 	handlers[core.ActionServiceUnpledge] = handleUnpledgeEvent
-	handlers[core.ActionServiceUnpledgeTransfer] = handleUnpledgeTransferEvent
 	handlers[core.ActionServiceBorrow] = handleBorrowEvent
-	handlers[core.ActionServiceBorrowTransfer] = handleBorrowTransferEvent
 	handlers[core.ActionServiceRepay] = handleBorrowRepayEvent
 	handlers[core.ActionServiceSeizeToken] = handleSeizeTokenEvent
-	handlers[core.ActionServiceSeizeTokenTransfer] = handleSeizeTokenTransferEvent
 	handlers[core.ActionServiceRequestLiquidity] = handleRequestAccountLiquidityEvent
 	handlers[core.ActionServiceRequestMarket] = handleRequestMarketEvent
 	handlers[core.ActionServiceRequestSupply] = handleRequestSupplyEvent
@@ -86,6 +83,7 @@ func New(
 		mainWallet:               mainWallet,
 		blockWallet:              blockWallet,
 		propertyStore:            propertyStore,
+		transferStore:            transferStore,
 		marketStore:              marketStore,
 		supplyStore:              supplyStore,
 		borrowStore:              borrowStore,

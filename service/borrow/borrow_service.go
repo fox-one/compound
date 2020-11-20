@@ -5,10 +5,8 @@ import (
 	"compound/pkg/id"
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
-	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
 	"github.com/shopspring/decimal"
 )
@@ -69,45 +67,6 @@ func (s *borrowService) Repay(ctx context.Context, amount decimal.Decimal, borro
 }
 
 func (s *borrowService) Borrow(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *core.Market) error {
-	if !s.BorrowAllowed(ctx, borrowAmount, userID, market) {
-		return errors.New("borrow not allowed")
-	}
-
-	blockNum, e := s.blockService.GetBlock(ctx, time.Now())
-	if e != nil {
-		return e
-	}
-
-	trace := id.UUIDFromString(fmt.Sprintf("borrow-%s-%s-%d", userID, market.Symbol, blockNum))
-	input := mixin.TransferInput{
-		AssetID:    s.config.App.GasAssetID,
-		OpponentID: s.mainWallet.Client.ClientID,
-		Amount:     core.GasCost,
-		TraceID:    trace,
-	}
-
-	if s.walletService.VerifyPayment(ctx, &input) {
-		return errors.New("borrow exists")
-	}
-
-	memo := make(core.Action)
-	memo[core.ActionKeyService] = core.ActionServiceBorrow
-	memo[core.ActionKeyAmount] = borrowAmount.String()
-	memo[core.ActionKeySymbol] = market.Symbol
-	memo[core.ActionKeyUser] = userID
-
-	memoStr, e := memo.Format()
-	if e != nil {
-		return e
-	}
-
-	input.Memo = memoStr
-
-	_, e = s.blockWallet.Client.Transfer(ctx, &input, s.config.GasWallet.Pin)
-	if e != nil {
-		return e
-	}
-
 	return nil
 }
 

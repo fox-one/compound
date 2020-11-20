@@ -6,8 +6,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-
-	"github.com/fox-one/mixin-sdk-go"
 )
 
 var handleRequestBorrowEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
@@ -38,30 +36,28 @@ var handleRequestBorrowEvent = func(ctx context.Context, w *Worker, action core.
 		return e
 	}
 
+	action = core.NewAction()
+	action[core.ActionKeyService] = core.ActionServiceBorrowResponse
+	action[core.ActionKeyUser] = userID
+	action[core.ActionKeySymbol] = symbol
+	action[core.ActionKeyAmount] = borrow.Principal.String()
+	action[core.ActionKeyInterestIndex] = borrow.InterestIndex.String()
+	action[core.ActionKeyBorrowBalance] = borrowBalance.Truncate(8).String()
+	memoStr, e := action.Format()
+	if e != nil {
+		return e
+	}
 	trace := id.UUIDFromString(fmt.Sprintf("borrow-%s", snapshot.TraceID))
-	input := mixin.TransferInput{
+	input := core.Transfer{
 		AssetID:    w.config.App.GasAssetID,
 		OpponentID: snapshot.OpponentID,
 		Amount:     core.GasCost,
 		TraceID:    trace,
+		Memo:       memoStr,
 	}
 
-	if !w.walletService.VerifyPayment(ctx, &input) {
-		action := core.NewAction()
-		action[core.ActionKeyService] = core.ActionServiceBorrowResponse
-		action[core.ActionKeyUser] = userID
-		action[core.ActionKeySymbol] = symbol
-		action[core.ActionKeyAmount] = borrow.Principal.String()
-		action[core.ActionKeyInterestIndex] = borrow.InterestIndex.String()
-		action[core.ActionKeyBorrowBalance] = borrowBalance.Truncate(8).String()
-		memoStr, e := action.Format()
-		if e != nil {
-			return e
-		}
-		input.Memo = memoStr
-		if _, e = w.mainWallet.Client.Transfer(ctx, &input, w.mainWallet.Pin); e != nil {
-			return e
-		}
+	if e = w.transferStore.Create(ctx, w.db, &input); e != nil {
+		return e
 	}
 
 	return nil

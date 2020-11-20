@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/store/db"
 	"github.com/jinzhu/gorm"
@@ -17,10 +16,18 @@ import (
 
 // from user transfer
 var handleSupplyEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
+	supplyAmount := snapshot.Amount.Abs()
+	userID := snapshot.OpponentID
+
 	market, e := w.marketStore.Find(ctx, snapshot.AssetID)
 	if e != nil {
 		//refund to user
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
+	}
+
+	//accrue interest
+	if e = w.marketService.AccrueInterest(ctx, w.db, market, snapshot.CreatedAt); e != nil {
+		return e
 	}
 
 	exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
@@ -30,33 +37,36 @@ var handleSupplyEvent = func(ctx context.Context, w *Worker, action core.Action,
 
 	ctokens := snapshot.Amount.Div(exchangeRate).Truncate(8)
 
-	trace := id.UUIDFromString(fmt.Sprintf("mint:%s", snapshot.TraceID))
-	input := mixin.TransferInput{
-		AssetID:    market.CTokenAssetID,
-		OpponentID: snapshot.OpponentID,
-		Amount:     ctokens,
-		TraceID:    trace,
-	}
+	return w.db.Tx(func(tx *db.DB) error {
+		//update maket
+		market.CTokens = market.CTokens.Add(ctokens)
+		market.TotalCash = market.TotalCash.Add(supplyAmount)
+		if e = w.marketStore.Update(ctx, tx, market); e != nil {
+			return e
+		}
 
-	if !w.walletService.VerifyPayment(ctx, &input) {
-		//mint ctoken
+		//transfer ctoken to user
 		memo := make(core.Action)
 		memo[core.ActionKeyService] = core.ActionServiceMint
-		memo[core.ActionKeyAmount] = snapshot.Amount.Abs().String()
 		memoStr, e := memo.Format()
 		if e != nil {
 			return e
 		}
+		trace := id.UUIDFromString(fmt.Sprintf("mint:%s", snapshot.TraceID))
+		transfer := core.Transfer{
+			AssetID:    market.CTokenAssetID,
+			OpponentID: userID,
+			Amount:     ctokens,
+			TraceID:    trace,
+			Memo:       memoStr,
+		}
 
-		input.Memo = memoStr
-		_, e = w.mainWallet.Client.Transfer(ctx, &input, w.mainWallet.Pin)
-
-		if e != nil {
+		if e = w.transferStore.Create(ctx, tx, &transfer); e != nil {
 			return e
 		}
-	}
 
-	return nil
+		return nil
+	})
 }
 
 // from user, refund if error
@@ -167,15 +177,22 @@ var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Actio
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrInsufficientLiquidity)
 	}
 
-	trace := id.UUIDFromString(fmt.Sprintf("unpledge-%s", snapshot.TraceID))
-	input := mixin.TransferInput{
-		AssetID:    market.CTokenAssetID,
-		OpponentID: userID,
-		Amount:     unpledgedTokens,
-		TraceID:    trace,
-	}
+	return w.db.Tx(func(tx *db.DB) error {
+		supply, e := w.supplyStore.Find(ctx, userID, market.CTokenAssetID)
+		if e != nil {
+			return e
+		}
 
-	if !w.walletService.VerifyPayment(ctx, &input) {
+		supply.Collaterals = supply.Collaterals.Sub(unpledgedTokens)
+		if supply.Collaterals.LessThan(decimal.Zero) {
+			supply.Collaterals = decimal.Zero
+		}
+
+		if e = w.supplyStore.Update(ctx, tx, supply); e != nil {
+			return e
+		}
+
+		//transfer ctoken to user
 		action := core.NewAction()
 		action[core.ActionKeyService] = core.ActionServiceUnpledgeTransfer
 
@@ -183,44 +200,16 @@ var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Actio
 		if e != nil {
 			return e
 		}
-		input.Memo = memoStr
-		_, e = w.mainWallet.Client.Transfer(ctx, &input, w.mainWallet.Pin)
-		if e != nil {
-			return e
-		}
-	}
-
-	return nil
-}
-
-// from system
-var handleUnpledgeTransferEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
-	userID := snapshot.OpponentID
-	ctokenAssetID := snapshot.AssetID
-	unpledgedCTokens := snapshot.Amount.Abs()
-
-	market, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
-	if e != nil {
-		return e
-	}
-
-	return w.db.Tx(func(tx *db.DB) error {
-		//accrue interest
-		if e = w.marketService.AccrueInterest(ctx, tx, market, snapshot.CreatedAt); e != nil {
-			return e
+		trace := id.UUIDFromString(fmt.Sprintf("unpledge-%s", snapshot.TraceID))
+		transfer := core.Transfer{
+			AssetID:    market.CTokenAssetID,
+			OpponentID: userID,
+			Amount:     unpledgedTokens,
+			TraceID:    trace,
+			Memo:       memoStr,
 		}
 
-		supply, e := w.supplyStore.Find(ctx, userID, ctokenAssetID)
-		if e != nil {
-			return e
-		}
-
-		supply.Collaterals = supply.Collaterals.Sub(unpledgedCTokens)
-		if supply.Collaterals.LessThan(decimal.Zero) {
-			supply.Collaterals = decimal.Zero
-		}
-
-		if e = w.supplyStore.Update(ctx, tx, supply); e != nil {
+		if e = w.transferStore.Create(ctx, tx, &transfer); e != nil {
 			return e
 		}
 

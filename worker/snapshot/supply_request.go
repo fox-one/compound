@@ -6,8 +6,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-
-	"github.com/fox-one/mixin-sdk-go"
 )
 
 var handleRequestSupplyEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
@@ -33,28 +31,25 @@ var handleRequestSupplyEvent = func(ctx context.Context, w *Worker, action core.
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrSupplyNotFound)
 	}
 
+	action = core.NewAction()
+	action[core.ActionKeyService] = core.ActionServiceSuppyResponse
+	action[core.ActionKeyUser] = userID
+	action[core.ActionKeySymbol] = symbol
+	action[core.ActionKeyCToken] = supply.Collaterals.String()
+	memoStr, e := action.Format()
+	if e != nil {
+		return e
+	}
 	trace := id.UUIDFromString(fmt.Sprintf("supply-%s", snapshot.TraceID))
-	input := mixin.TransferInput{
+	input := core.Transfer{
 		AssetID:    w.config.App.GasAssetID,
 		OpponentID: snapshot.OpponentID,
 		Amount:     core.GasCost,
 		TraceID:    trace,
+		Memo:       memoStr,
 	}
-
-	if !w.walletService.VerifyPayment(ctx, &input) {
-		action := core.NewAction()
-		action[core.ActionKeyService] = core.ActionServiceSuppyResponse
-		action[core.ActionKeyUser] = userID
-		action[core.ActionKeySymbol] = symbol
-		action[core.ActionKeyCToken] = supply.Collaterals.String()
-		memoStr, e := action.Format()
-		if e != nil {
-			return e
-		}
-		input.Memo = memoStr
-		if _, e = w.mainWallet.Client.Transfer(ctx, &input, w.mainWallet.Pin); e != nil {
-			return e
-		}
+	if e = w.transferStore.Create(ctx, w.db, &input); e != nil {
+		return e
 	}
 
 	return nil

@@ -2,12 +2,10 @@ package account
 
 import (
 	"compound/core"
-	"compound/pkg/id"
 	"context"
 	"errors"
 	"time"
 
-	"github.com/fox-one/mixin-sdk-go"
 	"github.com/shopspring/decimal"
 )
 
@@ -180,43 +178,5 @@ func (s *accountService) MaxSeize(ctx context.Context, supply *core.Supply, borr
 }
 
 func (s *accountService) SeizeToken(ctx context.Context, supply *core.Supply, borrow *core.Borrow, repayAmount decimal.Decimal) (string, error) {
-	if !s.SeizeTokenAllowed(ctx, supply, borrow, repayAmount, time.Now()) {
-		return "", errors.New("seize token not allowed")
-	}
-
-	supplyMarket, e := s.marketStore.FindByCToken(ctx, supply.CTokenAssetID)
-	if e != nil {
-		return "", e
-	}
-
-	borrowMarket, e := s.marketStore.FindBySymbol(ctx, borrow.Symbol)
-	if e != nil {
-		return "", e
-	}
-
-	trace := id.GenTraceID()
-	input := mixin.TransferInput{
-		AssetID:    borrowMarket.AssetID,
-		OpponentID: s.mainWallet.Client.ClientID,
-		Amount:     repayAmount,
-		TraceID:    trace,
-	}
-
-	if s.walletService.VerifyPayment(ctx, &input) {
-		return "", errors.New("seize not allowed")
-	}
-
-	action := core.NewAction()
-	action[core.ActionKeyService] = core.ActionServiceSeizeToken
-	action[core.ActionKeyUser] = supply.UserID
-	action[core.ActionKeySymbol] = supplyMarket.Symbol
-
-	memoStr, e := action.Format()
-	if e != nil {
-		return "", e
-	}
-
-	input.Memo = memoStr
-
-	return s.walletService.PaySchemaURL(input.Amount, input.AssetID, input.OpponentID, input.TraceID, input.Memo)
+	return "", nil
 }

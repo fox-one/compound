@@ -6,32 +6,31 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/store/db"
 	"github.com/shopspring/decimal"
 )
 
 // from user, refund if error
 var handleBorrowRepayEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
+	repayAmount := snapshot.Amount.Abs()
+	userID := snapshot.OpponentID
+
+	market, e := w.marketStore.Find(ctx, snapshot.AssetID)
+	if e != nil {
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
+	}
+
+	//update interest
+	if e = w.marketService.AccrueInterest(ctx, w.db, market, snapshot.CreatedAt); e != nil {
+		return e
+	}
+
+	borrow, e := w.borrowStore.Find(ctx, userID, market.Symbol)
+	if e != nil {
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrBorrowNotFound)
+	}
+
 	return w.db.Tx(func(tx *db.DB) error {
-		repayAmount := snapshot.Amount.Abs()
-		userID := snapshot.OpponentID
-
-		market, e := w.marketStore.Find(ctx, snapshot.AssetID)
-		if e != nil {
-			return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
-		}
-
-		//update interest
-		if e = w.marketService.AccrueInterest(ctx, tx, market, snapshot.CreatedAt); e != nil {
-			return e
-		}
-
-		borrow, e := w.borrowStore.Find(ctx, userID, market.Symbol)
-		if e != nil {
-			return handleRefundEvent(ctx, w, action, snapshot, core.ErrBorrowNotFound)
-		}
-
 		//update borrow info
 		borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, market)
 		if e != nil {
@@ -61,25 +60,23 @@ var handleBorrowRepayEvent = func(ctx context.Context, w *Worker, action core.Ac
 		if redundantAmount.GreaterThan(decimal.Zero) {
 			refundAmount := redundantAmount.Truncate(8)
 			//refund redundant amount to user
+			action := core.NewAction()
+			action[core.ActionKeyService] = core.ActionServiceRefund
+			memoStr, e := action.Format()
+			if e != nil {
+				return e
+			}
 			refundTrace := id.UUIDFromString(fmt.Sprintf("repay-refund-%s", snapshot.TraceID))
-			input := mixin.TransferInput{
+			input := core.Transfer{
 				AssetID:    snapshot.AssetID,
 				OpponentID: userID,
 				Amount:     refundAmount,
 				TraceID:    refundTrace,
+				Memo:       memoStr,
 			}
 
-			if !w.walletService.VerifyPayment(ctx, &input) {
-				action := core.NewAction()
-				action[core.ActionKeyService] = core.ActionServiceRefund
-				memoStr, e := action.Format()
-				if e != nil {
-					return e
-				}
-				input.Memo = memoStr
-				if _, e = w.mainWallet.Client.Transfer(ctx, &input, w.mainWallet.Pin); e != nil {
-					return e
-				}
+			if e = w.transferStore.Create(ctx, tx, &input); e != nil {
+				return e
 			}
 		}
 

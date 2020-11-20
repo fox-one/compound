@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/store/db"
 	"github.com/jinzhu/gorm"
@@ -20,7 +19,7 @@ var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action,
 	symbol := strings.ToUpper(action[core.ActionKeySymbol])
 	userID := snapshot.OpponentID
 
-	amount, e := decimal.NewFromString(action[core.ActionKeyAmount])
+	borrowAmount, e := decimal.NewFromString(action[core.ActionKeyAmount])
 	if e != nil {
 		log.Errorln("parse amount error:", e)
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrInvalidAmount)
@@ -32,59 +31,17 @@ var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action,
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
 	}
 
+	// accrue interest
 	if e = w.marketService.AccrueInterest(ctx, w.db, market, snapshot.CreatedAt); e != nil {
 		return e
 	}
 
-	if !w.borrowService.BorrowAllowed(ctx, amount, userID, market) {
+	if !w.borrowService.BorrowAllowed(ctx, borrowAmount, userID, market) {
 		log.Errorln("borrow not allowed")
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrBorrowNotAllowed)
 	}
 
-	//transfer borrow asset to user
-	trace := id.UUIDFromString(fmt.Sprintf("borrow:%s", snapshot.TraceID))
-	input := mixin.TransferInput{
-		AssetID:    market.AssetID,
-		OpponentID: userID,
-		Amount:     amount,
-		TraceID:    trace,
-	}
-
-	if !w.walletService.VerifyPayment(ctx, &input) {
-		memo := make(core.Action)
-		memo[core.ActionKeyService] = core.ActionServiceBorrowTransfer
-		memoStr, e := memo.Format()
-		if e != nil {
-			log.Errorln("memo format error:", e)
-			return e
-		}
-
-		input.Memo = memoStr
-		_, e = w.mainWallet.Client.Transfer(ctx, &input, w.mainWallet.Pin)
-		if e != nil {
-			log.Errorln("transfer borrow asset to user error:", e)
-			return e
-		}
-	}
-
-	return nil
-}
-
-var handleBorrowTransferEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
 	return w.db.Tx(func(tx *db.DB) error {
-		userID := snapshot.OpponentID
-		borrowAmount := snapshot.Amount.Abs()
-
-		market, e := w.marketStore.Find(ctx, snapshot.AssetID)
-		if e != nil {
-			return e
-		}
-
-		//update interest
-		if e = w.marketService.AccrueInterest(ctx, tx, market, snapshot.CreatedAt); e != nil {
-			return e
-		}
-
 		market.TotalCash = market.TotalCash.Sub(borrowAmount)
 		market.TotalBorrows = market.TotalBorrows.Add(borrowAmount)
 		// update market
@@ -121,6 +78,27 @@ var handleBorrowTransferEvent = func(ctx context.Context, w *Worker, action core
 		borrow.InterestIndex = market.BorrowIndex
 		e = w.borrowStore.Update(ctx, tx, borrow)
 		if e != nil {
+			return e
+		}
+
+		//transfer to user
+		memo := make(core.Action)
+		memo[core.ActionKeyService] = core.ActionServiceBorrowTransfer
+		memoStr, e := memo.Format()
+		if e != nil {
+			log.Errorln("memo format error:", e)
+			return e
+		}
+		trace := id.UUIDFromString(fmt.Sprintf("borrow:%s", snapshot.TraceID))
+		transfer := core.Transfer{
+			AssetID:    market.AssetID,
+			OpponentID: userID,
+			Amount:     borrowAmount,
+			TraceID:    trace,
+			Memo:       memoStr,
+		}
+
+		if e = w.transferStore.Create(ctx, tx, &transfer); e != nil {
 			return e
 		}
 
