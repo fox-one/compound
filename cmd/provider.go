@@ -50,16 +50,6 @@ func provideBlockWallet() *core.Wallet {
 	}
 }
 
-//TODO 不单独提供保留金钱包，以记账方式保存数据库记录
-func provideReserveWallet() *mixin.Client {
-	c, err := mixin.NewFromKeystore(&cfg.GasWallet.Keystore)
-	if err != nil {
-		panic(err)
-	}
-
-	return c
-}
-
 // ---------------store-----------------------------------------
 func providePropertyStore(db *db.DB) property.Store {
 	return propertystore.New(db)

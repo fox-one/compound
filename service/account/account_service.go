@@ -136,41 +136,6 @@ func (s *accountService) SeizeTokenAllowed(ctx context.Context, supply *core.Sup
 		return false
 	}
 
-	// check seize value
-	supplyMarket, e := s.marketStore.FindByCToken(ctx, supply.CTokenAssetID)
-	if e != nil {
-		return false
-	}
-
-	exchangeRate, e := s.marketService.CurExchangeRate(ctx, supplyMarket)
-	if e != nil {
-		return false
-	}
-
-	maxSeize := supply.Collaterals.Mul(exchangeRate).Mul(supplyMarket.CloseFactor)
-
-	supplyPrice, e := s.priceService.GetCurrentUnderlyingPrice(ctx, supplyMarket)
-	if e != nil {
-		return false
-	}
-	borrowMarket, e := s.marketStore.FindBySymbol(ctx, borrow.Symbol)
-	if e != nil {
-		return false
-	}
-	borrowPrice, e := s.priceService.GetCurrentUnderlyingPrice(ctx, borrowMarket)
-	if e != nil {
-		return false
-	}
-
-	repayValue := repayAmount.Mul(borrowPrice)
-
-	seizePrice := supplyPrice.Sub(supplyPrice.Mul(supplyMarket.LiquidationIncentive))
-	maxSeizeValue := maxSeize.Mul(seizePrice)
-
-	if repayValue.GreaterThan(maxSeizeValue) {
-		return false
-	}
-
 	return true
 }
 

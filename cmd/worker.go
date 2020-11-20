@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -20,8 +19,6 @@ var workerCmd = &cobra.Command{
 		config := provideConfig()
 		db := provideDatabase()
 		mainWallet := provideMainWallet()
-
-		logrus.Infof(">>>>>>>>>%v", mainWallet.Client.Signer)
 
 		blockWallet := provideBlockWallet()
 
