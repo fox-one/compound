@@ -36,7 +36,7 @@ var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action,
 		return e
 	}
 
-	if !w.borrowService.BorrowAllowed(ctx, borrowAmount, userID, market) {
+	if !w.borrowService.BorrowAllowed(ctx, borrowAmount, userID, market, snapshot.CreatedAt) {
 		log.Errorln("borrow not allowed")
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrBorrowNotAllowed)
 	}

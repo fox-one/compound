@@ -70,7 +70,7 @@ func (s *borrowService) Borrow(ctx context.Context, borrowAmount decimal.Decimal
 	return nil
 }
 
-func (s *borrowService) BorrowAllowed(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *core.Market) bool {
+func (s *borrowService) BorrowAllowed(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *core.Market, time time.Time) bool {
 	log := logger.FromContext(ctx)
 
 	if borrowAmount.LessThanOrEqual(decimal.Zero) {
@@ -90,7 +90,7 @@ func (s *borrowService) BorrowAllowed(ctx context.Context, borrowAmount decimal.
 		return false
 	}
 
-	blockNum, e := s.blockService.GetBlock(ctx, time.Now())
+	blockNum, e := s.blockService.GetBlock(ctx, time)
 	if e != nil {
 		log.Errorln(e)
 		return false
@@ -118,6 +118,7 @@ func (s *borrowService) BorrowAllowed(ctx context.Context, borrowAmount decimal.
 	return true
 }
 
+//Deprecated
 func (s *borrowService) MaxBorrow(ctx context.Context, userID string, market *core.Market) (decimal.Decimal, error) {
 	// check borrow cap
 	supplies := market.TotalCash.Sub(market.Reserves)
