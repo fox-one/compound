@@ -26,7 +26,7 @@ type ISupplyStore interface {
 	FindByUser(ctx context.Context, userID string) ([]*Supply, error)
 	FindByCTokenAssetID(ctx context.Context, assetID string) ([]*Supply, error)
 	SumOfSupplies(ctx context.Context, symbol string) (decimal.Decimal, error)
-	CountOfSupplies(ctx context.Context, symbol string) (int64, error)
+	CountOfSuppliers(ctx context.Context, symbol string) (int64, error)
 	Update(ctx context.Context, tx *db.DB, supply *Supply) error
 	All(ctx context.Context) ([]*Supply, error)
 	Users(ctx context.Context) ([]string, error)

@@ -45,8 +45,7 @@ type IBorrowStore interface {
 	Find(ctx context.Context, userID string, symbol string) (*Borrow, error)
 	FindByUser(ctx context.Context, userID string) ([]*Borrow, error)
 	FindBySymbol(ctx context.Context, symbol string) ([]*Borrow, error)
-	SumOfBorrows(ctx context.Context, symbol string) (decimal.Decimal, error)
-	CountOfBorrows(ctx context.Context, symbol string) (int64, error)
+	CountOfBorrowers(ctx context.Context, symbol string) (int64, error)
 	Update(ctx context.Context, tx *db.DB, borrow *Borrow) error
 	All(ctx context.Context) ([]*Borrow, error)
 	Users(ctx context.Context) ([]string, error)

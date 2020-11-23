@@ -3,95 +3,11 @@ package snapshot
 import (
 	"compound/core"
 	"compound/internal/compound"
-	"compound/pkg/id"
 	"context"
-	"fmt"
-	"strconv"
 	"strings"
 
-	"github.com/fox-one/pkg/store/db"
 	"github.com/shopspring/decimal"
 )
-
-var handleRequestMarketEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
-	if snapshot.AssetID != w.config.App.GasAssetID {
-		return handleRefundEvent(ctx, w, action, snapshot, core.ErrOperationForbidden)
-	}
-
-	symbol := strings.ToUpper(action[core.ActionKeySymbol])
-
-	market, e := w.marketStore.FindBySymbol(ctx, symbol)
-	if e != nil {
-		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
-	}
-
-	if e = w.marketService.AccrueInterest(ctx, w.db, market, snapshot.CreatedAt); e != nil {
-		return e
-	}
-
-	return w.db.Tx(func(tx *db.DB) error {
-		// base info
-		action = core.NewAction()
-		action[core.ActionKeyService] = core.ActionServiceMarketResponse
-		action[core.ActionKeySymbol] = symbol
-		action[core.ActionKeyTotalCash] = market.TotalCash.String()
-		action[core.ActionKeyTotalBorrows] = market.TotalBorrows.String()
-		action[core.ActionKeyCTokens] = market.CTokens.String()
-		action[core.ActionKeyPrice] = market.Price.String()
-		action[core.ActionKeyBlock] = strconv.FormatInt(market.BlockNumber, 10)
-		memoStr, e := action.Format()
-		if e != nil {
-			return e
-		}
-		trace := id.UUIDFromString(fmt.Sprintf("market-base-%s", snapshot.TraceID))
-		input := core.Transfer{
-			AssetID:    w.config.App.GasAssetID,
-			OpponentID: snapshot.OpponentID,
-			Amount:     core.GasCost,
-			TraceID:    trace,
-			Memo:       memoStr,
-		}
-
-		if e = w.transferStore.Create(ctx, tx, &input); e != nil {
-			return e
-		}
-
-		// rate info
-		sRate, e := w.marketService.CurSupplyRate(ctx, market)
-		if e != nil {
-			return e
-		}
-		bRate, e := w.marketService.CurBorrowRate(ctx, market)
-		if e != nil {
-			return e
-		}
-		action = core.NewAction()
-		action[core.ActionKeyService] = core.ActionServiceMarketResponse
-		action[core.ActionKeySymbol] = symbol
-		action[core.ActionKeyUtilizationRate] = market.UtilizationRate.String()
-		action[core.ActionKeyExchangeRate] = market.ExchangeRate.String()
-		action[core.ActionKeySupplyRate] = sRate.Truncate(8).String()
-		action[core.ActionKeyBorrowRate] = bRate.Truncate(8).String()
-		memoStr, e = action.Format()
-		if e != nil {
-			return e
-		}
-		trace = id.UUIDFromString(fmt.Sprintf("market-rate-%s", snapshot.TraceID))
-		input = core.Transfer{
-			AssetID:    w.config.App.GasAssetID,
-			OpponentID: snapshot.OpponentID,
-			Amount:     core.GasCost,
-			TraceID:    trace,
-			Memo:       memoStr,
-		}
-
-		if e = w.transferStore.Create(ctx, tx, &input); e != nil {
-			return e
-		}
-
-		return nil
-	})
-}
 
 var handleUpdateMarketEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
 	if snapshot.AssetID != w.config.App.GasAssetID {

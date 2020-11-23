@@ -66,12 +66,12 @@ func getMarketView(ctx context.Context, market *core.Market, supplyStr core.ISup
 		borrowRate = decimal.Zero
 	}
 
-	countOfSupplies, e := supplyStr.CountOfSupplies(ctx, market.Symbol)
+	countOfSupplies, e := supplyStr.CountOfSuppliers(ctx, market.Symbol)
 	if e != nil {
 		countOfSupplies = 0
 	}
 
-	countOfBorrows, e := borrowStr.CountOfBorrows(ctx, market.Symbol)
+	countOfBorrows, e := borrowStr.CountOfBorrowers(ctx, market.Symbol)
 	if e != nil {
 		countOfBorrows = 0
 	}

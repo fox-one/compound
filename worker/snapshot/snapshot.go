@@ -70,10 +70,6 @@ func New(
 	handlers[core.ActionServiceBorrow] = handleBorrowEvent
 	handlers[core.ActionServiceRepay] = handleBorrowRepayEvent
 	handlers[core.ActionServiceSeizeToken] = handleSeizeTokenEvent
-	handlers[core.ActionServiceRequestLiquidity] = handleRequestAccountLiquidityEvent
-	handlers[core.ActionServiceRequestMarket] = handleRequestMarketEvent
-	handlers[core.ActionServiceRequestSupply] = handleRequestSupplyEvent
-	handlers[core.ActionServiceRequestBorrow] = handleRequestBorrowEvent
 	handlers[core.ActionServiceAddMarket] = handleAddMarketEvent
 	handlers[core.ActionServiceUpdateMarket] = handleUpdateMarketEvent
 

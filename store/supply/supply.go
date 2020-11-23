@@ -84,7 +84,7 @@ func (s *supplyStore) FindByCTokenAssetID(ctx context.Context, assetID string) (
 }
 func (s *supplyStore) SumOfSupplies(ctx context.Context, symbol string) (decimal.Decimal, error) {
 	var sum decimal.Decimal
-	if e := s.db.View().Model(core.Supply{}).Select("sum(principal)").Where("symbol=?", symbol).Row().Scan(&sum); e != nil {
+	if e := s.db.View().Model(core.Supply{}).Select("sum(collaterals)").Where("symbol=?", symbol).Row().Scan(&sum); e != nil {
 		return decimal.Zero, e
 	}
 
@@ -92,7 +92,7 @@ func (s *supplyStore) SumOfSupplies(ctx context.Context, symbol string) (decimal
 
 }
 
-func (s *supplyStore) CountOfSupplies(ctx context.Context, symbol string) (int64, error) {
+func (s *supplyStore) CountOfSuppliers(ctx context.Context, symbol string) (int64, error) {
 	var count int64
 	if e := s.db.View().Model(core.Supply{}).Select("count(user_id)").Where("symbol=?", symbol).Row().Scan(&count); e != nil {
 		return 0, e
