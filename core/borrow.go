@@ -53,9 +53,6 @@ type IBorrowStore interface {
 
 // IBorrowService supply service interface
 type IBorrowService interface {
-	Repay(ctx context.Context, amount decimal.Decimal, borrow *Borrow) (string, error)
-	Borrow(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *Market) error
 	BorrowAllowed(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *Market, time time.Time) bool
-	MaxBorrow(ctx context.Context, userID string, market *Market) (decimal.Decimal, error)
 	BorrowBalance(ctx context.Context, borrow *Borrow, market *Market) (decimal.Decimal, error)
 }
