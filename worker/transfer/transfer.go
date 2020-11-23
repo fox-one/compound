@@ -65,13 +65,10 @@ func (w *Worker) doTransfer(ctx context.Context, transfer *core.Transfer) error 
 			TraceID:    transfer.TraceID,
 		}
 
-		if !w.WalletService.VerifyPayment(ctx, &input) {
-			input.Memo = transfer.Memo
-			if _, e := w.MainWallet.Client.Transfer(ctx, &input, w.MainWallet.Pin); e != nil {
-				return e
-			}
+		input.Memo = transfer.Memo
+		if _, e := w.MainWallet.Client.Transfer(ctx, &input, w.MainWallet.Pin); e != nil {
+			return e
 		}
-
 		//delete record
 		if e := w.TransferStore.Delete(ctx, tx, transfer.ID); e != nil {
 			return e

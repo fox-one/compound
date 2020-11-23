@@ -108,26 +108,22 @@ func (w *Worker) checkAndPushPriceOnChain(ctx context.Context, market *core.Mark
 		TraceID:    traceID,
 	}
 
-	if !w.WalletService.VerifyPayment(ctx, &transferInput) {
-		//create new block
-		memo := make(core.Action)
-		memo[core.ActionKeyService] = core.ActionServicePrice
-		memo[core.ActionKeyBlock] = strconv.FormatInt(blockNum, 10)
-		memo[core.ActionKeySymbol] = market.Symbol
-		memo[core.ActionKeyPrice] = ticker.Price.Truncate(8).String()
-		memoStr, err := memo.Format()
-		if err != nil {
-			log.Errorln("new block memo error:", err)
-			return err
-		}
+	//create new block
+	memo := make(core.Action)
+	memo[core.ActionKeyService] = core.ActionServicePrice
+	memo[core.ActionKeyBlock] = strconv.FormatInt(blockNum, 10)
+	memo[core.ActionKeySymbol] = market.Symbol
+	memo[core.ActionKeyPrice] = ticker.Price.Truncate(8).String()
+	memoStr, err := memo.Format()
+	if err != nil {
+		log.Errorln("new block memo error:", err)
+		return err
+	}
 
-		transferInput.Memo = memoStr
-		_, err = w.BlockWallet.Client.Transfer(ctx, &transferInput, w.BlockWallet.Pin)
-
-		if err != nil {
-			log.Errorln("transfer new block error:", err)
-			return err
-		}
+	transferInput.Memo = memoStr
+	if _, err = w.BlockWallet.Client.Transfer(ctx, &transferInput, w.BlockWallet.Pin); err != nil {
+		log.Errorln("transfer new block error:", err)
+		return err
 	}
 
 	return nil
