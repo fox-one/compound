@@ -19,6 +19,17 @@ func New(db *db.DB) core.ITransferStore {
 	}
 }
 
+func init() {
+	db.RegisterMigrate(func(db *db.DB) error {
+		tx := db.Update().Model(core.Transfer{})
+		if err := tx.AutoMigrate(core.Transfer{}).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
 func (s *transferStore) Create(ctx context.Context, tx *db.DB, transfer *core.Transfer) error {
 	return tx.Update().Where("trace_id=?", transfer.TraceID).FirstOrCreate(transfer).Error
 }
