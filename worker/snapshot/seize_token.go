@@ -43,7 +43,7 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrSupplyNotFound)
 	}
 
-	borrow, e := w.borrowStore.Find(ctx, userID, borrowMarket.Symbol)
+	borrow, e := w.borrowStore.Find(ctx, userID, borrowMarket.AssetID)
 	if e != nil {
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrBorrowNotFound)
 	}
@@ -74,7 +74,7 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 
 		changedCTokens := seizedAmount.Div(exchangeRate)
 		//update supply
-		supply, e := w.supplyStore.Find(ctx, userID, supplyMarket.Symbol)
+		supply, e := w.supplyStore.Find(ctx, userID, supplyMarket.CTokenAssetID)
 		if e != nil {
 			return e
 		}
@@ -92,7 +92,7 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 		}
 
 		// update borrow account and borrow market
-		borrow, e := w.borrowStore.Find(ctx, userID, borrowMarket.Symbol)
+		borrow, e := w.borrowStore.Find(ctx, userID, borrowMarket.AssetID)
 		if e != nil {
 			return e
 		}

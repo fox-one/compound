@@ -25,7 +25,7 @@ var handleBorrowRepayEvent = func(ctx context.Context, w *Worker, action core.Ac
 		return e
 	}
 
-	borrow, e := w.borrowStore.Find(ctx, userID, market.Symbol)
+	borrow, e := w.borrowStore.Find(ctx, userID, market.AssetID)
 	if e != nil {
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrBorrowNotFound)
 	}

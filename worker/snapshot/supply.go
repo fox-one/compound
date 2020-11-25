@@ -92,7 +92,6 @@ var handlePledgeEvent = func(ctx context.Context, w *Worker, action core.Action,
 				//new
 				supply = &core.Supply{
 					UserID:        userID,
-					Symbol:        market.Symbol,
 					CTokenAssetID: ctokenAssetID,
 					Collaterals:   ctokens,
 				}

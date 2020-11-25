@@ -11,8 +11,9 @@ import (
 
 // Borrow borrow info
 type Borrow struct {
-	UserID        string          `sql:"size:36;PRIMARY_KEY" json:"user_id"`
-	Symbol        string          `sql:"size:20;PRIMARY_KEY" json:"symbol"`
+	ID            uint64          `sql:"PRIMARY_KEY;AUTO_INCREMENT" json:"id"`
+	UserID        string          `sql:"size:36;unique_index:borrow_idx" json:"user_id"`
+	AssetID       string          `sql:"size:20;unique_index:borrow_idx" json:"asset_id"`
 	Principal     decimal.Decimal `sql:"type:decimal(20,8)" json:"principal"`
 	InterestIndex decimal.Decimal `sql:"type:decimal(20,16);default:1" json:"interest_index"`
 	Version       int64           `sql:"default:0" json:"version"`
@@ -42,10 +43,10 @@ func (b *Borrow) Balance(ctx context.Context, market *Market) (decimal.Decimal, 
 // IBorrowStore supply store interface
 type IBorrowStore interface {
 	Save(ctx context.Context, tx *db.DB, borrow *Borrow) error
-	Find(ctx context.Context, userID string, symbol string) (*Borrow, error)
+	Find(ctx context.Context, userID string, assetID string) (*Borrow, error)
 	FindByUser(ctx context.Context, userID string) ([]*Borrow, error)
-	FindBySymbol(ctx context.Context, symbol string) ([]*Borrow, error)
-	CountOfBorrowers(ctx context.Context, symbol string) (int64, error)
+	FindByAssetID(ctx context.Context, assetID string) ([]*Borrow, error)
+	CountOfBorrowers(ctx context.Context, assetID string) (int64, error)
 	Update(ctx context.Context, tx *db.DB, borrow *Borrow) error
 	All(ctx context.Context) ([]*Borrow, error)
 	Users(ctx context.Context) ([]string, error)

@@ -10,16 +10,16 @@ import (
 
 // Market market info
 type Market struct {
-	AssetID      string          `sql:"size:36;PRIMARY_KEY" json:"asset_id"`
-	Symbol       string          `sql:"size:20;unique_index:symbol_idx" json:"symbol"`
-	TotalCash    decimal.Decimal `sql:"type:decimal(20,8)" json:"total_cash"`
-	TotalBorrows decimal.Decimal `sql:"type:decimal(20,8)" json:"total_borrows"`
+	ID            uint64          `sql:"PRIMARY_KEY;AUTO_INCREMENT" json:"id"`
+	AssetID       string          `sql:"size:36;unique_index:asset_idx" json:"asset_id"`
+	Symbol        string          `sql:"size:20;unique_index:symbol_idx" json:"symbol"`
+	CTokenAssetID string          `sql:"size:36;unique_index:ctoken_asset_idx" json:"ctoken_asset_id"`
+	TotalCash     decimal.Decimal `sql:"type:decimal(20,8)" json:"total_cash"`
+	TotalBorrows  decimal.Decimal `sql:"type:decimal(20,8)" json:"total_borrows"`
 	// 保留金
 	Reserves decimal.Decimal `sql:"type:decimal(20,8)" json:"reserves"`
 	// CToken 累计铸造出来的币的数量
 	CTokens decimal.Decimal `sql:"type:decimal(20,8)" json:"ctokens"`
-	// ctoken asset id
-	CTokenAssetID string `sql:"size:36;unique_index:ctoken_asset_idx" json:"ctoken_asset_id"`
 	// 初始兑换率
 	InitExchangeRate decimal.Decimal `sql:"type:decimal(20,8);default:0" json:"init_exchange_rate"`
 	// 平台保留金率 (0, 1), 默认为 0.10

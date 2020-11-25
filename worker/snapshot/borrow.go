@@ -55,7 +55,7 @@ var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action,
 				//new
 				borrow := core.Borrow{
 					UserID:        userID,
-					Symbol:        market.Symbol,
+					AssetID:       market.AssetID,
 					Principal:     borrowAmount,
 					InterestIndex: market.BorrowIndex}
 

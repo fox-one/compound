@@ -29,7 +29,7 @@ func borrowsHandler(ctx context.Context, marketStr core.IMarketStore, borrowStr 
 				render.BadRequest(w, e)
 				return
 			}
-			borrow, e := borrowStr.Find(ctx, params.UserID, params.Symbol)
+			borrow, e := borrowStr.Find(ctx, params.UserID, market.AssetID)
 			if e != nil {
 				render.BadRequest(w, e)
 				return
@@ -46,7 +46,7 @@ func borrowsHandler(ctx context.Context, marketStr core.IMarketStore, borrowStr 
 			}
 
 			for _, b := range borrows {
-				market, e := marketStr.FindBySymbol(ctx, b.Symbol)
+				market, e := marketStr.Find(ctx, b.AssetID)
 				if e != nil {
 					continue
 				}
@@ -61,7 +61,7 @@ func borrowsHandler(ctx context.Context, marketStr core.IMarketStore, borrowStr 
 				render.BadRequest(w, e)
 				return
 			}
-			borrows, e := borrowStr.FindBySymbol(ctx, market.Symbol)
+			borrows, e := borrowStr.FindByAssetID(ctx, market.AssetID)
 			if e != nil {
 				render.BadRequest(w, e)
 				return
@@ -80,7 +80,7 @@ func borrowsHandler(ctx context.Context, marketStr core.IMarketStore, borrowStr 
 			}
 
 			for _, b := range borrows {
-				market, e := marketStr.FindBySymbol(ctx, b.Symbol)
+				market, e := marketStr.Find(ctx, b.AssetID)
 				if e != nil {
 					continue
 				}

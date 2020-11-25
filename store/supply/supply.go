@@ -37,9 +37,9 @@ func (s *supplyStore) Save(ctx context.Context, tx *db.DB, supply *core.Supply) 
 
 	return nil
 }
-func (s *supplyStore) Find(ctx context.Context, userID string, symbol string) (*core.Supply, error) {
+func (s *supplyStore) Find(ctx context.Context, userID string, ctokenAssetID string) (*core.Supply, error) {
 	var supply core.Supply
-	if e := s.db.View().Where("user_id=? and symbol=?", userID, symbol).First(&supply).Error; e != nil {
+	if e := s.db.View().Where("user_id=? and ctoken_asset_id=?", userID, ctokenAssetID).First(&supply).Error; e != nil {
 		return nil, e
 	}
 
@@ -82,9 +82,9 @@ func (s *supplyStore) FindByCTokenAssetID(ctx context.Context, assetID string) (
 
 	return supplies, nil
 }
-func (s *supplyStore) SumOfSupplies(ctx context.Context, symbol string) (decimal.Decimal, error) {
+func (s *supplyStore) SumOfSupplies(ctx context.Context, ctokenAssetID string) (decimal.Decimal, error) {
 	var sum decimal.Decimal
-	if e := s.db.View().Model(core.Supply{}).Select("sum(collaterals)").Where("symbol=?", symbol).Row().Scan(&sum); e != nil {
+	if e := s.db.View().Model(core.Supply{}).Select("sum(collaterals)").Where("ctoken_asset_id=?", ctokenAssetID).Row().Scan(&sum); e != nil {
 		return decimal.Zero, e
 	}
 
@@ -92,9 +92,9 @@ func (s *supplyStore) SumOfSupplies(ctx context.Context, symbol string) (decimal
 
 }
 
-func (s *supplyStore) CountOfSuppliers(ctx context.Context, symbol string) (int64, error) {
+func (s *supplyStore) CountOfSuppliers(ctx context.Context, ctokenAssetID string) (int64, error) {
 	var count int64
-	if e := s.db.View().Model(core.Supply{}).Select("count(user_id)").Where("symbol=?", symbol).Row().Scan(&count); e != nil {
+	if e := s.db.View().Model(core.Supply{}).Select("count(user_id)").Where("ctoken_asset_id=?", ctokenAssetID).Row().Scan(&count); e != nil {
 		return 0, e
 	}
 

@@ -10,9 +10,9 @@ import (
 
 // Supply supply info
 type Supply struct {
-	UserID        string          `sql:"size:36;PRIMARY_KEY" json:"user_id"`
-	Symbol        string          `sql:"size:20;PRIMARY_KEY" json:"symbol"`
-	CTokenAssetID string          `sql:"size:36;PRIMARY_KEY" json:"ctoken_asset_id"`
+	ID            uint64          `sql:"PRIMARY_KEY;AUTO_INCREMENT" json:"id"`
+	UserID        string          `sql:"size:36;unique_index:supply_idx" json:"user_id"`
+	CTokenAssetID string          `sql:"size:36;unique_index:supply_idx" json:"ctoken_asset_id"`
 	Collaterals   decimal.Decimal `sql:"type:decimal(20,8)" json:"collaterals"`
 	Version       int64           `sql:"default:0" json:"version"`
 	CreatedAt     time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
@@ -25,8 +25,8 @@ type ISupplyStore interface {
 	Find(ctx context.Context, userID string, ctokenAssetID string) (*Supply, error)
 	FindByUser(ctx context.Context, userID string) ([]*Supply, error)
 	FindByCTokenAssetID(ctx context.Context, assetID string) ([]*Supply, error)
-	SumOfSupplies(ctx context.Context, symbol string) (decimal.Decimal, error)
-	CountOfSuppliers(ctx context.Context, symbol string) (int64, error)
+	SumOfSupplies(ctx context.Context, ctokenAssetID string) (decimal.Decimal, error)
+	CountOfSuppliers(ctx context.Context, ctokenAssetID string) (int64, error)
 	Update(ctx context.Context, tx *db.DB, supply *Supply) error
 	All(ctx context.Context) ([]*Supply, error)
 	Users(ctx context.Context) ([]string, error)
