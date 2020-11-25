@@ -21,7 +21,9 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hhatto/gocloc v0.3.3 // indirect
 	github.com/jinzhu/gorm v1.9.16
+	github.com/jmoiron/sqlx v1.2.0
 	github.com/json-iterator/go v1.1.10 // indirect
+	github.com/lib/pq v1.8.0
 	github.com/magiconair/properties v1.8.4 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.3.3 // indirect
