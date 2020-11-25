@@ -171,7 +171,7 @@ var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Actio
 		return e
 	}
 	unpledgedTokenLiquidity := unpledgedTokens.Mul(exchangeRate).Mul(market.CollateralFactor).Mul(price)
-	if unpledgedTokenLiquidity.GreaterThanOrEqual(liquidity) {
+	if unpledgedTokenLiquidity.GreaterThan(liquidity) {
 		log.Errorln(errors.New("insufficient liquidity"))
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrInsufficientLiquidity)
 	}
