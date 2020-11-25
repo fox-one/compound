@@ -50,7 +50,7 @@ func New(cfg *core.Config,
 }
 
 func (s *borrowService) Repay(ctx context.Context, amount decimal.Decimal, borrow *core.Borrow) (string, error) {
-	market, e := s.marketStore.FindBySymbol(ctx, borrow.Symbol)
+	market, e := s.marketStore.Find(ctx, borrow.AssetID)
 	if e != nil {
 		return "", e
 	}
