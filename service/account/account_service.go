@@ -114,7 +114,7 @@ func (s *accountService) markets(ctx context.Context) (map[string]*core.Market, 
 	return maps, nil
 }
 
-func (s *accountService) SeizeTokenAllowed(ctx context.Context, supply *core.Supply, borrow *core.Borrow, repayAmount decimal.Decimal, time time.Time) bool {
+func (s *accountService) SeizeTokenAllowed(ctx context.Context, supply *core.Supply, borrow *core.Borrow, time time.Time) bool {
 	if supply.UserID != borrow.UserID {
 		return false
 	}
@@ -130,7 +130,7 @@ func (s *accountService) SeizeTokenAllowed(ctx context.Context, supply *core.Sup
 		return false
 	}
 
-	if liquidity.GreaterThan(decimal.Zero) {
+	if liquidity.GreaterThanOrEqual(decimal.Zero) {
 		return false
 	}
 
