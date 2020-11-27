@@ -16,22 +16,26 @@ import (
 
 // from user transfer
 var handleSupplyEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
+	log := logger.FromContext(ctx).WithField("worker", "supply")
 	supplyAmount := snapshot.Amount.Abs()
 	userID := snapshot.OpponentID
 
 	market, e := w.marketStore.Find(ctx, snapshot.AssetID)
 	if e != nil {
 		//refund to user
+		log.Errorln(e)
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
 	}
 
 	//accrue interest
 	if e = w.marketService.AccrueInterest(ctx, w.db, market, snapshot.CreatedAt); e != nil {
+		log.Errorln(e)
 		return e
 	}
 
 	exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
 	if e != nil {
+		log.Errorln(e)
 		return e
 	}
 
@@ -42,6 +46,7 @@ var handleSupplyEvent = func(ctx context.Context, w *Worker, action core.Action,
 		market.CTokens = market.CTokens.Add(ctokens)
 		market.TotalCash = market.TotalCash.Add(supplyAmount)
 		if e = w.marketStore.Update(ctx, tx, market); e != nil {
+			log.Errorln(e)
 			return e
 		}
 
@@ -50,6 +55,7 @@ var handleSupplyEvent = func(ctx context.Context, w *Worker, action core.Action,
 		memo[core.ActionKeyService] = core.ActionServiceMint
 		memoStr, e := memo.Format()
 		if e != nil {
+			log.Errorln(e)
 			return e
 		}
 		trace := id.UUIDFromString(fmt.Sprintf("mint:%s", snapshot.TraceID))
@@ -62,6 +68,7 @@ var handleSupplyEvent = func(ctx context.Context, w *Worker, action core.Action,
 		}
 
 		if e = w.transferStore.Create(ctx, tx, &transfer); e != nil {
+			log.Errorln(e)
 			return e
 		}
 
@@ -71,18 +78,21 @@ var handleSupplyEvent = func(ctx context.Context, w *Worker, action core.Action,
 
 // from user, refund if error
 var handlePledgeEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
+	log := logger.FromContext(ctx).WithField("worker", "pledge")
 	ctokens := snapshot.Amount
 	userID := snapshot.OpponentID
 	ctokenAssetID := snapshot.AssetID
 
 	market, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
 	if e != nil {
+		log.Errorln(e)
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
 	}
 
 	return w.db.Tx(func(tx *db.DB) error {
 		//accrue interest
 		if e = w.marketService.AccrueInterest(ctx, tx, market, snapshot.CreatedAt); e != nil {
+			log.Errorln(e)
 			return e
 		}
 
@@ -96,16 +106,19 @@ var handlePledgeEvent = func(ctx context.Context, w *Worker, action core.Action,
 					Collaterals:   ctokens,
 				}
 				if e = w.supplyStore.Save(ctx, tx, supply); e != nil {
+					log.Errorln(e)
 					return e
 				}
 				return nil
 			}
+			log.Errorln(e)
 			return e
 		}
 		//update supply
 		supply.Collaterals = supply.Collaterals.Add(ctokens)
 		e = w.supplyStore.Update(ctx, tx, supply)
 		if e != nil {
+			log.Errorln(e)
 			return e
 		}
 
@@ -139,6 +152,7 @@ var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Actio
 
 	//accrue interest
 	if e = w.marketService.AccrueInterest(ctx, w.db, market, snapshot.CreatedAt); e != nil {
+		log.Errorln(e)
 		return e
 	}
 
@@ -168,6 +182,7 @@ var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Actio
 
 	exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
 	if e != nil {
+		log.Errorln(e)
 		return e
 	}
 	unpledgedTokenLiquidity := unpledgedTokens.Mul(exchangeRate).Mul(market.CollateralFactor).Mul(price)
@@ -179,6 +194,7 @@ var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Actio
 	return w.db.Tx(func(tx *db.DB) error {
 		supply, e := w.supplyStore.Find(ctx, userID, market.CTokenAssetID)
 		if e != nil {
+			log.Errorln(e)
 			return e
 		}
 
@@ -188,6 +204,7 @@ var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Actio
 		}
 
 		if e = w.supplyStore.Update(ctx, tx, supply); e != nil {
+			log.Errorln(e)
 			return e
 		}
 
@@ -197,6 +214,7 @@ var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Actio
 
 		memoStr, e := action.Format()
 		if e != nil {
+			log.Errorln(e)
 			return e
 		}
 		trace := id.UUIDFromString(fmt.Sprintf("unpledge-%s", snapshot.TraceID))
@@ -209,6 +227,7 @@ var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Actio
 		}
 
 		if e = w.transferStore.Create(ctx, tx, &transfer); e != nil {
+			log.Errorln(e)
 			return e
 		}
 

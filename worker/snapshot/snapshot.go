@@ -144,10 +144,12 @@ func (w *Worker) onWork(ctx context.Context) error {
 
 func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) error {
 	if snapshot.UserID == w.mainWallet.Client.ClientID {
+		log := logger.FromContext(ctx).WithField("worker", "snapshot")
 		// main wallet
 		var action core.Action
 		e := json.Unmarshal([]byte(snapshot.Memo), &action)
 		if e != nil {
+			log.Errorln(e)
 			return nil
 		}
 

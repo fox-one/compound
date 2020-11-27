@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/fox-one/mixin-sdk-go"
+	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/store/db"
 	"github.com/robfig/cron/v3"
 )
@@ -57,6 +58,7 @@ func (w *Worker) onWork(ctx context.Context) error {
 }
 
 func (w *Worker) doTransfer(ctx context.Context, transfer *core.Transfer) error {
+	log := logger.FromContext(ctx).WithField("worker", "transfer")
 	return w.DB.Tx(func(tx *db.DB) error {
 		input := mixin.TransferInput{
 			AssetID:    transfer.AssetID,
@@ -67,10 +69,12 @@ func (w *Worker) doTransfer(ctx context.Context, transfer *core.Transfer) error 
 
 		input.Memo = transfer.Memo
 		if _, e := w.MainWallet.Client.Transfer(ctx, &input, w.MainWallet.Pin); e != nil {
+			log.Errorln(e)
 			return e
 		}
 		//delete record
 		if e := w.TransferStore.Delete(ctx, tx, transfer.ID); e != nil {
+			log.Errorln(e)
 			return e
 		}
 

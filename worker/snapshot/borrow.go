@@ -46,6 +46,7 @@ var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action,
 		market.TotalBorrows = market.TotalBorrows.Add(borrowAmount)
 		// update market
 		if e = w.marketStore.Update(ctx, tx, market); e != nil {
+			log.Errorln(e)
 			return e
 		}
 
@@ -60,6 +61,7 @@ var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action,
 					InterestIndex: market.BorrowIndex}
 
 				if e = w.borrowStore.Save(ctx, tx, &borrow); e != nil {
+					log.Errorln(e)
 					return e
 				}
 				return nil
@@ -70,6 +72,7 @@ var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action,
 		//update borrow account
 		borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, market)
 		if e != nil {
+			log.Errorln(e)
 			return e
 		}
 
@@ -78,6 +81,7 @@ var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action,
 		borrow.InterestIndex = market.BorrowIndex
 		e = w.borrowStore.Update(ctx, tx, borrow)
 		if e != nil {
+			log.Errorln(e)
 			return e
 		}
 
@@ -99,6 +103,7 @@ var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action,
 		}
 
 		if e = w.transferStore.Create(ctx, tx, &transfer); e != nil {
+			log.Errorln(e)
 			return e
 		}
 

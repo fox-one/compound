@@ -6,10 +6,12 @@ import (
 	"context"
 	"strings"
 
+	"github.com/fox-one/pkg/logger"
 	"github.com/shopspring/decimal"
 )
 
 var handleUpdateMarketEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
+	log := logger.FromContext(ctx).WithField("worker", "update-market")
 	if snapshot.AssetID != w.config.App.GasAssetID {
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrOperationForbidden)
 	}
@@ -27,6 +29,7 @@ var handleUpdateMarketEvent = func(ctx context.Context, w *Worker, action core.A
 
 	if market.InitExchangeRate.GreaterThan(decimal.Zero) {
 		if e = w.marketService.AccrueInterest(ctx, w.db, market, snapshot.CreatedAt); e != nil {
+			log.Errorln(e)
 			return e
 		}
 	}
@@ -82,6 +85,7 @@ var handleUpdateMarketEvent = func(ctx context.Context, w *Worker, action core.A
 	}
 
 	if e = w.marketStore.Update(ctx, w.db, market); e != nil {
+		log.Errorln(e)
 		return e
 	}
 
@@ -89,6 +93,7 @@ var handleUpdateMarketEvent = func(ctx context.Context, w *Worker, action core.A
 }
 
 var handleAddMarketEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
+	log := logger.FromContext(ctx).WithField("worker", "add-market")
 	if snapshot.AssetID != w.config.App.GasAssetID {
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrOperationForbidden)
 	}
@@ -103,18 +108,20 @@ var handleAddMarketEvent = func(ctx context.Context, w *Worker, action core.Acti
 
 	_, e := w.marketStore.FindBySymbol(ctx, symbol)
 	if e == nil {
+		log.Errorln(e)
 		// market exists
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrOperationForbidden)
-	} else {
-		market := core.Market{
-			Symbol:        symbol,
-			AssetID:       assetID,
-			CTokenAssetID: ctokenAssetID,
-		}
+	}
 
-		if e = w.marketStore.Save(ctx, w.db, &market); e != nil {
-			return e
-		}
+	market := core.Market{
+		Symbol:        symbol,
+		AssetID:       assetID,
+		CTokenAssetID: ctokenAssetID,
+	}
+
+	if e = w.marketStore.Save(ctx, w.db, &market); e != nil {
+		log.Errorln(e)
+		return e
 	}
 
 	return nil

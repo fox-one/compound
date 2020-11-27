@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/fox-one/pkg/logger"
 	"github.com/shopspring/decimal"
 )
 
@@ -14,12 +15,15 @@ var handleRefundEvent = func(ctx context.Context, w *Worker, action core.Action,
 		return nil
 	}
 
+	log := logger.FromContext(ctx).WithField("worker", "refund")
+
 	action = core.NewAction()
 	action[core.ActionKeyService] = core.ActionServiceRefund
 	action[core.ActionKeyReferTrace] = snapshot.TraceID
 	action[core.ActionKeyErrorCode] = errCode.String()
 	memoStr, e := action.Format()
 	if e != nil {
+		log.Errorln(e)
 		return e
 	}
 
@@ -33,6 +37,7 @@ var handleRefundEvent = func(ctx context.Context, w *Worker, action core.Action,
 	}
 
 	if e := w.transferStore.Create(ctx, w.db, &transfer); e != nil {
+		log.Errorln(e)
 		return e
 	}
 

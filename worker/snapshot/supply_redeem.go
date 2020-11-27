@@ -6,19 +6,23 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/store/db"
 )
 
 // from user
 var handleSupplyRedeemEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
+	log := logger.FromContext(ctx).WithField("worker", "supply_redeem")
 	ctokenAssetID := snapshot.AssetID
 	market, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
 	if e != nil {
+		log.Errorln(e)
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
 	}
 
 	//accrue interest
 	if e = w.marketService.AccrueInterest(ctx, w.db, market, snapshot.CreatedAt); e != nil {
+		log.Errorln(e)
 		return e
 	}
 
@@ -33,6 +37,7 @@ var handleSupplyRedeemEvent = func(ctx context.Context, w *Worker, action core.A
 	// transfer asset to user
 	exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
 	if e != nil {
+		log.Errorln(e)
 		return e
 	}
 
@@ -42,6 +47,7 @@ var handleSupplyRedeemEvent = func(ctx context.Context, w *Worker, action core.A
 		market.TotalCash = market.TotalCash.Sub(amount)
 		market.CTokens = market.CTokens.Sub(redeemTokens)
 		if e = w.marketStore.Update(ctx, tx, market); e != nil {
+			log.Errorln(e)
 			return e
 		}
 
@@ -50,6 +56,7 @@ var handleSupplyRedeemEvent = func(ctx context.Context, w *Worker, action core.A
 		memo[core.ActionKeyService] = core.ActionServiceRedeemTransfer
 		memoStr, e := memo.Format()
 		if e != nil {
+			log.Errorln(e)
 			return e
 		}
 
@@ -62,6 +69,7 @@ var handleSupplyRedeemEvent = func(ctx context.Context, w *Worker, action core.A
 			Memo:       memoStr,
 		}
 		if e = w.transferStore.Create(ctx, tx, &transfer); e != nil {
+			log.Errorln(e)
 			return e
 		}
 

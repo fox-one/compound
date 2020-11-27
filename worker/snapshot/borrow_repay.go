@@ -6,12 +6,15 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/store/db"
 	"github.com/shopspring/decimal"
 )
 
 // from user, refund if error
 var handleBorrowRepayEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
+	log := logger.FromContext(ctx).WithField("worker", "borrow_repay")
+
 	repayAmount := snapshot.Amount.Abs()
 	userID := snapshot.OpponentID
 
@@ -22,11 +25,13 @@ var handleBorrowRepayEvent = func(ctx context.Context, w *Worker, action core.Ac
 
 	//update interest
 	if e = w.marketService.AccrueInterest(ctx, w.db, market, snapshot.CreatedAt); e != nil {
+		log.Errorln(e)
 		return e
 	}
 
 	borrow, e := w.borrowStore.Find(ctx, userID, market.AssetID)
 	if e != nil {
+		log.Errorln(e)
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrBorrowNotFound)
 	}
 
@@ -34,6 +39,7 @@ var handleBorrowRepayEvent = func(ctx context.Context, w *Worker, action core.Ac
 		//update borrow info
 		borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, market)
 		if e != nil {
+			log.Errorln(e)
 			return e
 		}
 		redundantAmount := repayAmount.Sub(borrowBalance)
@@ -47,6 +53,7 @@ var handleBorrowRepayEvent = func(ctx context.Context, w *Worker, action core.Ac
 		borrow.Principal = newBalance
 		borrow.InterestIndex = newIndex
 		if e = w.borrowStore.Update(ctx, tx, borrow); e != nil {
+			log.Errorln(e)
 			return e
 		}
 
@@ -54,6 +61,7 @@ var handleBorrowRepayEvent = func(ctx context.Context, w *Worker, action core.Ac
 		market.TotalCash = market.TotalCash.Add(repayAmount)
 
 		if e = w.marketStore.Update(ctx, tx, market); e != nil {
+			log.Errorln(e)
 			return e
 		}
 
@@ -64,6 +72,7 @@ var handleBorrowRepayEvent = func(ctx context.Context, w *Worker, action core.Ac
 			action[core.ActionKeyService] = core.ActionServiceRefund
 			memoStr, e := action.Format()
 			if e != nil {
+				log.Errorln(e)
 				return e
 			}
 			refundTrace := id.UUIDFromString(fmt.Sprintf("repay-refund-%s", snapshot.TraceID))
@@ -76,6 +85,7 @@ var handleBorrowRepayEvent = func(ctx context.Context, w *Worker, action core.Ac
 			}
 
 			if e = w.transferStore.Create(ctx, tx, &input); e != nil {
+				log.Errorln(e)
 				return e
 			}
 		}
