@@ -1,5 +1,7 @@
 package concurrency
 
+import "fmt"
+
 const (
 	// DefaultMax default max
 	DefaultMax = 256
@@ -32,6 +34,11 @@ func (g *GoLimit) Done() {
 
 // Close close chan
 func (g *GoLimit) Close() {
+	defer func() {
+		if recover() != nil {
+			fmt.Println("golimit closed")
+		}
+	}()
 	close(g.ch)
 }
 
