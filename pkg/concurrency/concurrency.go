@@ -7,9 +7,6 @@ const (
 	DefaultMax = 256
 )
 
-// DefaultGoLimit default go limit, max:256
-var DefaultGoLimit = NewGoLimit(DefaultMax)
-
 // GoLimit go limit
 type GoLimit struct {
 	ch chan int
@@ -20,6 +17,11 @@ func NewGoLimit(max int) *GoLimit {
 	return &GoLimit{
 		ch: make(chan int, max),
 	}
+}
+
+// NewDefaultGoLimit new default go limit
+func NewDefaultGoLimit() *GoLimit {
+	return NewGoLimit(DefaultMax)
 }
 
 // Add add num
