@@ -44,7 +44,7 @@ type Market struct {
 	BlockNumber        int64           `json:"block_number"`
 	UtilizationRate    decimal.Decimal `sql:"type:decimal(20,8)" json:"utilization_rate"`
 	ExchangeRate       decimal.Decimal `sql:"type:decimal(20,8)" json:"exchange_rate"`
-	SupplyRatePerBlock decimal.Decimal `sql:"type:decimal(20,16)" json:"supply_Rate_per_block"`
+	SupplyRatePerBlock decimal.Decimal `sql:"type:decimal(20,16)" json:"supply_rate_per_block"`
 	BorrowRatePerBlock decimal.Decimal `sql:"type:decimal(20,16)" json:"borrow_rate_per_block"`
 	Price              decimal.Decimal `sql:"type:decimal(20,8)" json:"price"`
 	BorrowIndex        decimal.Decimal `sql:"type:decimal(28,16)" json:"borrow_index"`
