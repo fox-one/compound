@@ -121,7 +121,7 @@ var updateMarketCmd = &cobra.Command{
 
 		action[core.ActionKeyJumpMultiPlier] = flag
 
-		flag, e = cmd.Flags().GetString("ie")
+		flag, e = cmd.Flags().GetString("k")
 		if e != nil {
 			panic("invalid flag")
 		}

@@ -12,6 +12,7 @@ import (
 	"github.com/fox-one/pkg/property"
 	"github.com/fox-one/pkg/store/db"
 	"github.com/robfig/cron/v3"
+	"github.com/shopspring/decimal"
 )
 
 // Worker snapshot worker
@@ -72,6 +73,7 @@ func New(
 	handlers[core.ActionServiceSeizeToken] = handleSeizeTokenEvent
 	handlers[core.ActionServiceAddMarket] = handleAddMarketEvent
 	handlers[core.ActionServiceUpdateMarket] = handleUpdateMarketEvent
+	handlers[core.ActionServiceInjectMintToken] = handleInjectMintTokenEvent
 
 	job := Worker{
 		config:                   config,
@@ -150,6 +152,9 @@ func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) er
 		e := json.Unmarshal([]byte(snapshot.Memo), &action)
 		if e != nil {
 			log.Errorln(e)
+			if snapshot.Amount.GreaterThan(decimal.Zero) {
+				return handleRefundEvent(ctx, w, action, snapshot, core.ErrUnknown)
+			}
 			return nil
 		}
 
@@ -160,7 +165,10 @@ func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) er
 			return handlerTransactionEvent(ctx, w, action, snapshot)
 		}
 
-		return handleRefundEvent(ctx, w, action, snapshot, core.ErrUnknown)
+		if snapshot.Amount.GreaterThan(decimal.Zero) {
+			return handleRefundEvent(ctx, w, action, snapshot, core.ErrUnknown)
+		}
+		return nil
 	}
 	return nil
 }

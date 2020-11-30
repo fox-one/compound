@@ -80,7 +80,7 @@ var handleUpdateMarketEvent = func(ctx context.Context, w *Worker, action core.A
 	}
 
 	kink, e := decimal.NewFromString(action[core.ActionKeyKink])
-	if e == nil && kink.GreaterThanOrEqual(decimal.Zero) && jumpMultiplier.LessThan(decimal.NewFromInt(1)) {
+	if e == nil && kink.GreaterThanOrEqual(decimal.Zero) && kink.LessThan(decimal.NewFromInt(1)) {
 		market.Kink = kink
 	}
 

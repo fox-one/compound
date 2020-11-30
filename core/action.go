@@ -112,6 +112,8 @@ const (
 	ActionServiceUpdateMarket = "u-mkt"
 	// ActionServiceAddMarket add market
 	ActionServiceAddMarket = "a-mkt"
+	//ActionServiceInjectMintToken inject mint token
+	ActionServiceInjectMintToken = "imt"
 )
 
 // Action action
