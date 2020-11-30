@@ -29,10 +29,7 @@ func init() {
 }
 
 func (s *marketStore) Save(ctx context.Context, tx *db.DB, market *core.Market) error {
-	if err := tx.Update().Create(market).Error; err != nil {
-		return err
-	}
-	return nil
+	return tx.Update().Where("asset_id=?", market.AssetID).FirstOrCreate(market).Error
 }
 func (s *marketStore) Find(ctx context.Context, assetID string) (*core.Market, error) {
 	if assetID == "" {
