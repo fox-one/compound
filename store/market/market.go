@@ -63,7 +63,7 @@ func (s *marketStore) FindByCToken(ctx context.Context, ctokenAssetID string) (*
 	}
 
 	var market core.Market
-	if err := s.db.View().Where("ctoken_asset_id=?", ctokenAssetID).First(&market).Error; err != nil {
+	if err := s.db.View().Where("c_token_asset_id=?", ctokenAssetID).First(&market).Error; err != nil {
 		return nil, err
 	}
 
