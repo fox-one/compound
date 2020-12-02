@@ -27,6 +27,9 @@ var handleSupplyRedeemEvent = func(ctx context.Context, w *Worker, action core.A
 	}
 
 	redeemTokens := snapshot.Amount.Abs()
+	if redeemTokens.GreaterThan(market.CTokens) {
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrRedeemNotAllowed)
+	}
 
 	// check redeem allowed
 	allowed := w.supplyService.RedeemAllowed(ctx, redeemTokens, market)

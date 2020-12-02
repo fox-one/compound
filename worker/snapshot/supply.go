@@ -92,6 +92,11 @@ var handlePledgeEvent = func(ctx context.Context, w *Worker, action core.Action,
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
 	}
 
+	if ctokens.GreaterThan(market.CTokens) {
+		log.Errorln(errors.New("ctoken overflow"))
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrPledgeNotAllowed)
+	}
+
 	if market.CollateralFactor.LessThanOrEqual(decimal.Zero) {
 		log.Errorln(errors.New("pledge disallowed"))
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrPledgeNotAllowed)
