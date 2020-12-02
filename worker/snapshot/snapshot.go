@@ -132,7 +132,7 @@ func (w *Worker) onWork(ctx context.Context) error {
 			continue
 		}
 
-		if _, e := w.snapshotStore.Find(ctx, snapshot.SnapshotID); e != nil {
+		if _, e := w.snapshotStore.Find(ctx, snapshot.SnapshotID); e == nil {
 			//exists, ignore
 			continue
 		}
