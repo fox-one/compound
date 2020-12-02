@@ -40,6 +40,9 @@ var handleSupplyEvent = func(ctx context.Context, w *Worker, action core.Action,
 	}
 
 	ctokens := snapshot.Amount.Div(exchangeRate).Truncate(8)
+	if ctokens.LessThan(decimal.NewFromFloat(0.00000001)) {
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrInvalidAmount)
+	}
 
 	return w.db.Tx(func(tx *db.DB) error {
 		//update maket

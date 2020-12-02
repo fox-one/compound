@@ -96,7 +96,7 @@ func (s *marketStore) AllAsMap(ctx context.Context) (map[string]*core.Market, er
 func (s *marketStore) Update(ctx context.Context, tx *db.DB, market *core.Market) error {
 	version := market.Version
 	market.Version++
-	if err := tx.Update().Model(core.Market{}).Where("asset_id=? and version=?", market.AssetID, version).Update(market).Error; err != nil {
+	if err := tx.Update().Model(core.Market{}).Where("asset_id=? and version=?", market.AssetID, version).Updates(market).Error; err != nil {
 		return err
 	}
 
