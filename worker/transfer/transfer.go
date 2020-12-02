@@ -45,7 +45,7 @@ func New(db *db.DB, mainWallet *core.Wallet, cfg *core.Config, transferStr core.
 }
 
 func (w *Worker) onWork(ctx context.Context) error {
-	pendingTransfers, e := w.TransferStore.Top(ctx, 100)
+	pendingTransfers, e := w.TransferStore.FindByStatus(ctx, core.TransferStatusPending)
 	if e != nil {
 		return e
 	}
@@ -72,8 +72,8 @@ func (w *Worker) doTransfer(ctx context.Context, transfer *core.Transfer) error 
 			log.Errorln(e)
 			return e
 		}
-		//delete record
-		if e := w.TransferStore.Delete(ctx, tx, transfer.ID); e != nil {
+		//update transfer status
+		if e := w.TransferStore.UpdateStatus(ctx, tx, transfer.ID, core.TransferStatusDone); e != nil {
 			log.Errorln(e)
 			return e
 		}

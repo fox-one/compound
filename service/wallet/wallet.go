@@ -64,14 +64,14 @@ func (s *walletService) PullSnapshots(ctx context.Context, cursor string, limit 
 
 func convertSnapshot(snapshot *mixin.Snapshot) *core.Snapshot {
 	return &core.Snapshot{
-		ID:         snapshot.SnapshotID,
+		SnapshotID: snapshot.SnapshotID,
 		TraceID:    snapshot.TraceID,
-		CreatedAt:  snapshot.CreatedAt,
 		UserID:     snapshot.UserID,
 		OpponentID: snapshot.OpponentID,
 		AssetID:    snapshot.AssetID,
 		Amount:     snapshot.Amount,
 		Memo:       snapshot.Memo,
+		CreatedAt:  snapshot.CreatedAt,
 	}
 }
 

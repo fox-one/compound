@@ -22,6 +22,7 @@ type Worker struct {
 	db                       *db.DB
 	mainWallet               *core.Wallet
 	blockWallet              *core.Wallet
+	snapshotStore            core.ISnapshotStore
 	propertyStore            property.Store
 	transferStore            core.ITransferStore
 	marketStore              core.IMarketStore
@@ -48,6 +49,7 @@ func New(
 	db *db.DB,
 	mainWallet *core.Wallet,
 	blockWallet *core.Wallet,
+	snapshotStore core.ISnapshotStore,
 	propertyStore property.Store,
 	transferStore core.ITransferStore,
 	marketStore core.IMarketStore,
@@ -80,6 +82,7 @@ func New(
 		db:                       db,
 		mainWallet:               mainWallet,
 		blockWallet:              blockWallet,
+		snapshotStore:            snapshotStore,
 		propertyStore:            propertyStore,
 		transferStore:            transferStore,
 		marketStore:              marketStore,
@@ -129,9 +132,17 @@ func (w *Worker) onWork(ctx context.Context) error {
 			continue
 		}
 
+		if _, e := w.snapshotStore.Find(ctx, snapshot.SnapshotID); e != nil {
+			//exists, ignore
+			continue
+		}
+
 		if err := w.handleSnapshot(ctx, snapshot); err != nil {
 			return err
 		}
+
+		//save
+		w.snapshotStore.Save(ctx, snapshot)
 	}
 
 	if checkPoint.String() != next {
@@ -147,6 +158,8 @@ func (w *Worker) onWork(ctx context.Context) error {
 func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) error {
 	if snapshot.UserID == w.mainWallet.Client.ClientID {
 		log := logger.FromContext(ctx).WithField("worker", "snapshot")
+		log.Infoln(snapshot.Memo)
+
 		// main wallet
 		var action core.Action
 		e := json.Unmarshal([]byte(snapshot.Memo), &action)

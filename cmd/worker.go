@@ -4,6 +4,7 @@ import (
 	"compound/worker"
 	"compound/worker/priceoracle"
 	"compound/worker/snapshot"
+	"compound/worker/storemanager"
 	"compound/worker/transfer"
 	"os"
 	"os/signal"
@@ -28,6 +29,7 @@ var workerCmd = &cobra.Command{
 		supplyStore := provideSupplyStore(db)
 		borrowStore := provideBorrowStore(db)
 		transferStore := provideTransferStore(db)
+		snapshotStore := provideSnapshotStore(db)
 
 		walletService := provideWalletService(mainWallet)
 		blockService := provideBlockService()
@@ -40,7 +42,8 @@ var workerCmd = &cobra.Command{
 		workers := []worker.IJob{
 			priceoracle.New(mainWallet, blockWallet, config, marketStore, blockService, priceService, walletService),
 			transfer.New(db, mainWallet, config, transferStore, walletService),
-			snapshot.New(config, db, mainWallet, blockWallet, propertyStore, transferStore, marketStore, supplyStore, borrowStore, walletService, priceService, blockService, marketService, supplyService, borrowService, accountService),
+			storemanager.New(config, transferStore, snapshotStore),
+			snapshot.New(config, db, mainWallet, blockWallet, snapshotStore, propertyStore, transferStore, marketStore, supplyStore, borrowStore, walletService, priceService, blockService, marketService, supplyService, borrowService, accountService),
 		}
 
 		for _, w := range workers {

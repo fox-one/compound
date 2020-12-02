@@ -21,14 +21,22 @@ type Wallet struct {
 
 // Snapshot snapshot
 type Snapshot struct {
-	ID         string          `json:"id,omitempty"`
-	TraceID    string          `json:"trace_id,omitempty"`
+	ID         uint64          `sql:"PRIMARY_KEY;AUTO_INCREMENT" json:"id"`
+	SnapshotID string          `sql:"size:36;unique_index:snapshot_idx" json:"snapshot_id,omitempty"`
+	TraceID    string          `sql:"size:36;unique_index:trace_idx" json:"trace_id,omitempty"`
+	UserID     string          `sql:"size:36" json:"user_id,omitempty"`
+	OpponentID string          `sql:"size:36" json:"opponent_id,omitempty"`
+	AssetID    string          `sql:"size:36" json:"asset_id,omitempty"`
+	Amount     decimal.Decimal `sql:"type:decimal(20,8)" json:"amount,omitempty"`
+	Memo       string          `sql:"size:256" json:"memo,omitempty"`
 	CreatedAt  time.Time       `json:"created_at,omitempty"`
-	UserID     string          `json:"user_id,omitempty"`
-	OpponentID string          `json:"opponent_id,omitempty"`
-	AssetID    string          `json:"asset_id,omitempty"`
-	Amount     decimal.Decimal `json:"amount,omitempty"`
-	Memo       string          `json:"memo,omitempty"`
+}
+
+// ISnapshotStore snapshot store interface
+type ISnapshotStore interface {
+	Save(ctx context.Context, snapshot *Snapshot) error
+	Find(ctx context.Context, snapshotID string) (*Snapshot, error)
+	DeleteByTime(t time.Time) error
 }
 
 // IWalletService wallet service interface

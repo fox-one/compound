@@ -11,6 +11,7 @@ import (
 	"compound/service/wallet"
 	"compound/store/borrow"
 	"compound/store/market"
+	"compound/store/snapshot"
 	"compound/store/supply"
 	"compound/store/transfer"
 
@@ -70,6 +71,10 @@ func provideBorrowStore(db *db.DB) core.IBorrowStore {
 
 func provideTransferStore(db *db.DB) core.ITransferStore {
 	return transfer.New(db)
+}
+
+func provideSnapshotStore(db *db.DB) core.ISnapshotStore {
+	return snapshot.New(db)
 }
 
 // ------------------service------------------------------------

@@ -4,6 +4,7 @@ import (
 	"compound/core"
 	"context"
 	"errors"
+	"time"
 
 	"github.com/fox-one/pkg/store/db"
 )
@@ -47,4 +48,20 @@ func (s *transferStore) Top(ctx context.Context, limit int) ([]*core.Transfer, e
 	}
 
 	return transfers, nil
+}
+
+func (s *transferStore) FindByStatus(ctx context.Context, status string) ([]*core.Transfer, error) {
+	var transfers []*core.Transfer
+	if e := s.db.View().Where("status=?", status).Find(&transfers).Error; e != nil {
+		return nil, e
+	}
+	return transfers, nil
+}
+
+func (s *transferStore) UpdateStatus(ctx context.Context, tx *db.DB, id uint64, status string) error {
+	return s.db.Update().Model(core.Transfer{}).Where("id=?", id).Update("status", status).Error
+}
+
+func (s *transferStore) DeleteByTime(t time.Time) error {
+	return s.db.Update().Where("status=? and created_at < ?", core.TransferStatusDone, t).Delete(core.Transfer{}).Error
 }
