@@ -89,6 +89,11 @@ var handlePledgeEvent = func(ctx context.Context, w *Worker, action core.Action,
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
 	}
 
+	if market.CollateralFactor.LessThanOrEqual(decimal.Zero) {
+		log.Errorln(errors.New("pledge disallowed"))
+		return handleRefundEvent(ctx, w, action, snapshot, core.ErrPledgeNotAllowed)
+	}
+
 	return w.db.Tx(func(tx *db.DB) error {
 		//accrue interest
 		if e = w.marketService.AccrueInterest(ctx, tx, market, snapshot.CreatedAt); e != nil {
