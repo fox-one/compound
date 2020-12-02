@@ -58,7 +58,7 @@ func (s *supplyStore) FindByUser(ctx context.Context, userID string) ([]*core.Su
 func (s *supplyStore) Update(ctx context.Context, tx *db.DB, supply *core.Supply) error {
 	version := supply.Version
 	supply.Version++
-	if err := tx.Update().Model(core.Supply{}).Where("user_id=? c_token_asset_id=? and version=?", supply.UserID, supply.CTokenAssetID, version).Updates(supply).Error; err != nil {
+	if err := tx.Update().Model(core.Supply{}).Where("user_id=? and c_token_asset_id=? and version=?", supply.UserID, supply.CTokenAssetID, version).Updates(supply).Error; err != nil {
 		return err
 	}
 
