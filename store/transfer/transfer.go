@@ -32,6 +32,7 @@ func init() {
 }
 
 func (s *transferStore) Create(ctx context.Context, tx *db.DB, transfer *core.Transfer) error {
+	transfer.Status = core.TransferStatusPending
 	return tx.Update().Where("trace_id=?", transfer.TraceID).FirstOrCreate(transfer).Error
 }
 func (s *transferStore) Delete(ctx context.Context, tx *db.DB, ids ...uint64) error {
