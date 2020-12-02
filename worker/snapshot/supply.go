@@ -164,7 +164,7 @@ var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Actio
 		return e
 	}
 
-	if unpledgedTokens.GreaterThanOrEqual(supply.Collaterals) {
+	if unpledgedTokens.GreaterThan(supply.Collaterals) {
 		log.Errorln(errors.New("insufficient collaterals"))
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrInsufficientCollaterals)
 	}
