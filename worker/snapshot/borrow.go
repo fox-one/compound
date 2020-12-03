@@ -25,7 +25,7 @@ var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action,
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrInvalidAmount)
 	}
 
-	market, e := w.marketStore.FindByCToken(ctx, symbol)
+	market, e := w.marketStore.FindBySymbol(ctx, symbol)
 	if e != nil {
 		log.Errorln("query market error:", e)
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
