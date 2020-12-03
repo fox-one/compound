@@ -54,35 +54,35 @@ var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action,
 		if e != nil {
 			if gorm.IsRecordNotFoundError(e) {
 				//new
-				borrow := core.Borrow{
+				borrow = &core.Borrow{
 					UserID:        userID,
 					AssetID:       market.AssetID,
 					Principal:     borrowAmount,
 					InterestIndex: market.BorrowIndex}
 
-				if e = w.borrowStore.Save(ctx, tx, &borrow); e != nil {
+				if e = w.borrowStore.Save(ctx, tx, borrow); e != nil {
 					log.Errorln(e)
 					return e
 				}
-				return nil
+			} else {
+				return e
 			}
-			return e
-		}
+		} else {
+			//update borrow account
+			borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, market)
+			if e != nil {
+				log.Errorln(e)
+				return e
+			}
 
-		//update borrow account
-		borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, market)
-		if e != nil {
-			log.Errorln(e)
-			return e
-		}
-
-		newBorrowBalance := borrowBalance.Add(borrowAmount)
-		borrow.Principal = newBorrowBalance
-		borrow.InterestIndex = market.BorrowIndex
-		e = w.borrowStore.Update(ctx, tx, borrow)
-		if e != nil {
-			log.Errorln(e)
-			return e
+			newBorrowBalance := borrowBalance.Add(borrowAmount)
+			borrow.Principal = newBorrowBalance
+			borrow.InterestIndex = market.BorrowIndex
+			e = w.borrowStore.Update(ctx, tx, borrow)
+			if e != nil {
+				log.Errorln(e)
+				return e
+			}
 		}
 
 		//transfer to user
