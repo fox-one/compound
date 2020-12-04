@@ -56,7 +56,7 @@ var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action,
 			return e
 		}
 
-		borrow, e := w.borrowStore.Find(ctx, userID, market.Symbol)
+		borrow, e := w.borrowStore.Find(ctx, userID, market.AssetID)
 		if e != nil {
 			if gorm.IsRecordNotFoundError(e) {
 				//new

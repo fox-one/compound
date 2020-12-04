@@ -31,7 +31,7 @@ func init() {
 }
 
 func (s *supplyStore) Save(ctx context.Context, tx *db.DB, supply *core.Supply) error {
-	if e := tx.Update().Where("user_id=? and c_token_asset_id=?", supply.UserID, supply.CTokenAssetID).FirstOrCreate(supply).Error; e != nil {
+	if e := tx.Update().Where("user_id=? and c_token_asset_id=?", supply.UserID, supply.CTokenAssetID).Create(supply).Error; e != nil {
 		return e
 	}
 

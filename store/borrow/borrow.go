@@ -30,7 +30,7 @@ func init() {
 }
 
 func (s *borrowStore) Save(ctx context.Context, tx *db.DB, borrow *core.Borrow) error {
-	if e := tx.Update().Where("user_id=? and asset_id=?", borrow.UserID, borrow.AssetID).FirstOrCreate(borrow).Error; e != nil {
+	if e := tx.Update().Where("user_id=? and asset_id=?", borrow.UserID, borrow.AssetID).Create(borrow).Error; e != nil {
 		return e
 	}
 
