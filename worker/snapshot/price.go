@@ -28,6 +28,7 @@ var handlePriceEvent = func(ctx context.Context, w *Worker, action core.Action, 
 		log.Errorln(e)
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
 	}
+
 	market.Price = price
 	if e = w.marketStore.Update(ctx, w.db, market); e != nil {
 		log.Errorln(e)

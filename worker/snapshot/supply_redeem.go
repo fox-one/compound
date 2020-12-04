@@ -54,6 +54,12 @@ var handleSupplyRedeemEvent = func(ctx context.Context, w *Worker, action core.A
 			return e
 		}
 
+		//accrue interest
+		if e = w.marketService.AccrueInterest(ctx, tx, market, snapshot.CreatedAt); e != nil {
+			log.Errorln(e)
+			return e
+		}
+
 		//transfer to user
 		memo := make(core.Action)
 		memo[core.ActionKeyService] = core.ActionServiceRedeemTransfer

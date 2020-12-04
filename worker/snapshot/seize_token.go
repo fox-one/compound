@@ -152,6 +152,18 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 			return e
 		}
 
+		//supply market accrue interest
+		if e = w.marketService.AccrueInterest(ctx, tx, supplyMarket, snapshot.CreatedAt); e != nil {
+			log.Errorln(e)
+			return e
+		}
+
+		//borrow market accrue interest
+		if e = w.marketService.AccrueInterest(ctx, tx, borrowMarket, snapshot.CreatedAt); e != nil {
+			log.Errorln(e)
+			return e
+		}
+
 		//transfer seized asset to user
 		action := core.NewAction()
 		action[core.ActionKeyService] = core.ActionServiceSeizeTokenTransfer

@@ -50,6 +50,12 @@ var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action,
 			return e
 		}
 
+		//update interest
+		if e = w.marketService.AccrueInterest(ctx, tx, market, snapshot.CreatedAt); e != nil {
+			log.Errorln(e)
+			return e
+		}
+
 		borrow, e := w.borrowStore.Find(ctx, userID, market.Symbol)
 		if e != nil {
 			if gorm.IsRecordNotFoundError(e) {

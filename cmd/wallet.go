@@ -73,9 +73,32 @@ var assetsCmd = &cobra.Command{
 	},
 }
 
+var withdrawCmd = &cobra.Command{
+	Use:     "withdraw",
+	Aliases: []string{"w"},
+	Short:   "query wallet assets",
+	Run: func(cmd *cobra.Command, args []string) {
+		// mainWallet := provideMainWallet()
+		// s, e := mainWallet.Client.Transfer(cmd.Context(), &mixin.TransferInput{
+		// 	AssetID:    "4d8c508b-91c5-375b-92b0-ee702ed2dac5",
+		// 	OpponentID: "273cf3ab-871c-47ff-b631-0fed0ac613a9",
+		// 	Amount:     decimal.NewFromFloat(0.5),
+		// 	TraceID:    id.GenTraceID(),
+		// 	Memo:       `{"srv":"brw-tran"}`,
+		// }, mainWallet.Pin)
+
+		// if e != nil {
+		// 	panic(e)
+		// }
+
+		// fmt.Println(s)
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(walletCmd)
 	walletCmd.Flags().StringP("name", "n", "compound", "")
 
 	rootCmd.AddCommand(assetsCmd)
+	rootCmd.AddCommand(withdrawCmd)
 }

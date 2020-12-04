@@ -65,6 +65,12 @@ var handleBorrowRepayEvent = func(ctx context.Context, w *Worker, action core.Ac
 			return e
 		}
 
+		//update interest
+		if e = w.marketService.AccrueInterest(ctx, tx, market, snapshot.CreatedAt); e != nil {
+			log.Errorln(e)
+			return e
+		}
+
 		if redundantAmount.GreaterThan(decimal.Zero) {
 			refundAmount := redundantAmount.Truncate(8)
 			//refund redundant amount to user

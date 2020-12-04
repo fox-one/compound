@@ -53,6 +53,12 @@ var handleSupplyEvent = func(ctx context.Context, w *Worker, action core.Action,
 			return e
 		}
 
+		//accrue interest
+		if e = w.marketService.AccrueInterest(ctx, tx, market, snapshot.CreatedAt); e != nil {
+			log.Errorln(e)
+			return e
+		}
+
 		//transfer ctoken to user
 		memo := make(core.Action)
 		memo[core.ActionKeyService] = core.ActionServiceMint
