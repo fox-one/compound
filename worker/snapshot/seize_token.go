@@ -130,9 +130,9 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 		}
 
 		// update borrow account and borrow market
-		repayAmount := repayValue.Div(borrowPrice)
-		redundantAmount := userPayAmount.Sub(repayAmount)
-		newBorrowBalance := borrowBalance.Sub(repayAmount).Truncate(8)
+		reallyRepayAmount := repayValue.Div(borrowPrice)
+		redundantAmount := userPayAmount.Sub(reallyRepayAmount)
+		newBorrowBalance := borrowBalance.Sub(reallyRepayAmount).Truncate(8)
 		newIndex := borrowMarket.BorrowIndex
 		if newBorrowBalance.LessThanOrEqual(decimal.Zero) {
 			newBorrowBalance = decimal.Zero
@@ -145,8 +145,8 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 			return e
 		}
 
-		borrowMarket.TotalBorrows = borrowMarket.TotalBorrows.Sub(repayAmount)
-		borrowMarket.TotalCash = borrowMarket.TotalCash.Add(repayAmount)
+		borrowMarket.TotalBorrows = borrowMarket.TotalBorrows.Sub(reallyRepayAmount)
+		borrowMarket.TotalCash = borrowMarket.TotalCash.Add(reallyRepayAmount)
 		if e = w.marketStore.Update(ctx, tx, borrowMarket); e != nil {
 			log.Errorln(e)
 			return e

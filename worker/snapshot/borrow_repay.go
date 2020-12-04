@@ -42,12 +42,14 @@ var handleBorrowRepayEvent = func(ctx context.Context, w *Worker, action core.Ac
 			log.Errorln(e)
 			return e
 		}
+		realRepaidBalance := repayAmount
 		redundantAmount := repayAmount.Sub(borrowBalance)
 		newBalance := borrowBalance.Sub(repayAmount)
 		newIndex := market.BorrowIndex
 		if newBalance.LessThanOrEqual(decimal.Zero) {
 			newBalance = decimal.Zero
 			newIndex = decimal.Zero
+			realRepaidBalance = borrowBalance
 		}
 
 		borrow.Principal = newBalance
@@ -57,8 +59,8 @@ var handleBorrowRepayEvent = func(ctx context.Context, w *Worker, action core.Ac
 			return e
 		}
 
-		market.TotalBorrows = market.TotalBorrows.Sub(repayAmount).Truncate(8)
-		market.TotalCash = market.TotalCash.Add(repayAmount)
+		market.TotalBorrows = market.TotalBorrows.Sub(realRepaidBalance).Truncate(8)
+		market.TotalCash = market.TotalCash.Add(realRepaidBalance)
 
 		if e = w.marketStore.Update(ctx, tx, market); e != nil {
 			log.Errorln(e)
