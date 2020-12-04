@@ -67,7 +67,7 @@ func (s *borrowStore) FindByAssetID(ctx context.Context, assetID string) ([]*cor
 func (s *borrowStore) Update(ctx context.Context, tx *db.DB, borrow *core.Borrow) error {
 	version := borrow.Version
 	borrow.Version++
-	if err := tx.Update().Model(core.Supply{}).Where("user_id=? and asset_id=? and version=?", borrow.UserID, borrow.AssetID, version).Updates(borrow).Error; err != nil {
+	if err := tx.Update().Model(core.Borrow{}).Where("user_id=? and asset_id=? and version=?", borrow.UserID, borrow.AssetID, version).Updates(borrow).Error; err != nil {
 		return err
 	}
 
