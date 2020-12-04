@@ -154,6 +154,10 @@ func (s *service) AccrueInterest(ctx context.Context, db *db.DB, market *core.Ma
 			return e
 		}
 
+		if market.BorrowIndex.LessThanOrEqual(decimal.Zero) {
+			market.BorrowIndex = borrowRate
+		}
+
 		timesBorrowRate := borrowRate.Mul(decimal.NewFromInt(blockDelta))
 		interestAccumulated := market.TotalBorrows.Mul(timesBorrowRate)
 		totalBorrowsNew := interestAccumulated.Add(market.TotalBorrows)
