@@ -103,7 +103,7 @@ func (w *Worker) checkAndPushPriceOnChain(ctx context.Context, market *core.Mark
 	transferInput := mixin.TransferInput{
 		AssetID:    w.Config.Group.Vote.Asset,
 		OpponentID: w.MainWallet.Client.ClientID,
-		Amount:     core.GasCost,
+		Amount:     w.system.VoteAmount,
 		TraceID:    traceID,
 	}
 

@@ -9,13 +9,13 @@ func _() {
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
 	_ = x[ProposalActionVote-1]
-	_ = x[ProposalActionAddPair-2]
+	_ = x[ProposalActionUpdatePrice-2]
 	_ = x[ProposalActionWithdraw-3]
 }
 
-const _ProposalAction_name = "VoteAddPairWithdraw"
+const _ProposalAction_name = "VoteUpdatePriceWithdraw"
 
-var _ProposalAction_index = [...]uint8{0, 4, 11, 19}
+var _ProposalAction_index = [...]uint8{0, 4, 15, 23}
 
 func (i ProposalAction) String() string {
 	i -= 1

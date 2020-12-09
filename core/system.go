@@ -31,3 +31,18 @@ func (s *System) MemberIDs() []string {
 
 	return ids
 }
+
+// IsAdmin is admin
+func (s *System) IsAdmin(userID string) bool {
+	if len(s.Admins) == 0 {
+		return false
+	}
+
+	for _, a := range s.Admins {
+		if a == userID {
+			return true
+		}
+	}
+
+	return false
+}

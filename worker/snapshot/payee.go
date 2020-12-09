@@ -11,9 +11,11 @@ import (
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/property"
+	"github.com/fox-one/pkg/store/db"
 	uuidutil "github.com/fox-one/pkg/uuid"
 	"github.com/gofrs/uuid"
 	"github.com/robfig/cron/v3"
+	"github.com/shopspring/decimal"
 )
 
 const (
@@ -24,17 +26,51 @@ const (
 // Payee payee worker
 type Payee struct {
 	worker.BaseJob
-	system      *core.System
-	property    property.Store
-	walletStore core.WalletStore
+	db             *db.DB
+	system         *core.System
+	dapp           *core.Wallet
+	propertyStore  property.Store
+	walletStore    core.WalletStore
+	marketStore    core.IMarketStore
+	supplyStore    core.ISupplyStore
+	borrowStore    core.IBorrowStore
+	blockService   core.IBlockService
+	priceService   core.IPriceOracleService
+	marketService  core.IMarketService
+	supplyService  core.ISupplyService
+	borrowService  core.IBorrowService
+	accountService core.IAccountService
 }
 
 // NewPayee new payee
 func NewPayee(location string,
+	db *db.DB,
 	system *core.System,
-	property property.Store) *Payee {
+	dapp *core.Wallet,
+	propertyStore property.Store,
+	marketStore core.IMarketStore,
+	supplyStore core.ISupplyStore,
+	borrowStore core.IBorrowStore,
+	priceSrv core.IPriceOracleService,
+	blockService core.IBlockService,
+	marketSrv core.IMarketService,
+	supplyService core.ISupplyService,
+	borrowService core.IBorrowService,
+	accountService core.IAccountService) *Payee {
 	payee := Payee{
-		property: property,
+		db:             db,
+		system:         system,
+		dapp:           dapp,
+		propertyStore:  propertyStore,
+		marketStore:    marketStore,
+		supplyStore:    supplyStore,
+		borrowStore:    borrowStore,
+		priceService:   priceSrv,
+		blockService:   blockService,
+		marketService:  marketSrv,
+		supplyService:  supplyService,
+		borrowService:  borrowService,
+		accountService: accountService,
 	}
 
 	l, _ := time.LoadLocation(location)
@@ -51,7 +87,7 @@ func NewPayee(location string,
 func (w *Payee) onWork(ctx context.Context) error {
 	log := logger.FromContext(ctx).WithField("worker", "payee")
 
-	v, err := w.property.Get(ctx, checkpointKey)
+	v, err := w.propertyStore.Get(ctx, checkpointKey)
 	if err != nil {
 		log.WithError(err).Errorln("property.Get error")
 		return err
@@ -72,7 +108,7 @@ func (w *Payee) onWork(ctx context.Context) error {
 			return err
 		}
 
-		if err := w.property.Save(ctx, checkpointKey, u.ID); err != nil {
+		if err := w.propertyStore.Save(ctx, checkpointKey, u.ID); err != nil {
 			log.WithError(err).Errorln("property.Save:", u.ID)
 			return err
 		}
@@ -89,7 +125,7 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 
 	// handle member vote action
 	if member, body, err := core.DecodeMemberProposalTransactionAction(message, w.system.Members); err == nil {
-		return w.handleMemberAction(ctx, output, member, body)
+		return w.handleProposalAction(ctx, output, member, body)
 	}
 
 	// handle user action
@@ -108,36 +144,75 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 		return nil
 	}
 
-	return w.handleUserAction(ctx, output, actionType, userID, followID, body)
+	return w.handleUserAction(ctx, output, actionType, userID.String(), followID.String(), body)
 }
 
-func (w *Payee) handleMemberAction(ctx context.Context, output *core.Output, member *core.Member, body []byte) error {
+func (w *Payee) handleProposalAction(ctx context.Context, output *core.Output, member *core.Member, body []byte) error {
+	log := logger.FromContext(ctx)
+
+	var traceID uuid.UUID
+	var actionType int
+
+	body, err := mtg.Scan(body, &traceID, &actionType)
+	if err != nil {
+		log.WithError(err).Debugln("scan proposal trace & action failed")
+		return nil
+	}
+	//TODO prpcess proposal event here
+	//update price
+	//withdraw
+	//add market
+	//update market
+	//
+
 	return nil
 }
 
-func (w *Payee) handleUserAction(ctx context.Context, output *core.Output, actionType core.ActionType, userID, followID uuid.UUID, body []byte) error {
-	return nil
-}
-
-
-
-func (w *Payee) transferOut(ctx context.Context) error {
-	return nil
-}
-
-func (w *Payee) refundOutput(ctx context.Context, output *core.Output, userID, followID, msg string) error {
-	// TODO memo should be formated
-	transfer := &core.Transfer{
-		TraceID:   uuidutil.Modify(output.TraceID, "compound_refund"),
-		Opponents: []string{userID},
-		Threshold: 1,
-		AssetID:   output.AssetID,
-		Amount:    output.UTXO.Amount,
-		Memo:      "",
+func (w *Payee) handleUserAction(ctx context.Context, output *core.Output, actionType core.ActionType, userID, followID string, body []byte) error {
+	switch actionType {
+	case core.ActionTypeSupply:
+		return w.handleSupplyEvent(ctx, output, userID, followID, body)
+	case core.ActionTypeBorrow:
+		return w.handleBorrowEvent(ctx, output, userID, followID, body)
+	case core.ActionTypeRedeem:
+		return w.handleRedeemEvent(ctx, output, userID, followID, body)
+	case core.ActionTypeRepay:
+		return w.handleReplayEvent(ctx, output, userID, followID, body)
+	case core.ActionTypePledge:
+		return w.handlePledgeEvent(ctx, output, userID, followID, body)
+	case core.ActionTypeUnpledge:
+		return w.handleUnpledgeEvent(ctx, output, userID, followID, body)
+	case core.ActionTypeSeizeToken:
+		return w.handleSeizeTokenEvent(ctx, output, userID, followID, body)
+	case core.ActionTypeAddMarket:
+		return w.handleAddMarketEvent(ctx, output, userID, followID, body)
+	case core.ActionTypeUpdateMarket:
+		return w.handleAddMarketEvent(ctx, output, userID, followID, body)
+	case core.ActionTypeInjectMintToken:
+		return w.handleInjectCTokenEvent(ctx, output, userID, followID, body)
+	default:
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrUnknown, "")
 	}
 
-	if err := w.walletStore.CreateTransfers(ctx, []*core.Transfer{transfer}); err != nil {
-		logger.FromContext(ctx).WithError(err).Errorln("walletStore.CreateTransfers")
+}
+
+func (w *Payee) transferOut(ctx context.Context, userID, followID, outputTraceID, assetID string, amount decimal.Decimal, transferAction *core.TransferAction) error {
+	memoStr, e := transferAction.Format()
+	if e != nil {
+		return e
+	}
+
+	transfer := core.Transfer{
+		TraceID:   uuidutil.Modify(outputTraceID, followID),
+		Opponents: []string{userID},
+		Threshold: 1,
+		AssetID:   assetID,
+		Amount:    amount,
+		Memo:      memoStr,
+	}
+
+	if err := w.walletStore.CreateTransfers(ctx, []*core.Transfer{&transfer}); err != nil {
+		logger.FromContext(ctx).WithError(err).Errorln("wallets.CreateTransfers")
 		return err
 	}
 

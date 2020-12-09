@@ -1,29 +1,23 @@
 package core
 
-// Transfer transfer struct
-// type Transfer struct {
-// 	ID         uint64          `sql:"PRIMARY_KEY;AUTO_INCREMENT" json:"id,omitempty"`
-// 	TraceID    string          `sql:"size:36;unique_index:trace_idx" json:"trace_id,omitempty"`
-// 	OpponentID string          `sql:"size:36" json:"opponent_id,omitempty"`
-// 	AssetID    string          `sql:"size:36" json:"asset_id,omitempty"`
-// 	Amount     decimal.Decimal `sql:"type:decimal(20,8)" json:"amount,omitempty"`
-// 	Memo       string          `sql:"size:140" json:"memo,omitempty"`
-// 	Status     string          `sql:"size:20" json:"status,omitempty"`
-// 	Version    int64           `sql:"default:0" json:"version,omitempty"`
-// 	CreatedAt  time.Time       `json:"created_at,omitempty"`
-// }
+import (
+	"encoding/base64"
+	"encoding/json"
+)
 
-// const (
-// 	// TransferStatusPending pending
-// 	TransferStatusPending = "pending"
-// 	// TransferStatusDone done
-// 	TransferStatusDone = "done"
-// )
+// TransferAction  transfer action
+type TransferAction struct {
+	Source        ActionType `json:"s,omitempty"`
+	TransactionID string     `json:"t,omitempty"`
+	Message       string     `json:"m,omitempty"`
+}
 
-// // ITransferStore transfer store interface
-// type ITransferStore interface {
-// 	Create(ctx context.Context, tx *db.DB, transfer *Transfer) error
-// 	FindByStatus(ctx context.Context, status string) ([]*Transfer, error)
-// 	UpdateStatus(ctx context.Context, tx *db.DB, id uint64, status string) error
-// 	DeleteByTime(t time.Time) error
-// }
+// Format format TransferAction to string
+func (t *TransferAction) Format() (string, error) {
+	b, err := json.Marshal(t)
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(b), nil
+}

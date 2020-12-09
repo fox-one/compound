@@ -27,7 +27,7 @@ func New(db *db.DB, mainWallet *core.Wallet, cfg *core.Config) *Worker {
 		Config:     cfg,
 	}
 
-	l, _ := time.LoadLocation(job.Config.App.Location)
+	l, _ := time.LoadLocation(job.Config.Location)
 	job.Cron = cron.New(cron.WithLocation(l))
 	spec := "@every 1s"
 	job.Cron.AddFunc(spec, job.Run)

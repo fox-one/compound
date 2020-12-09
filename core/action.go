@@ -77,47 +77,6 @@ const (
 	ActionKeyBorrowBalance = "bb"
 )
 
-const (
-	// ActionServicePrice prc
-	ActionServicePrice = "prc"
-	// ActionServiceSupply supply
-	ActionServiceSupply = "spl"
-	// ActionServiceBorrow brw
-	ActionServiceBorrow = "brw"
-	// ActionServiceBorrowTransfer borrow transfer
-	ActionServiceBorrowTransfer = "brw-tran"
-	// ActionServiceRedeem redeem supply
-	ActionServiceRedeem = "rdm"
-	// ActionServiceRedeemTransfer redeem transfer to user
-	ActionServiceRedeemTransfer = "rdm-tran"
-	// ActionServiceRepay repay borrow
-	ActionServiceRepay = "rpy"
-	// ActionServiceMint mint
-	ActionServiceMint = "mint"
-	// ActionServicePledge pledge
-	ActionServicePledge = "plg"
-	// ActionServiceUnpledge unpledge
-	ActionServiceUnpledge = "uplg"
-	// ActionServiceUnpledgeTransfer unpledge transfer
-	ActionServiceUnpledgeTransfer = "uplg-tran"
-	// ActionServiceBorrowInterest borrow interest
-	ActionServiceBorrowInterest = "b-inter"
-	// ActionServiceReserve reserve
-	ActionServiceReserve = "reserve"
-	// ActionServiceSeizeToken seize token
-	ActionServiceSeizeToken = "seize"
-	// ActionServiceSeizeTokenTransfer transfer seized token to user
-	ActionServiceSeizeTokenTransfer = "seize-tran"
-	// ActionServiceRefund refund
-	ActionServiceRefund = "rfd"
-	// ActionServiceUpdateMarket update market
-	ActionServiceUpdateMarket = "u-mkt"
-	// ActionServiceAddMarket add market
-	ActionServiceAddMarket = "a-mkt"
-	//ActionServiceInjectMintToken inject mint token
-	ActionServiceInjectMintToken = "imt"
-)
-
 // Action action
 type Action map[string]string
 

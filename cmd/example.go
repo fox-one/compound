@@ -1,10 +1,6 @@
 package cmd
 
 import (
-	"compound/core"
-	"fmt"
-
-	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
 )
 
@@ -37,16 +33,16 @@ var exampleCmd = &cobra.Command{
 
 		// cmd.Println(string(bs))
 
-		memo := make(core.Action)
-		memo[core.ActionKeyService] = core.ActionServiceAddMarket
-		memo[core.ActionKeySymbol] = "USDT"
-		memo[core.ActionKeyBlock] = "1234567890"
-		memo[core.ActionKeyBorrowRate] = "0.0000000002324345"
-		memo[core.ActionKeySupplyRate] = "0.0000000003434535"
+		// memo := make(core.Action)
+		// memo[core.ActionKeyService] = core.ActionServiceAddMarket
+		// memo[core.ActionKeySymbol] = "USDT"
+		// memo[core.ActionKeyBlock] = "1234567890"
+		// memo[core.ActionKeyBorrowRate] = "0.0000000002324345"
+		// memo[core.ActionKeySupplyRate] = "0.0000000003434535"
 
-		mStr, _ := memo.Format()
-		fmt.Println(mStr)
-		fmt.Println(decimal.NewFromFloat(0.13).Div(decimal.NewFromInt(2102400)))
+		// mStr, _ := memo.Format()
+		// fmt.Println(mStr)
+		// fmt.Println(decimal.NewFromFloat(0.13).Div(decimal.NewFromInt(2102400)))
 
 		// fmt.Println(wallet.PaySchemaURL(decimal.NewFromInt(12), "965e5c6e-434c-3fa9-b780-c50f43cd955c", "8be122b4-596f-4e4f-a307-978bed0ffb75", id.GenTraceID(), mStr))
 	},

@@ -15,7 +15,7 @@ type ProposalAction int
 const (
 	_ ProposalAction = iota
 	ProposalActionVote
-	ProposalActionAddPair
+	ProposalActionUpdatePrice
 	ProposalActionWithdraw
 )
 
