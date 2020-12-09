@@ -4,11 +4,8 @@ import (
 	"compound/core"
 	"compound/worker"
 	"context"
-	"encoding/json"
-	"errors"
 	"time"
 
-	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/property"
 	"github.com/fox-one/pkg/store/db"
 	"github.com/robfig/cron/v3"
@@ -17,16 +14,14 @@ import (
 // Worker snapshot worker
 type Worker struct {
 	worker.BaseJob
-	config                   *core.Config
+	location                 string
 	db                       *db.DB
 	mainWallet               *core.Wallet
 	blockWallet              *core.Wallet
 	propertyStore            property.Store
-	transferStore            core.ITransferStore
 	marketStore              core.IMarketStore
 	supplyStore              core.ISupplyStore
 	borrowStore              core.IBorrowStore
-	walletService            core.IWalletService
 	blockService             core.IBlockService
 	priceService             core.IPriceOracleService
 	marketService            core.IMarketService
@@ -38,21 +33,19 @@ type Worker struct {
 
 const (
 	checkPointKey = "compound_snapshot_checkpoint"
-	limit         = 500
+	// limit         = 500
 )
 
 // New new snapshot worker
 func New(
-	config *core.Config,
+	location string,
 	db *db.DB,
 	mainWallet *core.Wallet,
 	blockWallet *core.Wallet,
 	propertyStore property.Store,
-	transferStore core.ITransferStore,
 	marketStore core.IMarketStore,
 	supplyStore core.ISupplyStore,
 	borrowStore core.IBorrowStore,
-	walletService core.IWalletService,
 	priceSrv core.IPriceOracleService,
 	blockService core.IBlockService,
 	marketSrv core.IMarketService,
@@ -70,24 +63,19 @@ func New(
 	handlers[core.ActionServiceBorrow] = handleBorrowEvent
 	handlers[core.ActionServiceRepay] = handleBorrowRepayEvent
 	handlers[core.ActionServiceSeizeToken] = handleSeizeTokenEvent
-	handlers[core.ActionServiceRequestLiquidity] = handleRequestAccountLiquidityEvent
-	handlers[core.ActionServiceRequestMarket] = handleRequestMarketEvent
-	handlers[core.ActionServiceRequestSupply] = handleRequestSupplyEvent
-	handlers[core.ActionServiceRequestBorrow] = handleRequestBorrowEvent
 	handlers[core.ActionServiceAddMarket] = handleAddMarketEvent
 	handlers[core.ActionServiceUpdateMarket] = handleUpdateMarketEvent
+	handlers[core.ActionServiceInjectMintToken] = handleInjectMintTokenEvent
 
 	job := Worker{
-		config:                   config,
+		location:                 location,
 		db:                       db,
 		mainWallet:               mainWallet,
 		blockWallet:              blockWallet,
 		propertyStore:            propertyStore,
-		transferStore:            transferStore,
 		marketStore:              marketStore,
 		supplyStore:              supplyStore,
 		borrowStore:              borrowStore,
-		walletService:            walletService,
 		blockService:             blockService,
 		priceService:             priceSrv,
 		marketService:            marketSrv,
@@ -97,7 +85,7 @@ func New(
 		transactionEventHandlers: handlers,
 	}
 
-	l, _ := time.LoadLocation(job.config.App.Location)
+	l, _ := time.LoadLocation(location)
 	job.Cron = cron.New(cron.WithLocation(l))
 	spec := "@every 100ms"
 	job.Cron.AddFunc(spec, job.Run)
@@ -109,62 +97,80 @@ func New(
 }
 
 func (w *Worker) onWork(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	checkPoint, err := w.propertyStore.Get(ctx, checkPointKey)
-	if err != nil {
-		log.WithError(err).Errorf("read property error: %s", checkPointKey)
-		return err
-	}
+	// log := logger.FromContext(ctx)
+	// checkPoint, err := w.propertyStore.Get(ctx, checkPointKey)
+	// if err != nil {
+	// 	log.WithError(err).Errorf("read property error: %s", checkPointKey)
+	// 	return err
+	// }
 
-	snapshots, next, err := w.walletService.PullSnapshots(ctx, checkPoint.String(), limit)
-	if err != nil {
-		log.WithError(err).Error("pull snapshots error")
-		return err
-	}
+	// snapshots, next, err := w.walletService.PullSnapshots(ctx, checkPoint.String(), limit)
+	// if err != nil {
+	// 	log.WithError(err).Error("pull snapshots error")
+	// 	return err
+	// }
 
-	if len(snapshots) == 0 {
-		return errors.New("no more snapshots")
-	}
+	// if len(snapshots) == 0 {
+	// 	return errors.New("no more snapshots")
+	// }
 
-	for _, snapshot := range snapshots {
-		if snapshot.UserID == "" {
-			continue
-		}
+	// for _, snapshot := range snapshots {
+	// 	if snapshot.UserID == "" {
+	// 		continue
+	// 	}
 
-		if err := w.handleSnapshot(ctx, snapshot); err != nil {
-			return err
-		}
-	}
+	// 	if _, e := w.snapshotStore.Find(ctx, snapshot.SnapshotID); e == nil {
+	// 		//exists, ignore
+	// 		continue
+	// 	}
 
-	if checkPoint.String() != next {
-		if err := w.propertyStore.Save(ctx, checkPointKey, next); err != nil {
-			log.WithError(err).Errorf("update property error: %s", checkPointKey)
-			return err
-		}
-	}
+	// 	if err := w.handleSnapshot(ctx, snapshot); err != nil {
+	// 		return err
+	// 	}
+
+	// 	//save
+	// 	w.snapshotStore.Save(ctx, snapshot)
+	// }
+
+	// if checkPoint.String() != next {
+	// 	if err := w.propertyStore.Save(ctx, checkPointKey, next); err != nil {
+	// 		log.WithError(err).Errorf("update property error: %s", checkPointKey)
+	// 		return err
+	// 	}
+	// }
 
 	return nil
 }
 
-func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) error {
-	if snapshot.UserID == w.mainWallet.Client.ClientID {
-		// main wallet
-		var action core.Action
-		e := json.Unmarshal([]byte(snapshot.Memo), &action)
-		if e != nil {
-			return nil
-		}
+// func (w *Worker) handleSnapshot(ctx context.Context, snapshot *core.Snapshot) error {
+// if snapshot.UserID == w.mainWallet.Client.ClientID {
+// 	log := logger.FromContext(ctx).WithField("worker", "snapshot")
+// 	log.Infoln(snapshot.Memo)
 
-		service := action[core.ActionKeyService]
+// 	// main wallet
+// 	var action core.Action
+// 	e := json.Unmarshal([]byte(snapshot.Memo), &action)
+// 	if e != nil {
+// 		log.Errorln(e)
+// 		if snapshot.Amount.GreaterThan(decimal.Zero) {
+// 			return handleRefundEvent(ctx, w, action, snapshot, core.ErrUnknown)
+// 		}
+// 		return nil
+// 	}
 
-		handlerTransactionEvent, found := w.transactionEventHandlers[service]
-		if found {
-			return handlerTransactionEvent(ctx, w, action, snapshot)
-		}
+// 	service := action[core.ActionKeyService]
 
-		return handleRefundEvent(ctx, w, action, snapshot, core.ErrUnknown)
-	}
-	return nil
-}
+// 	handlerTransactionEvent, found := w.transactionEventHandlers[service]
+// 	if found {
+// 		return handlerTransactionEvent(ctx, w, action, snapshot)
+// 	}
+
+// 	if snapshot.Amount.GreaterThan(decimal.Zero) {
+// 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrUnknown)
+// 	}
+// 	return nil
+// }
+// return nil
+// }
 
 type handleTransactionEventFunc func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error

@@ -3,13 +3,14 @@ module compound
 go 1.15
 
 require (
+	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef
 	github.com/bluele/gcache v0.0.0-20190518031135-bc40bd653833 // indirect
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/drone/signal v1.0.0 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
-	github.com/fox-one/mixin-sdk-go v1.2.1
+	github.com/fox-one/mixin-sdk-go v1.2.3
 	github.com/fox-one/pkg v1.5.3
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/go-chi/chi v4.1.2+incompatible
@@ -42,9 +43,13 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/twitchtv/twirp v7.1.0+incompatible
 	github.com/yiplee/structs v1.0.3
-	golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9 // indirect
+	golang.org/x/crypto v0.0.0-20201203163018-be400aefbc4c // indirect
+	golang.org/x/mod v0.4.0 // indirect
+	golang.org/x/net v0.0.0-20201202161906-c7110b5ffcbb // indirect
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9 // indirect
-	golang.org/x/sys v0.0.0-20201118182958-a01c418693c7 // indirect
+	golang.org/x/sys v0.0.0-20201204225414-ed752295db88 // indirect
+	golang.org/x/tools v0.0.0-20201208062317-e652b2f42cc7 // indirect
+	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/redis.v5 v5.2.9 // indirect
 	gopkg.in/yaml.v2 v2.3.0

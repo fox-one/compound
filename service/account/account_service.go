@@ -16,7 +16,6 @@ type accountService struct {
 	borrowStore   core.IBorrowStore
 	priceService  core.IPriceOracleService
 	blockService  core.IBlockService
-	walletService core.IWalletService
 	marketService core.IMarketService
 }
 
@@ -28,7 +27,6 @@ func New(
 	borrowStore core.IBorrowStore,
 	priceSrv core.IPriceOracleService,
 	blockSrv core.IBlockService,
-	walletService core.IWalletService,
 	marketServie core.IMarketService,
 ) core.IAccountService {
 	return &accountService{
@@ -38,7 +36,6 @@ func New(
 		borrowStore:   borrowStore,
 		priceService:  priceSrv,
 		blockService:  blockSrv,
-		walletService: walletService,
 		marketService: marketServie,
 	}
 }
@@ -76,7 +73,7 @@ func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID s
 	borrowValue := decimal.Zero
 
 	for _, borrow := range borrows {
-		market, e := s.marketStore.FindBySymbol(ctx, borrow.Symbol)
+		market, e := s.marketStore.Find(ctx, borrow.AssetID)
 		if e != nil {
 			continue
 		}
@@ -114,7 +111,7 @@ func (s *accountService) markets(ctx context.Context) (map[string]*core.Market, 
 	return maps, nil
 }
 
-func (s *accountService) SeizeTokenAllowed(ctx context.Context, supply *core.Supply, borrow *core.Borrow, repayAmount decimal.Decimal, time time.Time) bool {
+func (s *accountService) SeizeTokenAllowed(ctx context.Context, supply *core.Supply, borrow *core.Borrow, time time.Time) bool {
 	if supply.UserID != borrow.UserID {
 		return false
 	}
@@ -130,7 +127,7 @@ func (s *accountService) SeizeTokenAllowed(ctx context.Context, supply *core.Sup
 		return false
 	}
 
-	if liquidity.GreaterThan(decimal.Zero) {
+	if liquidity.GreaterThanOrEqual(decimal.Zero) {
 		return false
 	}
 
@@ -158,7 +155,7 @@ func (s *accountService) MaxSeize(ctx context.Context, supply *core.Supply, borr
 	if e != nil {
 		return decimal.Zero, e
 	}
-	borrowMarket, e := s.marketStore.FindBySymbol(ctx, borrow.Symbol)
+	borrowMarket, e := s.marketStore.Find(ctx, borrow.AssetID)
 	if e != nil {
 		return decimal.Zero, e
 	}

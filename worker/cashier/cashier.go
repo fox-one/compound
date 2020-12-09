@@ -7,55 +7,51 @@ import (
 	"time"
 
 	"compound/core"
+	"compound/worker"
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/uuid"
+	"github.com/robfig/cron/v3"
 	"github.com/shopspring/decimal"
 )
 
+// Cashier cashier
+type Cashier struct {
+	worker.BaseJob
+	walletStore   core.WalletStore
+	walletService core.WalletService
+	system        *core.System
+}
+
+// New new cashier
 func New(
-	wallets core.WalletStore,
-	walletz core.WalletService,
+	location string,
+	walletStr core.WalletStore,
+	walletSrv core.WalletService,
 	system *core.System,
 ) *Cashier {
-	return &Cashier{
-		wallets: wallets,
-		walletz: walletz,
-		system:  system,
+	cashier := Cashier{
+		walletStore:   walletStr,
+		walletService: walletSrv,
+		system:        system,
 	}
+
+	l, _ := time.LoadLocation(location)
+	cashier.Cron = cron.New(cron.WithLocation(l))
+	spec := "@every 100ms"
+	cashier.Cron.AddFunc(spec, cashier.Run)
+	cashier.OnWork = func() error {
+		return cashier.onWork(context.Background())
+	}
+
+	return &cashier
 }
 
-type Cashier struct {
-	wallets core.WalletStore
-	walletz core.WalletService
-	system  *core.System
-}
-
-func (w *Cashier) Run(ctx context.Context) error {
+func (w *Cashier) onWork(ctx context.Context) error {
 	log := logger.FromContext(ctx).WithField("worker", "cashier")
-	ctx = logger.WithContext(ctx, log)
 
-	dur := time.Millisecond
-
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(dur):
-			if err := w.run(ctx); err == nil {
-				dur = 100 * time.Millisecond
-			} else {
-				dur = 300 * time.Millisecond
-			}
-		}
-	}
-}
-
-func (w *Cashier) run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-
-	transfers, err := w.wallets.ListPendingTransfers(ctx)
+	transfers, err := w.walletStore.ListPendingTransfers(ctx)
 	if err != nil {
 		log.WithError(err).Errorln("list transfers")
 		return err
@@ -76,7 +72,7 @@ func (w *Cashier) handleTransfer(ctx context.Context, transfer *core.Transfer) e
 	log := logger.FromContext(ctx)
 
 	const limit = 128
-	outputs, err := w.wallets.ListUnspent(ctx, transfer.AssetID, limit)
+	outputs, err := w.walletStore.ListUnspent(ctx, transfer.AssetID, limit)
 	if err != nil {
 		log.WithError(err).Errorln("wallets.ListUnspent")
 		return err
@@ -91,7 +87,7 @@ func (w *Cashier) handleTransfer(ctx context.Context, transfer *core.Transfer) e
 	for _, output := range outputs {
 		sum = sum.Add(output.Amount)
 		traces = append(traces, output.TraceID)
-		idx += 1
+		idx++
 
 		if sum.GreaterThanOrEqual(transfer.Amount) {
 			break
@@ -125,19 +121,19 @@ func (w *Cashier) handleTransfer(ctx context.Context, transfer *core.Transfer) e
 }
 
 func (w *Cashier) spent(ctx context.Context, outputs []*core.Output, transfer *core.Transfer) error {
-	if tx, err := w.walletz.Spent(ctx, outputs, transfer); err != nil {
+	if tx, err := w.walletService.Spent(ctx, outputs, transfer); err != nil {
 		logger.FromContext(ctx).WithError(err).Errorln("walletz.Spent")
 		return err
 	} else if tx != nil {
 		// 签名收集完成，需要提交至主网
 		// 此时将该上链 tx 存储至数据库，等待 tx sender worker 完成上链
-		if err := w.wallets.CreateRawTransaction(ctx, tx); err != nil {
+		if err := w.walletStore.CreateRawTransaction(ctx, tx); err != nil {
 			logger.FromContext(ctx).WithError(err).Errorln("wallets.CreateRawTransaction")
 			return err
 		}
 	}
 
-	if err := w.wallets.Spent(ctx, outputs, transfer); err != nil {
+	if err := w.walletStore.Spent(ctx, outputs, transfer); err != nil {
 		logger.FromContext(ctx).WithError(err).Errorln("wallets.Spent")
 		return err
 	}

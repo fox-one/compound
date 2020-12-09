@@ -29,10 +29,7 @@ func init() {
 }
 
 func (s *marketStore) Save(ctx context.Context, tx *db.DB, market *core.Market) error {
-	if err := tx.Update().Create(market).Error; err != nil {
-		return err
-	}
-	return nil
+	return tx.Update().Where("asset_id=?", market.AssetID).Create(market).Error
 }
 func (s *marketStore) Find(ctx context.Context, assetID string) (*core.Market, error) {
 	if assetID == "" {
@@ -66,7 +63,7 @@ func (s *marketStore) FindByCToken(ctx context.Context, ctokenAssetID string) (*
 	}
 
 	var market core.Market
-	if err := s.db.View().Where("ctoken_asset_id=?", ctokenAssetID).First(&market).Error; err != nil {
+	if err := s.db.View().Where("c_token_asset_id=?", ctokenAssetID).First(&market).Error; err != nil {
 		return nil, err
 	}
 
@@ -99,7 +96,7 @@ func (s *marketStore) AllAsMap(ctx context.Context) (map[string]*core.Market, er
 func (s *marketStore) Update(ctx context.Context, tx *db.DB, market *core.Market) error {
 	version := market.Version
 	market.Version++
-	if err := tx.Update().Model(core.Market{}).Where("asset_id=? and version=?", market.AssetID, version).Update(market).Error; err != nil {
+	if err := tx.Update().Model(core.Market{}).Where("asset_id=? and version=?", market.AssetID, version).Updates(market).Error; err != nil {
 		return err
 	}
 

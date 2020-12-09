@@ -11,8 +11,9 @@ import (
 
 // Borrow borrow info
 type Borrow struct {
-	UserID        string          `sql:"size:36;PRIMARY_KEY" json:"user_id"`
-	Symbol        string          `sql:"size:20;PRIMARY_KEY" json:"symbol"`
+	ID            uint64          `sql:"PRIMARY_KEY;AUTO_INCREMENT" json:"id"`
+	UserID        string          `sql:"size:36;unique_index:borrow_idx" json:"user_id"`
+	AssetID       string          `sql:"size:36;unique_index:borrow_idx" json:"asset_id"`
 	Principal     decimal.Decimal `sql:"type:decimal(20,8)" json:"principal"`
 	InterestIndex decimal.Decimal `sql:"type:decimal(20,16);default:1" json:"interest_index"`
 	Version       int64           `sql:"default:0" json:"version"`
@@ -29,8 +30,12 @@ var (
 
 // Balance caculate borrow balance
 func (b *Borrow) Balance(ctx context.Context, market *Market) (decimal.Decimal, error) {
+	if market.BorrowIndex.LessThanOrEqual(decimal.Zero) {
+		market.BorrowIndex = market.BorrowRatePerBlock
+	}
+
 	if b.InterestIndex.LessThanOrEqual(decimal.Zero) {
-		return decimal.Zero, errors.New("invalid interest index")
+		b.InterestIndex = market.BorrowIndex
 	}
 
 	principalTimesIndex := b.Principal.Mul(market.BorrowIndex)
@@ -42,11 +47,10 @@ func (b *Borrow) Balance(ctx context.Context, market *Market) (decimal.Decimal, 
 // IBorrowStore supply store interface
 type IBorrowStore interface {
 	Save(ctx context.Context, tx *db.DB, borrow *Borrow) error
-	Find(ctx context.Context, userID string, symbol string) (*Borrow, error)
+	Find(ctx context.Context, userID string, assetID string) (*Borrow, error)
 	FindByUser(ctx context.Context, userID string) ([]*Borrow, error)
-	FindBySymbol(ctx context.Context, symbol string) ([]*Borrow, error)
-	SumOfBorrows(ctx context.Context, symbol string) (decimal.Decimal, error)
-	CountOfBorrows(ctx context.Context, symbol string) (int64, error)
+	FindByAssetID(ctx context.Context, assetID string) ([]*Borrow, error)
+	CountOfBorrowers(ctx context.Context, assetID string) (int64, error)
 	Update(ctx context.Context, tx *db.DB, borrow *Borrow) error
 	All(ctx context.Context) ([]*Borrow, error)
 	Users(ctx context.Context) ([]string, error)
@@ -54,9 +58,6 @@ type IBorrowStore interface {
 
 // IBorrowService supply service interface
 type IBorrowService interface {
-	Repay(ctx context.Context, amount decimal.Decimal, borrow *Borrow) (string, error)
-	Borrow(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *Market) error
 	BorrowAllowed(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *Market, time time.Time) bool
-	MaxBorrow(ctx context.Context, userID string, market *Market) (decimal.Decimal, error)
 	BorrowBalance(ctx context.Context, borrow *Borrow, market *Market) (decimal.Decimal, error)
 }

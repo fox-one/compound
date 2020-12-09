@@ -2,17 +2,18 @@ package cmd
 
 import (
 	"compound/core"
+	"compound/pkg/mtg"
 	accountservice "compound/service/account"
 	"compound/service/block"
 	borrowservice "compound/service/borrow"
 	marketservice "compound/service/market"
 	oracle "compound/service/oracle"
 	supplyservice "compound/service/supply"
-	"compound/service/wallet"
+	walletservice "compound/service/wallet"
 	"compound/store/borrow"
 	"compound/store/market"
 	"compound/store/supply"
-	"compound/store/transfer"
+	"fmt"
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/property"
@@ -28,26 +29,53 @@ func provideConfig() *core.Config {
 	return &cfg
 }
 
-func provideMainWallet() *core.Wallet {
-	c, err := mixin.NewFromKeystore(&cfg.MainWallet.Keystore)
+func provideDapp() *core.Wallet {
+	c, err := mixin.NewFromKeystore(&cfg.Dapp.Keystore)
 	if err != nil {
 		panic(err)
 	}
 	return &core.Wallet{
 		Client: c,
-		Pin:    provideConfig().MainWallet.Pin,
+		Pin:    cfg.Dapp.Pin,
 	}
 }
 
-func provideBlockWallet() *core.Wallet {
-	c, err := mixin.NewFromKeystore(&cfg.GasWallet.Keystore)
-	if err != nil {
-		panic(err)
+func provideSystem() *core.System {
+	members := make([]*core.Member, 0, len(cfg.Group.Members))
+	for _, m := range cfg.Group.Members {
+		verifyKey, err := mtg.DecodePublicKey(m.VerifyKey)
+		if err != nil {
+			panic(fmt.Errorf("decode verify key for member %s failed", m.ClientID))
+		}
+
+		members = append(members, &core.Member{
+			ClientID:  m.ClientID,
+			VerifyKey: verifyKey,
+		})
 	}
 
-	return &core.Wallet{
-		Client: c,
-		Pin:    provideConfig().GasWallet.Pin,
+	privateKey, err := mtg.DecodePrivateKey(cfg.Group.PrivateKey)
+	if err != nil {
+		panic(fmt.Errorf("base64 decode group private key failed: %w", err))
+	}
+
+	signKey, err := mtg.DecodePrivateKey(cfg.Group.SignKey)
+	if err != nil {
+		panic(fmt.Errorf("base64 decode group sign key failed: %w", err))
+	}
+
+	return &core.System{
+		Admins:       cfg.Group.Admins,
+		ClientID:     cfg.Dapp.ClientID,
+		ClientSecret: cfg.Dapp.ClientSecret,
+		Members:      members,
+		Threshold:    cfg.Group.Threshold,
+		VoteAsset:    cfg.Group.Vote.Asset,
+		VoteAmount:   cfg.Group.Vote.Amount,
+		PrivateKey:   privateKey,
+		SignKey:      signKey,
+		Location:     cfg.Location,
+		Genesis:      cfg.Genesis,
 	}
 }
 
@@ -68,13 +96,18 @@ func provideBorrowStore(db *db.DB) core.IBorrowStore {
 	return borrow.New(db)
 }
 
-func provideTransferStore(db *db.DB) core.ITransferStore {
-	return transfer.New(db)
-}
+// func provideTransferStore(db *db.DB) core.ITransferStore {
+// 	return transfer.New(db)
+// }
+
+// func provideSnapshotStore(db *db.DB) core.ISnapshotStore {
+// 	return snapshot.New(db)
+// }
 
 // ------------------service------------------------------------
-func provideWalletService(mainWallet *core.Wallet) core.IWalletService {
-	return wallet.New(mainWallet)
+func provideWalletService(client *mixin.Client, cfg walletservice.Config) core.WalletService {
+	// return wallet.New(mainWallet)
+	return nil
 }
 
 func provideBlockService() core.IBlockService {
@@ -94,7 +127,7 @@ func provideMarketService(mainWallet *core.Wallet, marketStr core.IMarketStore, 
 		priceSrv)
 }
 
-func provideSupplyService(db *db.DB, mainWallet *core.Wallet, blockWallet *core.Wallet, supplyStr core.ISupplyStore, marketStr core.IMarketStore, accountSrv core.IAccountService, priceSrv core.IPriceOracleService, blockSrv core.IBlockService, walletSrv core.IWalletService, marketSrv core.IMarketService) core.ISupplyService {
+func provideSupplyService(db *db.DB, mainWallet *core.Wallet, blockWallet *core.Wallet, supplyStr core.ISupplyStore, marketStr core.IMarketStore, accountSrv core.IAccountService, priceSrv core.IPriceOracleService, blockSrv core.IBlockService, marketSrv core.IMarketService) core.ISupplyService {
 	return supplyservice.New(
 		&cfg,
 		db,
@@ -105,12 +138,11 @@ func provideSupplyService(db *db.DB, mainWallet *core.Wallet, blockWallet *core.
 		accountSrv,
 		priceSrv,
 		blockSrv,
-		walletSrv,
 		marketSrv,
 	)
 }
 
-func provideBorrowService(mainWallet *core.Wallet, blockWallet *core.Wallet, marketStr core.IMarketStore, borrowStr core.IBorrowStore, blockSrv core.IBlockService, priceSrv core.IPriceOracleService, walletSrv core.IWalletService, accountSrv core.IAccountService, marketSrv core.IMarketService) core.IBorrowService {
+func provideBorrowService(mainWallet *core.Wallet, blockWallet *core.Wallet, marketStr core.IMarketStore, borrowStr core.IBorrowStore, blockSrv core.IBlockService, priceSrv core.IPriceOracleService, accountSrv core.IAccountService, marketSrv core.IMarketService) core.IBorrowService {
 	return borrowservice.New(
 		&cfg,
 		mainWallet,
@@ -119,7 +151,6 @@ func provideBorrowService(mainWallet *core.Wallet, blockWallet *core.Wallet, mar
 		borrowStr,
 		blockSrv,
 		priceSrv,
-		walletSrv,
 		accountSrv,
 		marketSrv,
 	)
@@ -131,8 +162,7 @@ func provideAccountService(mainWallet *core.Wallet,
 	borrowStore core.IBorrowStore,
 	priceSrv core.IPriceOracleService,
 	blockSrv core.IBlockService,
-	walletService core.IWalletService,
 	marketSrv core.IMarketService) core.IAccountService {
 
-	return accountservice.New(mainWallet, marketStore, supplyStore, borrowStore, priceSrv, blockSrv, walletService, marketSrv)
+	return accountservice.New(mainWallet, marketStore, supplyStore, borrowStore, priceSrv, blockSrv, marketSrv)
 }

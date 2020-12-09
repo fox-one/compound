@@ -6,12 +6,6 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-type Member struct {
-	ClientID  string
-	Name      string
-	VerifyKey ed25519.PublicKey
-}
-
 // System stores system information.
 type System struct {
 	Admins       []string
@@ -23,9 +17,12 @@ type System struct {
 	VoteAmount   decimal.Decimal
 	PrivateKey   ed25519.PrivateKey
 	SignKey      ed25519.PrivateKey
+	Location     string
+	Genesis      int64
 	Version      string
 }
 
+// MemberIDs member ids
 func (s *System) MemberIDs() []string {
 	ids := make([]string, len(s.Members))
 	for idx, m := range s.Members {

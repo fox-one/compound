@@ -20,6 +20,6 @@ type IAccountService interface {
 	// calculate account liquidity by real time
 	CalculateAccountLiquidity(ctx context.Context, userID string, blockNum int64) (decimal.Decimal, error)
 	MaxSeize(ctx context.Context, supply *Supply, borrow *Borrow) (decimal.Decimal, error)
-	SeizeTokenAllowed(ctx context.Context, supply *Supply, borrow *Borrow, repayAmount decimal.Decimal, time time.Time) bool
+	SeizeTokenAllowed(ctx context.Context, supply *Supply, borrow *Borrow, time time.Time) bool
 	SeizeToken(ctx context.Context, supply *Supply, borrow *Borrow, repayAmount decimal.Decimal) (string, error)
 }

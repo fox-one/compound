@@ -1,6 +1,8 @@
 package core
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 const (
 	// ActionKeyService key service type :string
@@ -108,26 +110,12 @@ const (
 	ActionServiceSeizeTokenTransfer = "seize-tran"
 	// ActionServiceRefund refund
 	ActionServiceRefund = "rfd"
-	// ActionServiceRequestMarket query market
-	ActionServiceRequestMarket = "r-mkt"
-	// ActionServiceMarketResponse market response
-	ActionServiceMarketResponse = "mkt-r"
-	// ActionServiceRequestSupply request supply
-	ActionServiceRequestSupply = "r-spl"
-	// ActionServiceSuppyResponse supply response
-	ActionServiceSuppyResponse = "spl-r"
-	// ActionServiceRequestBorrow request borrow
-	ActionServiceRequestBorrow = "r-brw"
-	// ActionServiceBorrowResponse borrow response
-	ActionServiceBorrowResponse = "brw-r"
-	// ActionServiceRequestLiquidity request liquidity
-	ActionServiceRequestLiquidity = "r-lqd"
-	// ActionServiceLiquidityResponse liquidity response
-	ActionServiceLiquidityResponse = "lqd-r"
 	// ActionServiceUpdateMarket update market
 	ActionServiceUpdateMarket = "u-mkt"
 	// ActionServiceAddMarket add market
 	ActionServiceAddMarket = "a-mkt"
+	//ActionServiceInjectMintToken inject mint token
+	ActionServiceInjectMintToken = "imt"
 )
 
 // Action action
@@ -147,3 +135,48 @@ func (a *Action) Format() (string, error) {
 func NewAction() Action {
 	return make(Action)
 }
+
+//go:generate stringer -type ActionType -trimprefix ActionType
+
+// ActionType compound action type
+type ActionType int
+
+const (
+	_ ActionType = iota
+	// ActionTypeSupply supply
+	ActionTypeSupply
+	// ActionTypeBorrow borrow
+	ActionTypeBorrow
+	// ActionTypeBorrowTransfer borrow transfer
+	ActionTypeBorrowTransfer
+	// ActionTypeRedeem redeem
+	ActionTypeRedeem
+	// ActionTypeRedeemTransfer redeem transfer
+	ActionTypeRedeemTransfer
+	// ActionTypeRepay repay
+	ActionTypeRepay
+	// ActionTypeMint mint
+	ActionTypeMint
+	// ActionTypePledge pledge
+	ActionTypePledge
+	// ActionTypeUnpledge unpledge
+	ActionTypeUnpledge
+	// ActionTypeUnpledgeTransfer unpledge transfer
+	ActionTypeUnpledgeTransfer
+	// ActionTypeSeizeToken seize token
+	ActionTypeSeizeToken
+	// ActionTypeSeizeTokenTransfer seize token transfer
+	ActionTypeSeizeTokenTransfer
+	// ActionTypeRefund refund
+	ActionTypeRefund
+	// ActionTypeAddMarket add market
+	ActionTypeAddMarket
+	// ActionTypeUpdateMarket update market
+	ActionTypeUpdateMarket
+	// ActionTypeInjectMintToken inject token
+	ActionTypeInjectMintToken
+	// ActionTypeProposalWithdraw withdraw
+	ActionTypeProposalWithdraw
+	// ActionTypeProposalPrice price
+	ActionTypeProposalPrice
+)

@@ -6,54 +6,50 @@ import (
 	"time"
 
 	"compound/core"
+	"compound/worker"
 
 	"compound/internal/mixinet"
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/property"
+	"github.com/robfig/cron/v3"
 )
 
-const checkpointKey = "4swap_sync_checkpoint"
+const checkpointKey = "sync_checkpoint"
 
+// Syncer sync output
+type Syncer struct {
+	worker.BaseJob
+	walletStore   core.WalletStore
+	walletService core.WalletService
+	property      property.Store
+}
+
+// New new sync worker
 func New(
-	wallets core.WalletStore,
-	walletz core.WalletService,
+	location string,
+	walletStr core.WalletStore,
+	walletSrv core.WalletService,
 	property property.Store,
 ) *Syncer {
-	return &Syncer{
-		wallets:  wallets,
-		walletz:  walletz,
-		property: property,
+	syncer := Syncer{
+		walletStore:   walletStr,
+		walletService: walletSrv,
+		property:      property,
 	}
-}
 
-type Syncer struct {
-	wallets  core.WalletStore
-	walletz  core.WalletService
-	property property.Store
-}
-
-func (w *Syncer) Run(ctx context.Context) error {
-	log := logger.FromContext(ctx).WithField("worker", "syncer")
-	ctx = logger.WithContext(ctx, log)
-
-	dur := time.Millisecond
-
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(dur):
-			if err := w.run(ctx); err == nil {
-				dur = 100 * time.Millisecond
-			} else {
-				dur = 500 * time.Millisecond
-			}
-		}
+	l, _ := time.LoadLocation(location)
+	syncer.Cron = cron.New(cron.WithLocation(l))
+	spec := "@every 100ms"
+	syncer.Cron.AddFunc(spec, syncer.Run)
+	syncer.OnWork = func() error {
+		return syncer.onWork(context.Background())
 	}
+
+	return &syncer
 }
 
-func (w *Syncer) run(ctx context.Context) error {
+func (w *Syncer) onWork(ctx context.Context) error {
 	log := logger.FromContext(ctx)
 
 	v, err := w.property.Get(ctx, checkpointKey)
@@ -73,7 +69,7 @@ func (w *Syncer) run(ctx context.Context) error {
 	const Limit = 500
 
 	for {
-		batch, err := w.walletz.Pull(ctx, offset, Limit)
+		batch, err := w.walletService.Pull(ctx, offset, Limit)
 		if err != nil {
 			log.WithError(err).Errorln("walletz.Pull")
 			return err
@@ -90,7 +86,7 @@ func (w *Syncer) run(ctx context.Context) error {
 
 			outputs = append(outputs, u)
 			positions[u.TraceID] = pos
-			pos += 1
+			pos++
 		}
 
 		if len(batch) < Limit {
@@ -103,7 +99,7 @@ func (w *Syncer) run(ctx context.Context) error {
 	}
 
 	mixinet.SortOutputs(outputs)
-	if err := w.wallets.Save(ctx, outputs); err != nil {
+	if err := w.walletStore.Save(ctx, outputs); err != nil {
 		log.WithError(err).Errorln("wallets.Save")
 		return err
 	}

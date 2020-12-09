@@ -5,7 +5,6 @@ import (
 	"context"
 
 	"github.com/fox-one/pkg/store/db"
-	"github.com/shopspring/decimal"
 )
 
 type borrowStore struct {
@@ -31,16 +30,16 @@ func init() {
 }
 
 func (s *borrowStore) Save(ctx context.Context, tx *db.DB, borrow *core.Borrow) error {
-	if e := tx.Update().Where("user_id=? and symbol=?", borrow.UserID, borrow.Symbol).FirstOrCreate(borrow).Error; e != nil {
+	if e := tx.Update().Where("user_id=? and asset_id=?", borrow.UserID, borrow.AssetID).Create(borrow).Error; e != nil {
 		return e
 	}
 
 	return nil
 }
 
-func (s *borrowStore) Find(ctx context.Context, userID string, symbol string) (*core.Borrow, error) {
+func (s *borrowStore) Find(ctx context.Context, userID string, assetID string) (*core.Borrow, error) {
 	var borrow core.Borrow
-	if e := s.db.View().Where("user_id=? and symbol=?", userID, symbol).First(&borrow).Error; e != nil {
+	if e := s.db.View().Where("user_id=? and asset_id=?", userID, assetID).First(&borrow).Error; e != nil {
 		return nil, e
 	}
 
@@ -56,29 +55,19 @@ func (s *borrowStore) FindByUser(ctx context.Context, userID string) ([]*core.Bo
 	return borrows, nil
 }
 
-func (s *borrowStore) FindBySymbol(ctx context.Context, symbol string) ([]*core.Borrow, error) {
+func (s *borrowStore) FindByAssetID(ctx context.Context, assetID string) ([]*core.Borrow, error) {
 	var borrows []*core.Borrow
-	if e := s.db.View().Where("symbol=?", symbol).Find(&borrows).Error; e != nil {
+	if e := s.db.View().Where("asset_id=?", assetID).Find(&borrows).Error; e != nil {
 		return nil, e
 	}
 
 	return borrows, nil
 }
 
-//借出的总量,包含借出的基础资产加上相应利息金额
-func (s *borrowStore) SumOfBorrows(ctx context.Context, symbol string) (decimal.Decimal, error) {
-	var sum decimal.Decimal
-	if e := s.db.View().Model(core.Borrow{}).Select("sum(principal)").Where("symbol=?", symbol).Row().Scan(&sum); e != nil {
-		return decimal.Zero, e
-	}
-
-	return sum, nil
-}
-
 func (s *borrowStore) Update(ctx context.Context, tx *db.DB, borrow *core.Borrow) error {
 	version := borrow.Version
 	borrow.Version++
-	if err := tx.Update().Model(core.Supply{}).Where("user_id=? and symbol=? and version=?", borrow.UserID, borrow.Symbol, version).Updates(borrow).Error; err != nil {
+	if err := tx.Update().Model(core.Borrow{}).Where("user_id=? and asset_id=? and version=?", borrow.UserID, borrow.AssetID, version).Updates(borrow).Error; err != nil {
 		return err
 	}
 
@@ -94,9 +83,9 @@ func (s *borrowStore) All(ctx context.Context) ([]*core.Borrow, error) {
 	return borrows, nil
 }
 
-func (s *borrowStore) CountOfBorrows(ctx context.Context, symbol string) (int64, error) {
+func (s *borrowStore) CountOfBorrowers(ctx context.Context, assetID string) (int64, error) {
 	var count int64
-	if e := s.db.View().Model(core.Borrow{}).Select("count(user_id)").Where("symbol=?", symbol).Row().Scan(&count); e != nil {
+	if e := s.db.View().Model(core.Borrow{}).Select("count(user_id)").Where("asset_id=?", assetID).Row().Scan(&count); e != nil {
 		return 0, e
 	}
 

@@ -2,10 +2,9 @@ package snapshot
 
 import (
 	"compound/core"
-	"compound/pkg/id"
 	"context"
-	"fmt"
 
+	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
 )
 
@@ -14,27 +13,36 @@ var handleRefundEvent = func(ctx context.Context, w *Worker, action core.Action,
 		return nil
 	}
 
-	action = core.NewAction()
-	action[core.ActionKeyService] = core.ActionServiceRefund
-	action[core.ActionKeyReferTrace] = snapshot.TraceID
-	action[core.ActionKeyErrorCode] = errCode.String()
-	memoStr, e := action.Format()
-	if e != nil {
-		return e
-	}
+	// log := logger.FromContext(ctx).WithField("worker", "refund")
 
-	trace := id.UUIDFromString(fmt.Sprintf("refund-%s", snapshot.TraceID))
-	transfer := core.Transfer{
-		AssetID:    snapshot.AssetID,
-		OpponentID: snapshot.OpponentID,
-		Amount:     snapshot.Amount.Abs(),
-		TraceID:    trace,
-		Memo:       memoStr,
-	}
+	// TODO
+	// action = core.NewAction()
+	// action[core.ActionKeyService] = core.ActionServiceRefund
+	// action[core.ActionKeyReferTrace] = snapshot.TraceID
+	// action[core.ActionKeyErrorCode] = errCode.String()
+	// memoStr, e := action.Format()
+	// if e != nil {
+	// 	log.Errorln(e)
+	// 	return e
+	// }
 
-	if e := w.transferStore.Create(ctx, w.db, &transfer); e != nil {
-		return e
-	}
+	// trace := id.UUIDFromString(fmt.Sprintf("refund-%s", snapshot.TraceID))
+	// transfer := core.Transfer{
+	// 	AssetID:    snapshot.AssetID,
+	// 	OpponentID: snapshot.OpponentID,
+	// 	Amount:     snapshot.Amount.Abs(),
+	// 	TraceID:    trace,
+	// 	Memo:       memoStr,
+	// }
 
+	// if e := w.transferStore.Create(ctx, w.db, &transfer); e != nil {
+	// 	log.Errorln(e)
+	// 	return e
+	// }
+
+	return nil
+}
+
+func (w *Payee) handleRefundEvent(ctx context.Context, output *core.Output, userID, followID uuid.UUID, body []byte) error {
 	return nil
 }

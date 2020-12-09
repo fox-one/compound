@@ -2,9 +2,7 @@ package snapshot
 
 import (
 	"compound/core"
-	"compound/pkg/id"
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/fox-one/pkg/logger"
@@ -25,7 +23,7 @@ var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action,
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrInvalidAmount)
 	}
 
-	market, e := w.marketStore.FindByCToken(ctx, symbol)
+	market, e := w.marketStore.FindBySymbol(ctx, symbol)
 	if e != nil {
 		log.Errorln("query market error:", e)
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
@@ -46,61 +44,72 @@ var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action,
 		market.TotalBorrows = market.TotalBorrows.Add(borrowAmount)
 		// update market
 		if e = w.marketStore.Update(ctx, tx, market); e != nil {
+			log.Errorln(e)
 			return e
 		}
 
-		borrow, e := w.borrowStore.Find(ctx, userID, market.Symbol)
+		//update interest
+		if e = w.marketService.AccrueInterest(ctx, tx, market, snapshot.CreatedAt); e != nil {
+			log.Errorln(e)
+			return e
+		}
+
+		borrow, e := w.borrowStore.Find(ctx, userID, market.AssetID)
 		if e != nil {
 			if gorm.IsRecordNotFoundError(e) {
 				//new
-				borrow := core.Borrow{
+				borrow = &core.Borrow{
 					UserID:        userID,
-					Symbol:        market.Symbol,
+					AssetID:       market.AssetID,
 					Principal:     borrowAmount,
 					InterestIndex: market.BorrowIndex}
 
-				if e = w.borrowStore.Save(ctx, tx, &borrow); e != nil {
+				if e = w.borrowStore.Save(ctx, tx, borrow); e != nil {
+					log.Errorln(e)
 					return e
 				}
-				return nil
+			} else {
+				return e
 			}
-			return e
+		} else {
+			//update borrow account
+			borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, market)
+			if e != nil {
+				log.Errorln(e)
+				return e
+			}
+
+			newBorrowBalance := borrowBalance.Add(borrowAmount)
+			borrow.Principal = newBorrowBalance
+			borrow.InterestIndex = market.BorrowIndex
+			e = w.borrowStore.Update(ctx, tx, borrow)
+			if e != nil {
+				log.Errorln(e)
+				return e
+			}
 		}
 
-		//update borrow account
-		borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, market)
-		if e != nil {
-			return e
-		}
+		//TODO transfer to user
+		// memo := make(core.Action)
+		// memo[core.ActionKeyService] = core.ActionServiceBorrowTransfer
+		// memoStr, e := memo.Format()
+		// if e != nil {
+		// 	log.Errorln("memo format error:", e)
+		// 	return e
+		// }
+		// trace := id.UUIDFromString(fmt.Sprintf("borrow:%s", snapshot.TraceID))
+		// transfer := core.Transfer{
+		// 	AssetID:    market.AssetID,
+		// 	OpponentID: userID,
+		// 	Amount:     borrowAmount,
+		// 	TraceID:    trace,
+		// 	Memo:       memoStr,
+		// }
 
-		newBorrowBalance := borrowBalance.Add(borrowAmount)
-		borrow.Principal = newBorrowBalance
-		borrow.InterestIndex = market.BorrowIndex
-		e = w.borrowStore.Update(ctx, tx, borrow)
-		if e != nil {
-			return e
-		}
-
-		//transfer to user
-		memo := make(core.Action)
-		memo[core.ActionKeyService] = core.ActionServiceBorrowTransfer
-		memoStr, e := memo.Format()
-		if e != nil {
-			log.Errorln("memo format error:", e)
-			return e
-		}
-		trace := id.UUIDFromString(fmt.Sprintf("borrow:%s", snapshot.TraceID))
-		transfer := core.Transfer{
-			AssetID:    market.AssetID,
-			OpponentID: userID,
-			Amount:     borrowAmount,
-			TraceID:    trace,
-			Memo:       memoStr,
-		}
-
-		if e = w.transferStore.Create(ctx, tx, &transfer); e != nil {
-			return e
-		}
+		// if e = w.transferStore.Create(ctx, tx, &transfer); e != nil {
+		// 	log.Errorln(e)
+		// 	return e
+		// }
 
 		return nil
 	})

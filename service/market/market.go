@@ -139,47 +139,6 @@ func (s *service) CurTotalReserves(ctx context.Context, market *core.Market) (de
 	return market.Reserves, nil
 }
 
-func (s *service) KeppFlywheelMoving(ctx context.Context, db *db.DB, market *core.Market, time time.Time) error {
-	blockNum, e := s.blockSrv.GetBlock(ctx, time)
-	if e != nil {
-		return e
-	}
-	//utilization rate
-	uRate, e := s.curUtilizationRateInternal(ctx, market)
-	if e != nil {
-		return e
-	}
-
-	//exchange rate
-	exchangeRate, e := s.curExchangeRateInternal(ctx, market)
-	if e != nil {
-		return e
-	}
-
-	supplyRate, e := s.curSupplyRatePerBlockInternal(ctx, market)
-	if e != nil {
-		return e
-	}
-
-	borrowRate, e := s.curBorrowRatePerBlockInternal(ctx, market)
-	if e != nil {
-		return e
-	}
-
-	market.BlockNumber = blockNum
-	market.UtilizationRate = uRate
-	market.ExchangeRate = exchangeRate
-	market.SupplyRatePerBlock = supplyRate
-	market.BorrowRatePerBlock = borrowRate
-
-	e = s.marketStore.Update(ctx, db, market)
-	if e != nil {
-		return e
-	}
-
-	return nil
-}
-
 func (s *service) AccrueInterest(ctx context.Context, db *db.DB, market *core.Market, time time.Time) error {
 	blockNumberPrior := market.BlockNumber
 
@@ -193,6 +152,10 @@ func (s *service) AccrueInterest(ctx context.Context, db *db.DB, market *core.Ma
 		borrowRate, e := s.curBorrowRatePerBlockInternal(ctx, market)
 		if e != nil {
 			return e
+		}
+
+		if market.BorrowIndex.LessThanOrEqual(decimal.Zero) {
+			market.BorrowIndex = borrowRate
 		}
 
 		timesBorrowRate := borrowRate.Mul(decimal.NewFromInt(blockDelta))
@@ -234,9 +197,5 @@ func (s *service) AccrueInterest(ctx context.Context, db *db.DB, market *core.Ma
 	market.SupplyRatePerBlock = supplyRate
 	market.BorrowRatePerBlock = borrowRate
 
-	e = s.marketStore.Update(ctx, db, market)
-	if e != nil {
-		return e
-	}
-	return nil
+	return s.marketStore.Update(ctx, db, market)
 }

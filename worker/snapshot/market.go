@@ -3,97 +3,15 @@ package snapshot
 import (
 	"compound/core"
 	"compound/internal/compound"
-	"compound/pkg/id"
 	"context"
-	"fmt"
-	"strconv"
 	"strings"
 
-	"github.com/fox-one/pkg/store/db"
+	"github.com/fox-one/pkg/logger"
 	"github.com/shopspring/decimal"
 )
 
-var handleRequestMarketEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
-	if snapshot.AssetID != w.config.App.GasAssetID {
-		return handleRefundEvent(ctx, w, action, snapshot, core.ErrOperationForbidden)
-	}
-
-	symbol := strings.ToUpper(action[core.ActionKeySymbol])
-
-	market, e := w.marketStore.FindBySymbol(ctx, symbol)
-	if e != nil {
-		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
-	}
-
-	if e = w.marketService.AccrueInterest(ctx, w.db, market, snapshot.CreatedAt); e != nil {
-		return e
-	}
-
-	return w.db.Tx(func(tx *db.DB) error {
-		// base info
-		action = core.NewAction()
-		action[core.ActionKeyService] = core.ActionServiceMarketResponse
-		action[core.ActionKeySymbol] = symbol
-		action[core.ActionKeyTotalCash] = market.TotalCash.String()
-		action[core.ActionKeyTotalBorrows] = market.TotalBorrows.String()
-		action[core.ActionKeyCTokens] = market.CTokens.String()
-		action[core.ActionKeyPrice] = market.Price.String()
-		action[core.ActionKeyBlock] = strconv.FormatInt(market.BlockNumber, 10)
-		memoStr, e := action.Format()
-		if e != nil {
-			return e
-		}
-		trace := id.UUIDFromString(fmt.Sprintf("market-base-%s", snapshot.TraceID))
-		input := core.Transfer{
-			AssetID:    w.config.App.GasAssetID,
-			OpponentID: snapshot.OpponentID,
-			Amount:     core.GasCost,
-			TraceID:    trace,
-			Memo:       memoStr,
-		}
-
-		if e = w.transferStore.Create(ctx, tx, &input); e != nil {
-			return e
-		}
-
-		// rate info
-		sRate, e := w.marketService.CurSupplyRate(ctx, market)
-		if e != nil {
-			return e
-		}
-		bRate, e := w.marketService.CurBorrowRate(ctx, market)
-		if e != nil {
-			return e
-		}
-		action = core.NewAction()
-		action[core.ActionKeyService] = core.ActionServiceMarketResponse
-		action[core.ActionKeySymbol] = symbol
-		action[core.ActionKeyUtilizationRate] = market.UtilizationRate.String()
-		action[core.ActionKeyExchangeRate] = market.ExchangeRate.String()
-		action[core.ActionKeySupplyRate] = sRate.Truncate(8).String()
-		action[core.ActionKeyBorrowRate] = bRate.Truncate(8).String()
-		memoStr, e = action.Format()
-		if e != nil {
-			return e
-		}
-		trace = id.UUIDFromString(fmt.Sprintf("market-rate-%s", snapshot.TraceID))
-		input = core.Transfer{
-			AssetID:    w.config.App.GasAssetID,
-			OpponentID: snapshot.OpponentID,
-			Amount:     core.GasCost,
-			TraceID:    trace,
-			Memo:       memoStr,
-		}
-
-		if e = w.transferStore.Create(ctx, tx, &input); e != nil {
-			return e
-		}
-
-		return nil
-	})
-}
-
 var handleUpdateMarketEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
+	log := logger.FromContext(ctx).WithField("worker", "update-market")
 	if snapshot.AssetID != w.config.App.GasAssetID {
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrOperationForbidden)
 	}
@@ -111,6 +29,7 @@ var handleUpdateMarketEvent = func(ctx context.Context, w *Worker, action core.A
 
 	if market.InitExchangeRate.GreaterThan(decimal.Zero) {
 		if e = w.marketService.AccrueInterest(ctx, w.db, market, snapshot.CreatedAt); e != nil {
+			log.Errorln(e)
 			return e
 		}
 	}
@@ -161,11 +80,12 @@ var handleUpdateMarketEvent = func(ctx context.Context, w *Worker, action core.A
 	}
 
 	kink, e := decimal.NewFromString(action[core.ActionKeyKink])
-	if e == nil && kink.GreaterThanOrEqual(decimal.Zero) && jumpMultiplier.LessThan(decimal.NewFromInt(1)) {
+	if e == nil && kink.GreaterThanOrEqual(decimal.Zero) && kink.LessThan(decimal.NewFromInt(1)) {
 		market.Kink = kink
 	}
 
 	if e = w.marketStore.Update(ctx, w.db, market); e != nil {
+		log.Errorln(e)
 		return e
 	}
 
@@ -173,6 +93,7 @@ var handleUpdateMarketEvent = func(ctx context.Context, w *Worker, action core.A
 }
 
 var handleAddMarketEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
+	log := logger.FromContext(ctx).WithField("worker", "add-market")
 	if snapshot.AssetID != w.config.App.GasAssetID {
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrOperationForbidden)
 	}
@@ -187,18 +108,20 @@ var handleAddMarketEvent = func(ctx context.Context, w *Worker, action core.Acti
 
 	_, e := w.marketStore.FindBySymbol(ctx, symbol)
 	if e == nil {
+		log.Errorln(e)
 		// market exists
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrOperationForbidden)
-	} else {
-		market := core.Market{
-			Symbol:        symbol,
-			AssetID:       assetID,
-			CTokenAssetID: ctokenAssetID,
-		}
+	}
 
-		if e = w.marketStore.Save(ctx, w.db, &market); e != nil {
-			return e
-		}
+	market := core.Market{
+		Symbol:        symbol,
+		AssetID:       assetID,
+		CTokenAssetID: ctokenAssetID,
+	}
+
+	if e = w.marketStore.Save(ctx, w.db, &market); e != nil {
+		log.Errorln(e)
+		return e
 	}
 
 	return nil

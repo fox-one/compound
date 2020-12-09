@@ -1,12 +1,11 @@
 package concurrency
 
+import "fmt"
+
 const (
 	// DefaultMax default max
 	DefaultMax = 256
 )
-
-// DefaultGoLimit default go limit, max:256
-var DefaultGoLimit = NewGoLimit(DefaultMax)
 
 // GoLimit go limit
 type GoLimit struct {
@@ -18,6 +17,11 @@ func NewGoLimit(max int) *GoLimit {
 	return &GoLimit{
 		ch: make(chan int, max),
 	}
+}
+
+// NewDefaultGoLimit new default go limit
+func NewDefaultGoLimit() *GoLimit {
+	return NewGoLimit(DefaultMax)
 }
 
 // Add add num
@@ -32,6 +36,11 @@ func (g *GoLimit) Done() {
 
 // Close close chan
 func (g *GoLimit) Close() {
+	defer func() {
+		if recover() != nil {
+			fmt.Println("golimit closed")
+		}
+	}()
 	close(g.ch)
 }
 

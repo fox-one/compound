@@ -6,44 +6,38 @@ import (
 	"time"
 
 	"compound/core"
+	"compound/worker"
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
+	"github.com/robfig/cron/v3"
 	"golang.org/x/sync/errgroup"
 )
 
-func New(wallets core.WalletStore) *Sender {
-	return &Sender{
-		wallets: wallets,
-	}
-}
-
+// Sender tx sender
 type Sender struct {
+	worker.BaseJob
 	wallets core.WalletStore
 }
 
-func (w *Sender) Run(ctx context.Context) error {
-	log := logger.FromContext(ctx).WithField("worker", "txsender")
-	ctx = logger.WithContext(ctx, log)
-
-	dur := time.Millisecond
-
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(dur):
-			if err := w.run(ctx); err == nil {
-				dur = 100 * time.Millisecond
-			} else {
-				dur = 300 * time.Millisecond
-			}
-		}
+func New(location string, wallets core.WalletStore) *Sender {
+	sender := Sender{
+		wallets: wallets,
 	}
+
+	l, _ := time.LoadLocation(location)
+	sender.Cron = cron.New(cron.WithLocation(l))
+	spec := "@every 100ms"
+	sender.Cron.AddFunc(spec, sender.Run)
+	sender.OnWork = func() error {
+		return sender.onWork(context.Background())
+	}
+
+	return &sender
 }
 
-func (w *Sender) run(ctx context.Context) error {
-	log := logger.FromContext(ctx)
+func (w *Sender) onWork(ctx context.Context) error {
+	log := logger.FromContext(ctx).WithField("worker", "txsender")
 	const Limit = 20
 
 	txs, err := w.wallets.ListPendingRawTransactions(ctx, Limit)
