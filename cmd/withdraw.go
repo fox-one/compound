@@ -50,7 +50,7 @@ var withdrawCmd = &cobra.Command{
 			Amount:   amount,
 		}
 
-		memo, err := mtg.Encode(clientID, traceID, int(core.ActionTypeProposalWithdraw), withdrawRequest)
+		memo, err := mtg.Encode(clientID, traceID, int(core.ActionTypeProposalWithdrawReserves), withdrawRequest)
 		if err != nil {
 			panic(err)
 		}

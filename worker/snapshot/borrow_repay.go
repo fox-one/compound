@@ -73,7 +73,7 @@ func (w *Payee) handleReplayEvent(ctx context.Context, output *core.Output, user
 		if redundantAmount.GreaterThan(decimal.Zero) {
 			refundAmount := redundantAmount.Truncate(8)
 			transferAction := core.TransferAction{
-				Source:        core.ActionTypeRefund,
+				Source:        core.ActionTypeRefundTransfer,
 				TransactionID: followID,
 			}
 

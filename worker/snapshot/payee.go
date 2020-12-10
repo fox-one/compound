@@ -184,11 +184,11 @@ func (w *Payee) handleUserAction(ctx context.Context, output *core.Output, actio
 		return w.handleUnpledgeEvent(ctx, output, userID, followID, body)
 	case core.ActionTypeSeizeToken:
 		return w.handleSeizeTokenEvent(ctx, output, userID, followID, body)
-	case core.ActionTypeAddMarket:
+	case core.ActionTypeProposalAddMarket:
 		return w.handleAddMarketEvent(ctx, output, userID, followID, body)
-	case core.ActionTypeUpdateMarket:
+	case core.ActionTypeProposalUpdateMarket:
 		return w.handleAddMarketEvent(ctx, output, userID, followID, body)
-	case core.ActionTypeInjectMintToken:
+	case core.ActionTypeProposalInjectCTokenForMint:
 		return w.handleInjectCTokenEvent(ctx, output, userID, followID, body)
 	default:
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrUnknown, "")

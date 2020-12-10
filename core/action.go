@@ -1,9 +1,5 @@
 package core
 
-import (
-	"encoding/json"
-)
-
 const (
 	// ActionKeyService key service type :string
 	ActionKeyService = "srv"
@@ -77,24 +73,6 @@ const (
 	ActionKeyBorrowBalance = "bb"
 )
 
-// Action action
-type Action map[string]string
-
-// Format format to string
-func (a *Action) Format() (string, error) {
-	bs, e := json.Marshal(a)
-	if e != nil {
-		return "", e
-	}
-
-	return string(bs), nil
-}
-
-// NewAction new action
-func NewAction() Action {
-	return make(Action)
-}
-
 //go:generate stringer -type ActionType -trimprefix ActionType
 
 // ActionType compound action type
@@ -106,12 +84,8 @@ const (
 	ActionTypeSupply
 	// ActionTypeBorrow borrow
 	ActionTypeBorrow
-	// ActionTypeBorrowTransfer borrow transfer
-	ActionTypeBorrowTransfer
 	// ActionTypeRedeem redeem
 	ActionTypeRedeem
-	// ActionTypeRedeemTransfer redeem transfer
-	ActionTypeRedeemTransfer
 	// ActionTypeRepay repay
 	ActionTypeRepay
 	// ActionTypeMint mint
@@ -120,22 +94,28 @@ const (
 	ActionTypePledge
 	// ActionTypeUnpledge unpledge
 	ActionTypeUnpledge
-	// ActionTypeUnpledgeTransfer unpledge transfer
-	ActionTypeUnpledgeTransfer
 	// ActionTypeSeizeToken seize token
 	ActionTypeSeizeToken
+	// ActionTypeRedeemTransfer redeem transfer
+	ActionTypeRedeemTransfer
+	// ActionTypeUnpledgeTransfer unpledge transfer
+	ActionTypeUnpledgeTransfer
+	// ActionTypeBorrowTransfer borrow transfer
+	ActionTypeBorrowTransfer
 	// ActionTypeSeizeTokenTransfer seize token transfer
 	ActionTypeSeizeTokenTransfer
-	// ActionTypeRefund refund
-	ActionTypeRefund
-	// ActionTypeAddMarket add market
-	ActionTypeAddMarket
-	// ActionTypeUpdateMarket update market
-	ActionTypeUpdateMarket
-	// ActionTypeInjectMintToken inject token
-	ActionTypeInjectMintToken
-	// ActionTypeProposalWithdraw withdraw
-	ActionTypeProposalWithdraw
-	// ActionTypeProposalPrice price
-	ActionTypeProposalPrice
+	// ActionTypeRefundTransfer refund
+	ActionTypeRefundTransfer
+	// ActionTypeProposalAddMarket add market
+	ActionTypeProposalAddMarket
+	// ActionTypeProposalUpdateMarket update market
+	ActionTypeProposalUpdateMarket
+	// ActionTypeProposalInjectCTokenForMint inject token
+	ActionTypeProposalInjectCTokenForMint
+	// ActionTypeProposalWithdrawReserves withdraw
+	ActionTypeProposalWithdrawReserves
+	// ActionTypeProposalProvidePrice price
+	ActionTypeProposalProvidePrice
+	// ActionTypeProposalVote vote
+	ActionTypeProposalVote
 )

@@ -2,15 +2,11 @@ package priceoracle
 
 import (
 	"compound/core"
-	"compound/pkg/id"
 	"compound/worker"
 	"context"
-	"fmt"
-	"strconv"
 	"sync"
 	"time"
 
-	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
 	"github.com/robfig/cron/v3"
 	"github.com/shopspring/decimal"
@@ -90,40 +86,40 @@ func (w *Worker) onWork(ctx context.Context) error {
 }
 
 func (w *Worker) checkAndPushPriceOnChain(ctx context.Context, market *core.Market, ticker *core.PriceTicker) error {
-	log := logger.FromContext(ctx).WithField("worker", "priceoracle")
+	// log := logger.FromContext(ctx).WithField("worker", "priceoracle")
 
-	blockNum, err := w.BlockService.GetBlock(ctx, time.Now())
-	if err != nil {
-		log.Errorln(err)
-		return err
-	}
+	// blockNum, err := w.BlockService.GetBlock(ctx, time.Now())
+	// if err != nil {
+	// 	log.Errorln(err)
+	// 	return err
+	// }
 
-	str := fmt.Sprintf("foxone-compound-price-%s-%d", market.Symbol, blockNum)
-	traceID := id.UUIDFromString(str)
-	transferInput := mixin.TransferInput{
-		AssetID:    w.Config.Group.Vote.Asset,
-		OpponentID: w.MainWallet.Client.ClientID,
-		Amount:     w.system.VoteAmount,
-		TraceID:    traceID,
-	}
+	// str := fmt.Sprintf("foxone-compound-price-%s-%d", market.Symbol, blockNum)
+	// traceID := id.UUIDFromString(str)
+	// transferInput := mixin.TransferInput{
+	// 	AssetID:    w.Config.Group.Vote.Asset,
+	// 	OpponentID: w.MainWallet.Client.ClientID,
+	// 	Amount:     w.system.VoteAmount,
+	// 	TraceID:    traceID,
+	// }
 
-	//create new block
-	memo := make(core.Action)
-	memo[core.ActionKeyService] = core.ActionServicePrice
-	memo[core.ActionKeyBlock] = strconv.FormatInt(blockNum, 10)
-	memo[core.ActionKeySymbol] = market.Symbol
-	memo[core.ActionKeyPrice] = ticker.Price.Truncate(8).String()
-	memoStr, err := memo.Format()
-	if err != nil {
-		log.Errorln("new block memo error:", err)
-		return err
-	}
+	// //create new block
+	// memo := make(core.Action)
+	// memo[core.ActionKeyService] = core.ActionServicePrice
+	// memo[core.ActionKeyBlock] = strconv.FormatInt(blockNum, 10)
+	// memo[core.ActionKeySymbol] = market.Symbol
+	// memo[core.ActionKeyPrice] = ticker.Price.Truncate(8).String()
+	// memoStr, err := memo.Format()
+	// if err != nil {
+	// 	log.Errorln("new block memo error:", err)
+	// 	return err
+	// }
 
-	transferInput.Memo = memoStr
-	if _, err = w.BlockWallet.Client.Transfer(ctx, &transferInput, w.BlockWallet.Pin); err != nil {
-		log.Errorln("transfer new block error:", err)
-		return err
-	}
+	// transferInput.Memo = memoStr
+	// if _, err = w.BlockWallet.Client.Transfer(ctx, &transferInput, w.BlockWallet.Pin); err != nil {
+	// 	log.Errorln("transfer new block error:", err)
+	// 	return err
+	// }
 
 	return nil
 }

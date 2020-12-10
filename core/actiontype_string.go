@@ -10,27 +10,27 @@ func _() {
 	var x [1]struct{}
 	_ = x[ActionTypeSupply-1]
 	_ = x[ActionTypeBorrow-2]
-	_ = x[ActionTypeBorrowTransfer-3]
-	_ = x[ActionTypeRedeem-4]
-	_ = x[ActionTypeRedeemTransfer-5]
-	_ = x[ActionTypeRepay-6]
-	_ = x[ActionTypeMint-7]
-	_ = x[ActionTypePledge-8]
-	_ = x[ActionTypeUnpledge-9]
+	_ = x[ActionTypeRedeem-3]
+	_ = x[ActionTypeRepay-4]
+	_ = x[ActionTypeMint-5]
+	_ = x[ActionTypePledge-6]
+	_ = x[ActionTypeUnpledge-7]
+	_ = x[ActionTypeSeizeToken-8]
+	_ = x[ActionTypeRedeemTransfer-9]
 	_ = x[ActionTypeUnpledgeTransfer-10]
-	_ = x[ActionTypeSeizeToken-11]
+	_ = x[ActionTypeBorrowTransfer-11]
 	_ = x[ActionTypeSeizeTokenTransfer-12]
-	_ = x[ActionTypeRefund-13]
-	_ = x[ActionTypeAddMarket-14]
-	_ = x[ActionTypeUpdateMarket-15]
-	_ = x[ActionTypeInjectMintToken-16]
-	_ = x[ActionTypeProposalWithdraw-17]
-	_ = x[ActionTypeProposalPrice-18]
+	_ = x[ActionTypeRefundTransfer-13]
+	_ = x[ActionTypeProposalAddMarket-14]
+	_ = x[ActionTypeProposalUpdateMarket-15]
+	_ = x[ActionTypeProposalInjectCTokenForMint-16]
+	_ = x[ActionTypeProposalWithdrawReserves-17]
+	_ = x[ActionTypeProposalProvidePrice-18]
 }
 
-const _ActionType_name = "SupplyBorrowBorrowTransferRedeemRedeemTransferRepayMintPledgeUnpledgeUnpledgeTransferSeizeTokenSeizeTokenTransferRefundAddMarketUpdateMarketInjectMintTokenProposalWithdrawProposalPrice"
+const _ActionType_name = "SupplyBorrowRedeemRepayMintPledgeUnpledgeSeizeTokenRedeemTransferUnpledgeTransferBorrowTransferSeizeTokenTransferRefundTransferProposalAddMarketProposalUpdateMarketProposalInjectCTokenForMintProposalWithdrawReservesProposalProvidePrice"
 
-var _ActionType_index = [...]uint8{0, 6, 12, 26, 32, 46, 51, 55, 61, 69, 85, 95, 113, 119, 128, 140, 155, 171, 184}
+var _ActionType_index = [...]uint8{0, 6, 12, 18, 23, 27, 33, 41, 51, 65, 81, 95, 113, 127, 144, 164, 191, 215, 235}
 
 func (i ActionType) String() string {
 	i -= 1

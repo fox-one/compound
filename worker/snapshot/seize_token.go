@@ -183,7 +183,7 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 			refundAmount := redundantAmount.Truncate(8)
 
 			refundTransferAction := core.TransferAction{
-				Source:        core.ActionTypeRefund,
+				Source:        core.ActionTypeRefundTransfer,
 				TransactionID: followID,
 			}
 
