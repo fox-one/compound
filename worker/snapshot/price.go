@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/fox-one/pkg/logger"
+	"github.com/fox-one/pkg/store/db"
 	"github.com/shopspring/decimal"
 )
 
@@ -29,11 +30,17 @@ var handlePriceEvent = func(ctx context.Context, w *Worker, action core.Action, 
 		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
 	}
 
-	market.Price = price
-	if e = w.marketStore.Update(ctx, w.db, market); e != nil {
-		log.Errorln(e)
-		return e
-	}
+	return w.db.Tx(func(tx *db.DB) error {
+		// accrue interest
+		if e = w.marketService.AccrueInterest(ctx, tx, market, snapshot.CreatedAt); e != nil {
+			return e
+		}
 
-	return nil
+		market.Price = price
+		if e = w.marketStore.Update(ctx, tx, market); e != nil {
+			log.Errorln(e)
+			return e
+		}
+		return nil
+	})
 }
