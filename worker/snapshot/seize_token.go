@@ -115,7 +115,7 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 
 		seizedCTokens := seizedAmount.Div(supplyExchangeRate)
 		//update supply
-		supply.Collaterals = supply.Collaterals.Sub(seizedCTokens)
+		supply.Collaterals = supply.Collaterals.Sub(seizedCTokens).Truncate(8)
 		if e = w.supplyStore.Update(ctx, tx, supply); e != nil {
 			log.Errorln(e)
 			return e
@@ -138,15 +138,15 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 			newBorrowBalance = decimal.Zero
 			newIndex = decimal.Zero
 		}
-		borrow.Principal = newBorrowBalance
-		borrow.InterestIndex = newIndex
+		borrow.Principal = newBorrowBalance.Truncate(8)
+		borrow.InterestIndex = newIndex.Truncate(16)
 		if e = w.borrowStore.Update(ctx, tx, borrow); e != nil {
 			log.Errorln(e)
 			return e
 		}
 
-		borrowMarket.TotalBorrows = borrowMarket.TotalBorrows.Sub(reallyRepayAmount)
-		borrowMarket.TotalCash = borrowMarket.TotalCash.Add(reallyRepayAmount)
+		borrowMarket.TotalBorrows = borrowMarket.TotalBorrows.Sub(reallyRepayAmount).Truncate(8)
+		borrowMarket.TotalCash = borrowMarket.TotalCash.Add(reallyRepayAmount).Truncate(8)
 		if e = w.marketStore.Update(ctx, tx, borrowMarket); e != nil {
 			log.Errorln(e)
 			return e

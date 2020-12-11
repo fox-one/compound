@@ -36,7 +36,7 @@ var handlePriceEvent = func(ctx context.Context, w *Worker, action core.Action, 
 			return e
 		}
 
-		market.Price = price
+		market.Price = price.Truncate(8)
 		if e = w.marketStore.Update(ctx, tx, market); e != nil {
 			log.Errorln(e)
 			return e

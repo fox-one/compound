@@ -165,9 +165,9 @@ func (s *service) AccrueInterest(ctx context.Context, db *db.DB, market *core.Ma
 		borrowIndexNew := market.BorrowIndex.Add(timesBorrowRate.Mul(market.BorrowIndex))
 
 		market.BlockNumber = blockNum
-		market.TotalBorrows = totalBorrowsNew
-		market.Reserves = totalReservesNew
-		market.BorrowIndex = borrowIndexNew
+		market.TotalBorrows = totalBorrowsNew.Truncate(8)
+		market.Reserves = totalReservesNew.Truncate(8)
+		market.BorrowIndex = borrowIndexNew.Truncate(16)
 	}
 
 	//utilization rate
@@ -192,10 +192,10 @@ func (s *service) AccrueInterest(ctx context.Context, db *db.DB, market *core.Ma
 		return e
 	}
 
-	market.UtilizationRate = uRate
-	market.ExchangeRate = exchangeRate
-	market.SupplyRatePerBlock = supplyRate
-	market.BorrowRatePerBlock = borrowRate
+	market.UtilizationRate = uRate.Truncate(8)
+	market.ExchangeRate = exchangeRate.Truncate(8)
+	market.SupplyRatePerBlock = supplyRate.Truncate(16)
+	market.BorrowRatePerBlock = borrowRate.Truncate(16)
 
 	return s.marketStore.Update(ctx, db, market)
 }

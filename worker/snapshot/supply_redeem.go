@@ -47,8 +47,8 @@ var handleSupplyRedeemEvent = func(ctx context.Context, w *Worker, action core.A
 	amount := redeemTokens.Mul(exchangeRate).Truncate(8)
 
 	return w.db.Tx(func(tx *db.DB) error {
-		market.TotalCash = market.TotalCash.Sub(amount)
-		market.CTokens = market.CTokens.Sub(redeemTokens)
+		market.TotalCash = market.TotalCash.Sub(amount).Truncate(8)
+		market.CTokens = market.CTokens.Sub(redeemTokens).Truncate(8)
 		if e = w.marketStore.Update(ctx, tx, market); e != nil {
 			log.Errorln(e)
 			return e
