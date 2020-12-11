@@ -26,20 +26,22 @@ const (
 // Payee payee worker
 type Payee struct {
 	worker.BaseJob
-	db             *db.DB
-	system         *core.System
-	dapp           *core.Wallet
-	propertyStore  property.Store
-	walletStore    core.WalletStore
-	marketStore    core.IMarketStore
-	supplyStore    core.ISupplyStore
-	borrowStore    core.IBorrowStore
-	blockService   core.IBlockService
-	priceService   core.IPriceOracleService
-	marketService  core.IMarketService
-	supplyService  core.ISupplyService
-	borrowService  core.IBorrowService
-	accountService core.IAccountService
+	db              *db.DB
+	system          *core.System
+	dapp            *core.Wallet
+	propertyStore   property.Store
+	walletStore     core.WalletStore
+	marketStore     core.IMarketStore
+	supplyStore     core.ISupplyStore
+	borrowStore     core.IBorrowStore
+	proposalStore   core.ProposalStore
+	proposalService core.ProposalService
+	blockService    core.IBlockService
+	priceService    core.IPriceOracleService
+	marketService   core.IMarketService
+	supplyService   core.ISupplyService
+	borrowService   core.IBorrowService
+	accountService  core.IAccountService
 }
 
 // NewPayee new payee
@@ -51,6 +53,8 @@ func NewPayee(location string,
 	marketStore core.IMarketStore,
 	supplyStore core.ISupplyStore,
 	borrowStore core.IBorrowStore,
+	proposalStore core.ProposalStore,
+	proposalService core.ProposalService,
 	priceSrv core.IPriceOracleService,
 	blockService core.IBlockService,
 	marketSrv core.IMarketService,
@@ -58,19 +62,21 @@ func NewPayee(location string,
 	borrowService core.IBorrowService,
 	accountService core.IAccountService) *Payee {
 	payee := Payee{
-		db:             db,
-		system:         system,
-		dapp:           dapp,
-		propertyStore:  propertyStore,
-		marketStore:    marketStore,
-		supplyStore:    supplyStore,
-		borrowStore:    borrowStore,
-		priceService:   priceSrv,
-		blockService:   blockService,
-		marketService:  marketSrv,
-		supplyService:  supplyService,
-		borrowService:  borrowService,
-		accountService: accountService,
+		db:              db,
+		system:          system,
+		dapp:            dapp,
+		propertyStore:   propertyStore,
+		marketStore:     marketStore,
+		supplyStore:     supplyStore,
+		borrowStore:     borrowStore,
+		proposalStore:   proposalStore,
+		proposalService: proposalService,
+		priceService:    priceSrv,
+		blockService:    blockService,
+		marketService:   marketSrv,
+		supplyService:   supplyService,
+		borrowService:   borrowService,
+		accountService:  accountService,
 	}
 
 	l, _ := time.LoadLocation(location)
@@ -158,14 +164,12 @@ func (w *Payee) handleProposalAction(ctx context.Context, output *core.Output, m
 		log.WithError(err).Debugln("scan proposal trace & action failed")
 		return nil
 	}
-	//TODO prpcess proposal event here
-	//update price
-	//withdraw
-	//add market
-	//update market
-	//
 
-	return nil
+	if core.ActionType(actionType) == core.ActionTypeProposalVote {
+		return w.handleVoteProposalEvent(ctx, output, member, traceID.String())
+	}
+
+	return w.handleCreateProposalEvent(ctx, output, member, core.ActionType(actionType), traceID.String(), body)
 }
 
 func (w *Payee) handleUserAction(ctx context.Context, output *core.Output, actionType core.ActionType, userID, followID string, body []byte) error {
@@ -184,12 +188,6 @@ func (w *Payee) handleUserAction(ctx context.Context, output *core.Output, actio
 		return w.handleUnpledgeEvent(ctx, output, userID, followID, body)
 	case core.ActionTypeSeizeToken:
 		return w.handleSeizeTokenEvent(ctx, output, userID, followID, body)
-	case core.ActionTypeProposalAddMarket:
-		return w.handleAddMarketEvent(ctx, output, userID, followID, body)
-	case core.ActionTypeProposalUpdateMarket:
-		return w.handleAddMarketEvent(ctx, output, userID, followID, body)
-	case core.ActionTypeProposalInjectCTokenForMint:
-		return w.handleInjectCTokenEvent(ctx, output, userID, followID, body)
 	default:
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrUnknown, "")
 	}

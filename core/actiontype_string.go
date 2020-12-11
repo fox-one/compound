@@ -23,14 +23,15 @@ func _() {
 	_ = x[ActionTypeRefundTransfer-13]
 	_ = x[ActionTypeProposalAddMarket-14]
 	_ = x[ActionTypeProposalUpdateMarket-15]
-	_ = x[ActionTypeProposalInjectCTokenForMint-16]
-	_ = x[ActionTypeProposalWithdrawReserves-17]
-	_ = x[ActionTypeProposalProvidePrice-18]
+	_ = x[ActionTypeProposalWithdrawReserves-16]
+	_ = x[ActionTypeProposalProvidePrice-17]
+	_ = x[ActionTypeProposalVote-18]
+	_ = x[ActionTypeProposalInjectCTokenForMint-19]
 }
 
-const _ActionType_name = "SupplyBorrowRedeemRepayMintPledgeUnpledgeSeizeTokenRedeemTransferUnpledgeTransferBorrowTransferSeizeTokenTransferRefundTransferProposalAddMarketProposalUpdateMarketProposalInjectCTokenForMintProposalWithdrawReservesProposalProvidePrice"
+const _ActionType_name = "SupplyBorrowRedeemRepayMintPledgeUnpledgeSeizeTokenRedeemTransferUnpledgeTransferBorrowTransferSeizeTokenTransferRefundTransferProposalAddMarketProposalUpdateMarketProposalWithdrawReservesProposalProvidePriceProposalVoteProposalInjectCTokenForMint"
 
-var _ActionType_index = [...]uint8{0, 6, 12, 18, 23, 27, 33, 41, 51, 65, 81, 95, 113, 127, 144, 164, 191, 215, 235}
+var _ActionType_index = [...]uint8{0, 6, 12, 18, 23, 27, 33, 41, 51, 65, 81, 95, 113, 127, 144, 164, 188, 208, 220, 247}
 
 func (i ActionType) String() string {
 	i -= 1

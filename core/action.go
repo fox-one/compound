@@ -110,12 +110,12 @@ const (
 	ActionTypeProposalAddMarket
 	// ActionTypeProposalUpdateMarket update market
 	ActionTypeProposalUpdateMarket
-	// ActionTypeProposalInjectCTokenForMint inject token
-	ActionTypeProposalInjectCTokenForMint
 	// ActionTypeProposalWithdrawReserves withdraw
 	ActionTypeProposalWithdrawReserves
 	// ActionTypeProposalProvidePrice price
 	ActionTypeProposalProvidePrice
 	// ActionTypeProposalVote vote
 	ActionTypeProposalVote
+	// ActionTypeProposalInjectCTokenForMint inject token
+	ActionTypeProposalInjectCTokenForMint
 )

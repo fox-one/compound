@@ -16,22 +16,25 @@ func New(
 	messages core.MessageStore,
 	system *core.System,
 	client *mixin.Client,
+	marketStore core.IMarketStore,
 ) core.ProposalService {
 	return &parliament{
-		messages: messages,
-		system:   system,
-		client:   client,
+		messages:    messages,
+		system:      system,
+		client:      client,
+		marketStore: marketStore,
 	}
 }
 
 type parliament struct {
-	messages core.MessageStore
-	system   *core.System
-	client   *mixin.Client
+	messages    core.MessageStore
+	system      *core.System
+	client      *mixin.Client
+	marketStore core.IMarketStore
 }
 
 func (p *parliament) ProposalCreated(ctx context.Context, proposal *core.Proposal, by *core.Member) error {
-	buttons := generateButtons(proposal)
+	buttons := generateButtons(ctx, p.marketStore, proposal)
 
 	trace, _ := uuid.FromString(proposal.TraceID)
 	uid, _ := uuid.FromString(p.system.ClientID)

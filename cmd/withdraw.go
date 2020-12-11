@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"compound/core"
+	"compound/core/proposal"
 	"compound/pkg/id"
 	"compound/pkg/mtg"
 	"encoding/base64"
@@ -44,7 +45,7 @@ var withdrawCmd = &cobra.Command{
 			panic(err)
 		}
 
-		withdrawRequest := core.Withdraw{
+		withdrawRequest := proposal.WithdrawReq{
 			Opponent: opponent,
 			Asset:    asset,
 			Amount:   amount,

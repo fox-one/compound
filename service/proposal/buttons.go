@@ -2,31 +2,42 @@ package parliament
 
 import (
 	"compound/core"
+	"compound/core/proposal"
+	"context"
+	"encoding/json"
+	"strings"
 
 	"fmt"
 
 	"github.com/fox-one/mixin-sdk-go"
 )
 
-func generateButtons(p *core.Proposal) mixin.AppButtonGroupMessage {
+func generateButtons(ctx context.Context, marketStore core.IMarketStore, p *core.Proposal) mixin.AppButtonGroupMessage {
 	var buttons mixin.AppButtonGroupMessage
 
 	buttons = appendUser(buttons, "Creator", p.Creator)
 
-	//TODO
-	// switch p.Action {
-	// case core.ProposalActionAddPair:
-	// 	var action proposal.AddPair
-	// 	_ = json.Unmarshal(p.Content, &action)
-	// 	buttons = appendAsset(buttons, "Base", action.BaseAsset)
-	// 	buttons = appendAsset(buttons, "Quote", action.QuoteAsset)
-	// 	buttons = appendAsset(buttons, "LP", p.AssetID)
-	// case core.ProposalActionWithdraw:
-	// 	var action proposal.Withdraw
-	// 	_ = json.Unmarshal(p.Content, &action)
-	// 	buttons = appendAsset(buttons, "Asset", action.Asset)
-	// 	buttons = appendUser(buttons, "Opponent", action.Opponent)
-	// }
+	switch p.Action {
+	case core.ActionTypeProposalAddMarket:
+		var action proposal.AddMarketReq
+		_ = json.Unmarshal(p.Content, &action)
+		buttons = appendAsset(buttons, "Asset", action.AssetID)
+		buttons = appendAsset(buttons, "CToken", action.CTokenAssetID)
+	case core.ActionTypeProposalUpdateMarket:
+		var action proposal.UpdateMarketReq
+		_ = json.Unmarshal(p.Content, &action)
+		symbol := strings.ToUpper(action.Symbol)
+		market, e := marketStore.FindBySymbol(ctx, symbol)
+		if e != nil {
+			return buttons
+		}
+		buttons = appendAsset(buttons, "Asset", market.AssetID)
+	case core.ActionTypeProposalWithdrawReserves:
+		var action proposal.WithdrawReq
+		_ = json.Unmarshal(p.Content, &action)
+		buttons = appendAsset(buttons, "Asset", action.Asset)
+		buttons = appendUser(buttons, "Opponent", action.Opponent)
+	}
 
 	return buttons
 }

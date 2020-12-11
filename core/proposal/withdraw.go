@@ -1,4 +1,4 @@
-package core
+package proposal
 
 import (
 	"compound/pkg/mtg"
@@ -7,15 +7,15 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// Withdraw withdraw request info
-type Withdraw struct {
+// WithdrawReq withdraw request info
+type WithdrawReq struct {
 	Opponent string          `json:"opponent,omitempty"`
 	Asset    string          `json:"asset,omitempty"`
 	Amount   decimal.Decimal `json:"amount,omitempty"`
 }
 
 // MarshalBinary marshal Withdraw to binary
-func (w Withdraw) MarshalBinary() (data []byte, err error) {
+func (w WithdrawReq) MarshalBinary() (data []byte, err error) {
 	opponent, err := uuid.FromString(w.Opponent)
 	if err != nil {
 		return nil, err
@@ -26,15 +26,11 @@ func (w Withdraw) MarshalBinary() (data []byte, err error) {
 		return nil, err
 	}
 
-	if err != nil {
-		return nil, err
-	}
-
 	return mtg.Encode(opponent, asset, w.Amount)
 }
 
 // UnmarshalBinary unmarshal bytes to withdraw
-func (w *Withdraw) UnmarshalBinary(data []byte) error {
+func (w *WithdrawReq) UnmarshalBinary(data []byte) error {
 	var opponent, asset uuid.UUID
 	var amount decimal.Decimal
 	if _, err := mtg.Scan(data, &opponent, &asset, &amount); err != nil {

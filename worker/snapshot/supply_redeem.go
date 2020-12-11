@@ -65,5 +65,4 @@ func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, user
 
 		return w.transferOut(ctx, userID, followID, output.TraceID, market.AssetID, amount, &transferAction)
 	})
-	return nil
 }
