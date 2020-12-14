@@ -46,8 +46,8 @@ var handleSupplyEvent = func(ctx context.Context, w *Worker, action core.Action,
 
 	return w.db.Tx(func(tx *db.DB) error {
 		//update maket
-		market.CTokens = market.CTokens.Add(ctokens).Truncate(8)
-		market.TotalCash = market.TotalCash.Add(supplyAmount).Truncate(8)
+		market.CTokens = market.CTokens.Add(ctokens).Truncate(16)
+		market.TotalCash = market.TotalCash.Add(supplyAmount).Truncate(16)
 		if e = w.marketStore.Update(ctx, tx, market); e != nil {
 			log.Errorln(e)
 			return e
@@ -134,7 +134,7 @@ var handlePledgeEvent = func(ctx context.Context, w *Worker, action core.Action,
 			return e
 		}
 		//update supply
-		supply.Collaterals = supply.Collaterals.Add(ctokens).Truncate(8)
+		supply.Collaterals = supply.Collaterals.Add(ctokens).Truncate(16)
 		e = w.supplyStore.Update(ctx, tx, supply)
 		if e != nil {
 			log.Errorln(e)
@@ -217,7 +217,7 @@ var handleUnpledgeEvent = func(ctx context.Context, w *Worker, action core.Actio
 			return e
 		}
 
-		supply.Collaterals = supply.Collaterals.Sub(unpledgedTokens).Truncate(8)
+		supply.Collaterals = supply.Collaterals.Sub(unpledgedTokens).Truncate(16)
 		if supply.Collaterals.LessThan(decimal.Zero) {
 			supply.Collaterals = decimal.Zero
 		}

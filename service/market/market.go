@@ -192,8 +192,8 @@ func (s *service) AccrueInterest(ctx context.Context, db *db.DB, market *core.Ma
 		return e
 	}
 
-	market.UtilizationRate = uRate.Truncate(8)
-	market.ExchangeRate = exchangeRate.Truncate(8)
+	market.UtilizationRate = uRate.Truncate(16)
+	market.ExchangeRate = exchangeRate.Truncate(16)
 	market.SupplyRatePerBlock = supplyRate.Truncate(16)
 	market.BorrowRatePerBlock = borrowRate.Truncate(16)
 

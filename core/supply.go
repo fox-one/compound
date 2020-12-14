@@ -13,7 +13,7 @@ type Supply struct {
 	ID            uint64          `sql:"PRIMARY_KEY;AUTO_INCREMENT" json:"id"`
 	UserID        string          `sql:"size:36;unique_index:supply_idx" json:"user_id"`
 	CTokenAssetID string          `sql:"size:36;unique_index:supply_idx" json:"ctoken_asset_id"`
-	Collaterals   decimal.Decimal `sql:"type:decimal(20,8)" json:"collaterals"`
+	Collaterals   decimal.Decimal `sql:"type:decimal(32,16)" json:"collaterals"`
 	Version       int64           `sql:"default:0" json:"version"`
 	CreatedAt     time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt     time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`

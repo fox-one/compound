@@ -42,8 +42,8 @@ var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action,
 	}
 
 	return w.db.Tx(func(tx *db.DB) error {
-		market.TotalCash = market.TotalCash.Sub(borrowAmount).Truncate(8)
-		market.TotalBorrows = market.TotalBorrows.Add(borrowAmount).Truncate(8)
+		market.TotalCash = market.TotalCash.Sub(borrowAmount).Truncate(16)
+		market.TotalBorrows = market.TotalBorrows.Add(borrowAmount).Truncate(16)
 		// update market
 		if e = w.marketStore.Update(ctx, tx, market); e != nil {
 			log.Errorln(e)
@@ -82,7 +82,7 @@ var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action,
 			}
 
 			newBorrowBalance := borrowBalance.Add(borrowAmount)
-			borrow.Principal = newBorrowBalance.Truncate(8)
+			borrow.Principal = newBorrowBalance.Truncate(16)
 			borrow.InterestIndex = market.BorrowIndex.Truncate(16)
 			e = w.borrowStore.Update(ctx, tx, borrow)
 			if e != nil {

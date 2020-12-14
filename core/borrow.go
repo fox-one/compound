@@ -14,8 +14,8 @@ type Borrow struct {
 	ID            uint64          `sql:"PRIMARY_KEY;AUTO_INCREMENT" json:"id"`
 	UserID        string          `sql:"size:36;unique_index:borrow_idx" json:"user_id"`
 	AssetID       string          `sql:"size:36;unique_index:borrow_idx" json:"asset_id"`
-	Principal     decimal.Decimal `sql:"type:decimal(20,8)" json:"principal"`
-	InterestIndex decimal.Decimal `sql:"type:decimal(20,16);default:1" json:"interest_index"`
+	Principal     decimal.Decimal `sql:"type:decimal(32,16)" json:"principal"`
+	InterestIndex decimal.Decimal `sql:"type:decimal(32,16);default:1" json:"interest_index"`
 	Version       int64           `sql:"default:0" json:"version"`
 	CreatedAt     time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt     time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`
