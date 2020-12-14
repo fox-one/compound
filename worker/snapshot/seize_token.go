@@ -2,29 +2,34 @@ package snapshot
 
 import (
 	"compound/core"
-	"compound/pkg/id"
+	"compound/pkg/mtg"
 	"context"
-	"fmt"
-	"strings"
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/store/db"
+	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
 )
 
-// from user
-var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
+func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
 	log := logger.FromContext(ctx).WithField("worker", "seize_token")
-	liquidator := snapshot.OpponentID
-	userID := action[core.ActionKeyUser]
-	seizedSymbol := strings.ToUpper(action[core.ActionKeySymbol])
 
-	userPayAmount := snapshot.Amount.Abs()
+	var seizedUser uuid.UUID
+	var seizedAsset uuid.UUID
+	if _, err := mtg.Scan(body, &seizedUser, &seizedAsset); err != nil {
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrInvalidArgument, "")
+	}
+
+	seizedUserID := seizedUser.String()
+	seizedAssetID := seizedAsset.String()
+
+	userPayAmount := output.Amount.Abs()
+	userPayAssetID := output.AssetID
 
 	// to seize
-	supplyMarket, e := w.marketStore.FindBySymbol(ctx, seizedSymbol)
+	supplyMarket, e := w.marketStore.Find(ctx, seizedAssetID)
 	if e != nil {
-		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
 	}
 
 	supplyExchangeRate, e := w.marketService.CurExchangeRate(ctx, supplyMarket)
@@ -34,34 +39,34 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 	}
 
 	// to repay
-	borrowMarket, e := w.marketStore.Find(ctx, snapshot.AssetID)
+	borrowMarket, e := w.marketStore.Find(ctx, userPayAssetID)
 	if e != nil {
 		log.Errorln(e)
-		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
 	}
 
 	//supply market accrue interest
-	if e = w.marketService.AccrueInterest(ctx, w.db, supplyMarket, snapshot.CreatedAt); e != nil {
+	if e = w.marketService.AccrueInterest(ctx, w.db, supplyMarket, output.UpdatedAt); e != nil {
 		log.Errorln(e)
 		return e
 	}
 
 	//borrow market accrue interest
-	if e = w.marketService.AccrueInterest(ctx, w.db, borrowMarket, snapshot.CreatedAt); e != nil {
+	if e = w.marketService.AccrueInterest(ctx, w.db, borrowMarket, output.UpdatedAt); e != nil {
 		log.Errorln(e)
 		return e
 	}
 
-	supply, e := w.supplyStore.Find(ctx, userID, supplyMarket.CTokenAssetID)
+	supply, e := w.supplyStore.Find(ctx, seizedUserID, supplyMarket.CTokenAssetID)
 	if e != nil {
 		log.Errorln(e)
-		return handleRefundEvent(ctx, w, action, snapshot, core.ErrSupplyNotFound)
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrSupplyNotFound, "")
 	}
 
-	borrow, e := w.borrowStore.Find(ctx, userID, borrowMarket.AssetID)
+	borrow, e := w.borrowStore.Find(ctx, seizedUserID, borrowMarket.AssetID)
 	if e != nil {
 		log.Errorln(e)
-		return handleRefundEvent(ctx, w, action, snapshot, core.ErrBorrowNotFound)
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrBorrowNotFound, "")
 	}
 
 	borrowPrice, e := w.priceService.GetCurrentUnderlyingPrice(ctx, borrowMarket)
@@ -86,8 +91,8 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 	}
 
 	// refund to liquidator if seize not allowed
-	if !w.accountService.SeizeTokenAllowed(ctx, supply, borrow, snapshot.CreatedAt) {
-		return handleRefundEvent(ctx, w, action, snapshot, core.ErrSeizeNotAllowed)
+	if !w.accountService.SeizeTokenAllowed(ctx, supply, borrow, output.UpdatedAt) {
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrSeizeNotAllowed, "")
 	}
 
 	return w.db.Tx(func(tx *db.DB) error {
@@ -153,36 +158,23 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 		}
 
 		//supply market accrue interest
-		if e = w.marketService.AccrueInterest(ctx, tx, supplyMarket, snapshot.CreatedAt); e != nil {
+		if e = w.marketService.AccrueInterest(ctx, tx, supplyMarket, output.UpdatedAt); e != nil {
 			log.Errorln(e)
 			return e
 		}
 
 		//borrow market accrue interest
-		if e = w.marketService.AccrueInterest(ctx, tx, borrowMarket, snapshot.CreatedAt); e != nil {
+		if e = w.marketService.AccrueInterest(ctx, tx, borrowMarket, output.UpdatedAt); e != nil {
 			log.Errorln(e)
 			return e
 		}
 
-		//transfer seized asset to user
-		action := core.NewAction()
-		action[core.ActionKeyService] = core.ActionServiceSeizeTokenTransfer
+		transferAction := core.TransferAction{
+			Source:        core.ActionTypeSeizeTokenTransfer,
+			TransactionID: followID,
+		}
 
-		memoStr, e := action.Format()
-		if e != nil {
-			log.Errorln(e)
-			return e
-		}
-		trace := id.UUIDFromString(fmt.Sprintf("seizetoken-transfer-%s", snapshot.TraceID))
-		transfer := core.Transfer{
-			AssetID:    supplyMarket.AssetID,
-			OpponentID: liquidator,
-			Amount:     seizedAmount,
-			TraceID:    trace,
-			Memo:       memoStr,
-		}
-		if e = w.transferStore.Create(ctx, tx, &transfer); e != nil {
-			log.Errorln(e)
+		if e = w.transferOut(ctx, userID, followID, output.TraceID, supplyMarket.AssetID, seizedAmount, &transferAction); e != nil {
 			return e
 		}
 
@@ -190,24 +182,12 @@ var handleSeizeTokenEvent = func(ctx context.Context, w *Worker, action core.Act
 		if redundantAmount.GreaterThan(decimal.Zero) {
 			refundAmount := redundantAmount.Truncate(8)
 
-			action := core.NewAction()
-			action[core.ActionKeyService] = core.ActionServiceRefund
-			memoStr, e := action.Format()
-			if e != nil {
-				log.Errorln(e)
-				return e
-			}
-			refundTrace := id.UUIDFromString(fmt.Sprintf("liquidate-refund-%s", snapshot.TraceID))
-			transfer := core.Transfer{
-				AssetID:    snapshot.AssetID,
-				OpponentID: liquidator,
-				Amount:     refundAmount,
-				TraceID:    refundTrace,
-				Memo:       memoStr,
+			refundTransferAction := core.TransferAction{
+				Source:        core.ActionTypeRefundTransfer,
+				TransactionID: followID,
 			}
 
-			if e = w.transferStore.Create(ctx, tx, &transfer); e != nil {
-				log.Errorln(e)
+			if e = w.transferOut(ctx, userID, followID, output.TraceID, output.AssetID, refundAmount, &refundTransferAction); e != nil {
 				return e
 			}
 		}

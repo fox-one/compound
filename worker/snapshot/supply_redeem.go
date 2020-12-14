@@ -2,39 +2,37 @@ package snapshot
 
 import (
 	"compound/core"
-	"compound/pkg/id"
 	"context"
-	"fmt"
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/store/db"
 )
 
-// from user
-var handleSupplyRedeemEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
+func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
 	log := logger.FromContext(ctx).WithField("worker", "supply_redeem")
-	ctokenAssetID := snapshot.AssetID
+	ctokenAssetID := output.AssetID
+
 	market, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
 	if e != nil {
 		log.Errorln(e)
-		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
 	}
 
 	//accrue interest
-	if e = w.marketService.AccrueInterest(ctx, w.db, market, snapshot.CreatedAt); e != nil {
+	if e = w.marketService.AccrueInterest(ctx, w.db, market, output.UpdatedAt); e != nil {
 		log.Errorln(e)
 		return e
 	}
 
-	redeemTokens := snapshot.Amount.Abs()
+	redeemTokens := output.Amount.Abs()
 	if redeemTokens.GreaterThan(market.CTokens) {
-		return handleRefundEvent(ctx, w, action, snapshot, core.ErrRedeemNotAllowed)
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrRedeemNotAllowed, "")
 	}
 
 	// check redeem allowed
 	allowed := w.supplyService.RedeemAllowed(ctx, redeemTokens, market)
 	if !allowed {
-		return handleRefundEvent(ctx, w, action, snapshot, core.ErrRedeemNotAllowed)
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrRedeemNotAllowed, "")
 	}
 
 	// transfer asset to user
@@ -55,33 +53,16 @@ var handleSupplyRedeemEvent = func(ctx context.Context, w *Worker, action core.A
 		}
 
 		//accrue interest
-		if e = w.marketService.AccrueInterest(ctx, tx, market, snapshot.CreatedAt); e != nil {
+		if e = w.marketService.AccrueInterest(ctx, tx, market, output.UpdatedAt); e != nil {
 			log.Errorln(e)
 			return e
 		}
 
-		//transfer to user
-		memo := make(core.Action)
-		memo[core.ActionKeyService] = core.ActionServiceRedeemTransfer
-		memoStr, e := memo.Format()
-		if e != nil {
-			log.Errorln(e)
-			return e
+		transferAction := core.TransferAction{
+			Source:        core.ActionTypeRedeemTransfer,
+			TransactionID: followID,
 		}
 
-		trace := id.UUIDFromString(fmt.Sprintf("redeem:%s", snapshot.TraceID))
-		transfer := core.Transfer{
-			AssetID:    market.AssetID,
-			OpponentID: snapshot.OpponentID,
-			Amount:     amount,
-			TraceID:    trace,
-			Memo:       memoStr,
-		}
-		if e = w.transferStore.Create(ctx, tx, &transfer); e != nil {
-			log.Errorln(e)
-			return e
-		}
-
-		return nil
+		return w.transferOut(ctx, userID, followID, output.TraceID, market.AssetID, amount, &transferAction)
 	})
 }

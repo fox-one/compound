@@ -20,7 +20,7 @@ func New(config *core.Config) core.IBlockService {
 
 //CurrentBlock 获取当前块高度
 func (s *service) CurrentBlock(ctx context.Context) (int64, error) {
-	current, e := compound.CurrentBlock(ctx, compound.SecondsPerBlock, s.config.App.Genesis)
+	current, e := compound.CurrentBlock(ctx, compound.SecondsPerBlock, s.config.Genesis)
 	if e != nil {
 		return 0, e
 	}
@@ -28,7 +28,7 @@ func (s *service) CurrentBlock(ctx context.Context) (int64, error) {
 }
 
 func (s *service) GetBlock(ctx context.Context, t time.Time) (int64, error) {
-	block, e := compound.GetBlockByTime(ctx, compound.SecondsPerBlock, s.config.App.Genesis, t)
+	block, e := compound.GetBlockByTime(ctx, compound.SecondsPerBlock, s.config.Genesis, t)
 	if e != nil {
 		return 0, e
 	}

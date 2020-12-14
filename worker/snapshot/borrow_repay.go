@@ -2,29 +2,26 @@ package snapshot
 
 import (
 	"compound/core"
-	"compound/pkg/id"
 	"context"
-	"fmt"
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/store/db"
 	"github.com/shopspring/decimal"
 )
 
-// from user, refund if error
-var handleBorrowRepayEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
+func (w *Payee) handleReplayEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
 	log := logger.FromContext(ctx).WithField("worker", "borrow_repay")
 
-	repayAmount := snapshot.Amount.Abs()
-	userID := snapshot.OpponentID
+	repayAmount := output.Amount
+	assetID := output.AssetID
 
-	market, e := w.marketStore.Find(ctx, snapshot.AssetID)
+	market, e := w.marketStore.Find(ctx, assetID)
 	if e != nil {
-		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
 	}
 
 	//update interest
-	if e = w.marketService.AccrueInterest(ctx, w.db, market, snapshot.CreatedAt); e != nil {
+	if e = w.marketService.AccrueInterest(ctx, w.db, market, output.UpdatedAt); e != nil {
 		log.Errorln(e)
 		return e
 	}
@@ -32,7 +29,7 @@ var handleBorrowRepayEvent = func(ctx context.Context, w *Worker, action core.Ac
 	borrow, e := w.borrowStore.Find(ctx, userID, market.AssetID)
 	if e != nil {
 		log.Errorln(e)
-		return handleRefundEvent(ctx, w, action, snapshot, core.ErrBorrowNotFound)
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrBorrowNotFound, "")
 	}
 
 	return w.db.Tx(func(tx *db.DB) error {
@@ -68,34 +65,19 @@ var handleBorrowRepayEvent = func(ctx context.Context, w *Worker, action core.Ac
 		}
 
 		//update interest
-		if e = w.marketService.AccrueInterest(ctx, tx, market, snapshot.CreatedAt); e != nil {
+		if e = w.marketService.AccrueInterest(ctx, tx, market, output.UpdatedAt); e != nil {
 			log.Errorln(e)
 			return e
 		}
 
 		if redundantAmount.GreaterThan(decimal.Zero) {
 			refundAmount := redundantAmount.Truncate(8)
-			//refund redundant amount to user
-			action := core.NewAction()
-			action[core.ActionKeyService] = core.ActionServiceRefund
-			memoStr, e := action.Format()
-			if e != nil {
-				log.Errorln(e)
-				return e
-			}
-			refundTrace := id.UUIDFromString(fmt.Sprintf("repay-refund-%s", snapshot.TraceID))
-			input := core.Transfer{
-				AssetID:    snapshot.AssetID,
-				OpponentID: userID,
-				Amount:     refundAmount,
-				TraceID:    refundTrace,
-				Memo:       memoStr,
+			transferAction := core.TransferAction{
+				Source:        core.ActionTypeRefundTransfer,
+				TransactionID: followID,
 			}
 
-			if e = w.transferStore.Create(ctx, tx, &input); e != nil {
-				log.Errorln(e)
-				return e
-			}
+			return w.transferOut(ctx, userID, followID, output.TraceID, assetID, refundAmount, &transferAction)
 		}
 
 		return nil

@@ -47,7 +47,8 @@ type Market struct {
 	SupplyRatePerBlock decimal.Decimal `sql:"type:decimal(32,16)" json:"supply_rate_per_block"`
 	BorrowRatePerBlock decimal.Decimal `sql:"type:decimal(32,16)" json:"borrow_rate_per_block"`
 	Price              decimal.Decimal `sql:"type:decimal(32,16)" json:"price"`
-	BorrowIndex        decimal.Decimal `sql:"type:decimal(32,16)" json:"borrow_index"`
+	PriceUpdatedAt     time.Time       `json:"price_updated_at"`
+	BorrowIndex        decimal.Decimal `sql:"type:decimal(28,16)" json:"borrow_index"`
 	Version            int64           `sql:"default:0" json:"version"`
 	CreatedAt          time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt          time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`

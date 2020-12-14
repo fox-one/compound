@@ -165,8 +165,8 @@ func (s *service) AccrueInterest(ctx context.Context, db *db.DB, market *core.Ma
 		borrowIndexNew := market.BorrowIndex.Add(timesBorrowRate.Mul(market.BorrowIndex))
 
 		market.BlockNumber = blockNum
-		market.TotalBorrows = totalBorrowsNew.Truncate(8)
-		market.Reserves = totalReservesNew.Truncate(8)
+		market.TotalBorrows = totalBorrowsNew.Truncate(16)
+		market.Reserves = totalReservesNew.Truncate(16)
 		market.BorrowIndex = borrowIndexNew.Truncate(16)
 	}
 

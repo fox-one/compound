@@ -32,6 +32,11 @@ func (s *PriceService) GetCurrentUnderlyingPrice(ctx context.Context, market *co
 		return decimal.Zero, errors.New("invalid market price")
 	}
 
+	delta := time.Now().Sub(market.PriceUpdatedAt)
+	if delta > (1 * time.Hour) {
+		return decimal.Zero, errors.New("expired price")
+	}
+
 	return market.Price, nil
 }
 

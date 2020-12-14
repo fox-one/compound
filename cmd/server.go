@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"compound/handler/hc"
-	"compound/handler/rest"
 	"fmt"
 	"net/http"
 
@@ -18,24 +17,24 @@ var serverCmd = &cobra.Command{
 	Use:   "server",
 	Short: "run compound api server",
 	Run: func(cmd *cobra.Command, args []string) {
-		ctx := cmd.Context()
+		// ctx := cmd.Context()
 
-		config := provideConfig()
-		db := provideDatabase()
-		mainWallet := provideMainWallet()
-		blockWallet := provideBlockWallet()
+		// config := provideConfig()
+		// db := provideDatabase()
+		// mainWallet := provideMainWallet()
+		// blockWallet := provideBlockWallet()
 
-		marketStore := provideMarketStore(db)
-		supplyStore := provideSupplyStore(db)
-		borrowStore := provideBorrowStore(db)
+		// marketStore := provideMarketStore(db)
+		// supplyStore := provideSupplyStore(db)
+		// borrowStore := provideBorrowStore(db)
 
-		walletService := provideWalletService(mainWallet)
-		blockService := provideBlockService()
-		priceService := providePriceService(blockService)
-		marketService := provideMarketService(mainWallet, marketStore, borrowStore, blockService, priceService)
-		accountService := provideAccountService(mainWallet, marketStore, supplyStore, borrowStore, priceService, blockService, walletService, marketService)
-		supplyService := provideSupplyService(db, mainWallet, blockWallet, supplyStore, marketStore, accountService, priceService, blockService, walletService, marketService)
-		borrowService := provideBorrowService(mainWallet, blockWallet, marketStore, borrowStore, blockService, priceService, walletService, accountService, marketService)
+		// walletService := provideWalletService(mainWallet)
+		// blockService := provideBlockService()
+		// priceService := providePriceService(blockService)
+		// marketService := provideMarketService(mainWallet, marketStore, borrowStore, blockService, priceService)
+		// accountService := provideAccountService(mainWallet, marketStore, supplyStore, borrowStore, priceService, blockService, marketService)
+		// supplyService := provideSupplyService(db, mainWallet, blockWallet, supplyStore, marketStore, accountService, priceService, blockService, marketService)
+		// borrowService := provideBorrowService(mainWallet, blockWallet, marketStore, borrowStore, blockService, priceService, accountService, marketService)
 
 		mux := chi.NewMux()
 		mux.Use(middleware.Recoverer)
@@ -56,8 +55,9 @@ var serverCmd = &cobra.Command{
 		}
 
 		{
+			// restHandler := rest.Handle(ctx, config, db, mainWallet, blockWallet, marketStore, supplyStore, borrowStore, blockService, priceService, accountService, marketService, supplyService, borrowService)
 			//restful api
-			mux.Mount("/api/v1", rest.Handle(ctx, config, db, mainWallet, blockWallet, marketStore, supplyStore, borrowStore, walletService, blockService, priceService, accountService, marketService, supplyService, borrowService))
+			mux.Mount("/api/v1", nil)
 		}
 
 		{

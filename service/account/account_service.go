@@ -16,7 +16,6 @@ type accountService struct {
 	borrowStore   core.IBorrowStore
 	priceService  core.IPriceOracleService
 	blockService  core.IBlockService
-	walletService core.IWalletService
 	marketService core.IMarketService
 }
 
@@ -28,7 +27,6 @@ func New(
 	borrowStore core.IBorrowStore,
 	priceSrv core.IPriceOracleService,
 	blockSrv core.IBlockService,
-	walletService core.IWalletService,
 	marketServie core.IMarketService,
 ) core.IAccountService {
 	return &accountService{
@@ -38,7 +36,6 @@ func New(
 		borrowStore:   borrowStore,
 		priceService:  priceSrv,
 		blockService:  blockSrv,
-		walletService: walletService,
 		marketService: marketServie,
 	}
 }

@@ -2,43 +2,40 @@ package snapshot
 
 import (
 	"compound/core"
-	"compound/pkg/id"
+	"compound/pkg/mtg"
 	"context"
-	"fmt"
-	"strings"
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/store/db"
+	"github.com/gofrs/uuid"
 	"github.com/jinzhu/gorm"
 	"github.com/shopspring/decimal"
 )
 
-var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action, snapshot *core.Snapshot) error {
-	log := logger.FromContext(ctx).WithField("worker", "borrow_event")
+func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
+	log := logger.FromContext(ctx).WithField("worker", "borrow")
 
-	symbol := strings.ToUpper(action[core.ActionKeySymbol])
-	userID := snapshot.OpponentID
-
-	borrowAmount, e := decimal.NewFromString(action[core.ActionKeyAmount])
-	if e != nil {
-		log.Errorln("parse amount error:", e)
-		return handleRefundEvent(ctx, w, action, snapshot, core.ErrInvalidAmount)
+	var asset uuid.UUID
+	var borrowAmount decimal.Decimal
+	if _, err := mtg.Scan(body, &asset, &borrowAmount); err != nil {
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrInvalidArgument, "")
 	}
 
-	market, e := w.marketStore.FindBySymbol(ctx, symbol)
+	assetID := asset.String()
+	market, e := w.marketStore.Find(ctx, assetID)
 	if e != nil {
 		log.Errorln("query market error:", e)
-		return handleRefundEvent(ctx, w, action, snapshot, core.ErrMarketNotFound)
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
 	}
 
 	// accrue interest
-	if e = w.marketService.AccrueInterest(ctx, w.db, market, snapshot.CreatedAt); e != nil {
+	if e = w.marketService.AccrueInterest(ctx, w.db, market, output.UpdatedAt); e != nil {
 		return e
 	}
 
-	if !w.borrowService.BorrowAllowed(ctx, borrowAmount, userID, market, snapshot.CreatedAt) {
+	if !w.borrowService.BorrowAllowed(ctx, borrowAmount, userID, market, output.UpdatedAt) {
 		log.Errorln("borrow not allowed")
-		return handleRefundEvent(ctx, w, action, snapshot, core.ErrBorrowNotAllowed)
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrBorrowNotAllowed, "")
 	}
 
 	return w.db.Tx(func(tx *db.DB) error {
@@ -51,7 +48,7 @@ var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action,
 		}
 
 		//update interest
-		if e = w.marketService.AccrueInterest(ctx, tx, market, snapshot.CreatedAt); e != nil {
+		if e = w.marketService.AccrueInterest(ctx, tx, market, output.UpdatedAt); e != nil {
 			log.Errorln(e)
 			return e
 		}
@@ -91,28 +88,11 @@ var handleBorrowEvent = func(ctx context.Context, w *Worker, action core.Action,
 			}
 		}
 
-		//transfer to user
-		memo := make(core.Action)
-		memo[core.ActionKeyService] = core.ActionServiceBorrowTransfer
-		memoStr, e := memo.Format()
-		if e != nil {
-			log.Errorln("memo format error:", e)
-			return e
-		}
-		trace := id.UUIDFromString(fmt.Sprintf("borrow:%s", snapshot.TraceID))
-		transfer := core.Transfer{
-			AssetID:    market.AssetID,
-			OpponentID: userID,
-			Amount:     borrowAmount,
-			TraceID:    trace,
-			Memo:       memoStr,
+		transferAction := core.TransferAction{
+			Source:        core.ActionTypeBorrowTransfer,
+			TransactionID: followID,
 		}
 
-		if e = w.transferStore.Create(ctx, tx, &transfer); e != nil {
-			log.Errorln(e)
-			return e
-		}
-
-		return nil
+		return w.transferOut(ctx, userID, followID, output.TraceID, assetID, borrowAmount, &transferAction)
 	})
 }

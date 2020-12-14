@@ -1,12 +1,6 @@
 package cmd
 
 import (
-	"compound/core"
-	"compound/pkg/id"
-	"fmt"
-	"strings"
-
-	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
 )
 
@@ -15,38 +9,38 @@ var addMarketCmd = &cobra.Command{
 	Aliases: []string{"am"},
 	Short:   "add market",
 	Run: func(cmd *cobra.Command, args []string) {
-		mainWallet := provideMainWallet()
-		walletService := provideWalletService(mainWallet)
-		symbol, e := cmd.Flags().GetString("s")
-		if e != nil || symbol == "" {
-			panic("invalid symbol")
-		}
-		assetID, e := cmd.Flags().GetString("a")
-		if e != nil || assetID == "" {
-			panic("invalid assetID")
-		}
-		ctokenAssetID, e := cmd.Flags().GetString("c")
-		if e != nil || ctokenAssetID == "" {
-			panic("invalid ctokenAssetID")
-		}
+		// mainWallet := provideMainWallet()
+		// walletService := provideWalletService(mainWallet)
+		// symbol, e := cmd.Flags().GetString("s")
+		// if e != nil || symbol == "" {
+		// 	panic("invalid symbol")
+		// }
+		// assetID, e := cmd.Flags().GetString("a")
+		// if e != nil || assetID == "" {
+		// 	panic("invalid assetID")
+		// }
+		// ctokenAssetID, e := cmd.Flags().GetString("c")
+		// if e != nil || ctokenAssetID == "" {
+		// 	panic("invalid ctokenAssetID")
+		// }
 
-		amount := decimal.NewFromFloat(0.00000001)
-		action := core.NewAction()
-		action[core.ActionKeyService] = core.ActionServiceAddMarket
-		action[core.ActionKeySymbol] = strings.ToUpper(symbol)
-		action[core.ActionKeyAssetID] = assetID
-		action[core.ActionKeyCTokenAssetID] = ctokenAssetID
-		memoStr, e := action.Format()
-		if e != nil {
-			panic(e)
-		}
+		// amount := decimal.NewFromFloat(0.00000001)
+		// action := core.NewAction()
+		// action[core.ActionKeyService] = core.ActionServiceAddMarket
+		// action[core.ActionKeySymbol] = strings.ToUpper(symbol)
+		// action[core.ActionKeyAssetID] = assetID
+		// action[core.ActionKeyCTokenAssetID] = ctokenAssetID
+		// memoStr, e := action.Format()
+		// if e != nil {
+		// 	panic(e)
+		// }
 
-		url, e := walletService.PaySchemaURL(amount, cfg.App.GasAssetID, mainWallet.Client.ClientID, id.GenTraceID(), memoStr)
-		if e != nil {
-			panic(e)
-		}
+		// url, e := walletService.PaySchemaURL(amount, cfg.App.GasAssetID, mainWallet.Client.ClientID, id.GenTraceID(), memoStr)
+		// if e != nil {
+		// 	panic(e)
+		// }
 
-		fmt.Println(url)
+		// fmt.Println(url)
 	},
 }
 
@@ -55,89 +49,89 @@ var updateMarketCmd = &cobra.Command{
 	Aliases: []string{"um"},
 	Short:   "update market",
 	Run: func(cmd *cobra.Command, args []string) {
-		mainWallet := provideMainWallet()
-		walletService := provideWalletService(mainWallet)
+		// mainWallet := provideMainWallet()
+		// walletService := provideWalletService(mainWallet)
 
-		action := core.NewAction()
-		action[core.ActionKeyService] = core.ActionServiceUpdateMarket
-		symbol, e := cmd.Flags().GetString("s")
-		if e != nil || symbol == "" {
-			panic("invalid symbol")
-		}
-		action[core.ActionKeySymbol] = strings.ToUpper(symbol)
+		// action := core.NewAction()
+		// action[core.ActionKeyService] = core.ActionServiceUpdateMarket
+		// symbol, e := cmd.Flags().GetString("s")
+		// if e != nil || symbol == "" {
+		// 	panic("invalid symbol")
+		// }
+		// action[core.ActionKeySymbol] = strings.ToUpper(symbol)
 
-		flag, e := cmd.Flags().GetString("ie")
-		if e != nil {
-			panic("invalid flag")
-		}
-		action[core.ActionKeyInitExchangeRate] = flag
+		// flag, e := cmd.Flags().GetString("ie")
+		// if e != nil {
+		// 	panic("invalid flag")
+		// }
+		// action[core.ActionKeyInitExchangeRate] = flag
 
-		flag, e = cmd.Flags().GetString("rf")
-		if e != nil {
-			panic("invalid flag")
-		}
-		action[core.ActionKeyReserveFactor] = flag
+		// flag, e = cmd.Flags().GetString("rf")
+		// if e != nil {
+		// 	panic("invalid flag")
+		// }
+		// action[core.ActionKeyReserveFactor] = flag
 
-		flag, e = cmd.Flags().GetString("li")
-		if e != nil {
-			panic("invalid flag")
-		}
-		action[core.ActionKeyLiquidationIncentive] = flag
+		// flag, e = cmd.Flags().GetString("li")
+		// if e != nil {
+		// 	panic("invalid flag")
+		// }
+		// action[core.ActionKeyLiquidationIncentive] = flag
 
-		flag, e = cmd.Flags().GetString("bc")
-		if e != nil {
-			panic("invalid flag")
-		}
-		action[core.ActionKeyBorrowCap] = flag
+		// flag, e = cmd.Flags().GetString("bc")
+		// if e != nil {
+		// 	panic("invalid flag")
+		// }
+		// action[core.ActionKeyBorrowCap] = flag
 
-		flag, e = cmd.Flags().GetString("cf")
-		if e != nil {
-			panic("invalid flag")
-		}
-		action[core.ActionKeyCollateralFactor] = flag
+		// flag, e = cmd.Flags().GetString("cf")
+		// if e != nil {
+		// 	panic("invalid flag")
+		// }
+		// action[core.ActionKeyCollateralFactor] = flag
 
-		flag, e = cmd.Flags().GetString("clf")
-		if e != nil {
-			panic("invalid flag")
-		}
-		action[core.ActionKeyCloseFactor] = flag
+		// flag, e = cmd.Flags().GetString("clf")
+		// if e != nil {
+		// 	panic("invalid flag")
+		// }
+		// action[core.ActionKeyCloseFactor] = flag
 
-		flag, e = cmd.Flags().GetString("br")
-		if e != nil {
-			panic("invalid flag")
-		}
-		action[core.ActionKeyBaseRate] = flag
+		// flag, e = cmd.Flags().GetString("br")
+		// if e != nil {
+		// 	panic("invalid flag")
+		// }
+		// action[core.ActionKeyBaseRate] = flag
 
-		flag, e = cmd.Flags().GetString("m")
-		if e != nil {
-			panic("invalid flag")
-		}
-		action[core.ActionKeyMultiPlier] = flag
+		// flag, e = cmd.Flags().GetString("m")
+		// if e != nil {
+		// 	panic("invalid flag")
+		// }
+		// action[core.ActionKeyMultiPlier] = flag
 
-		flag, e = cmd.Flags().GetString("jm")
-		if e != nil {
-			panic("invalid flag")
-		}
+		// flag, e = cmd.Flags().GetString("jm")
+		// if e != nil {
+		// 	panic("invalid flag")
+		// }
 
-		action[core.ActionKeyJumpMultiPlier] = flag
+		// action[core.ActionKeyJumpMultiPlier] = flag
 
-		flag, e = cmd.Flags().GetString("k")
-		if e != nil {
-			panic("invalid flag")
-		}
-		action[core.ActionKeyKink] = flag
+		// flag, e = cmd.Flags().GetString("k")
+		// if e != nil {
+		// 	panic("invalid flag")
+		// }
+		// action[core.ActionKeyKink] = flag
 
-		memoStr, e := action.Format()
-		if e != nil {
-			panic(e)
-		}
+		// memoStr, e := action.Format()
+		// if e != nil {
+		// 	panic(e)
+		// }
 
-		url, e := walletService.PaySchemaURL(decimal.NewFromFloat(0.00000001), cfg.App.GasAssetID, mainWallet.Client.ClientID, id.GenTraceID(), memoStr)
-		if e != nil {
-			panic(e)
-		}
+		// url, e := walletService.PaySchemaURL(decimal.NewFromFloat(0.00000001), cfg.App.GasAssetID, mainWallet.Client.ClientID, id.GenTraceID(), memoStr)
+		// if e != nil {
+		// 	panic(e)
+		// }
 
-		fmt.Println(url)
+		// fmt.Println(url)
 	},
 }
 

@@ -3,25 +3,26 @@ package core
 import (
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/store/db"
+	"github.com/shopspring/decimal"
 )
 
 // Config compound config
 type Config struct {
-	App         App         `json:"app"`
+	Genesis     int64       `json:"genesis"`
+	Location    string      `json:"location"`
 	DB          db.Config   `json:"db"`
-	MainWallet  MainWallet  `json:"main_wallet"`
-	GasWallet   GasWallet   `json:"gas_wallet"`
+	Dapp        Dapp        `json:"main_wallet"`
+	Group       Group       `json:"group"`
 	PriceOracle PriceOracle `json:"price_oracle"`
-	Admins      []string    `json:"admins"`
 }
 
 // IsAdmin check if the user is admin
 func (c *Config) IsAdmin(userID string) bool {
-	if len(c.Admins) <= 0 {
+	if len(c.Group.Admins) <= 0 {
 		return false
 	}
 
-	for _, a := range c.Admins {
+	for _, a := range c.Group.Admins {
 		if a == userID {
 			return true
 		}
@@ -30,23 +31,30 @@ func (c *Config) IsAdmin(userID string) bool {
 	return false
 }
 
-// MainWallet mixin dapp config
-type MainWallet struct {
-	mixin.Keystore
-	ClientSecret string `json:"client_secret"`
-	Pin          string `json:"pin"`
+// Group group config
+type Group struct {
+	PrivateKey string       `json:"private_key"`
+	SignKey    string       `json:"sign_key"`
+	Admins     []string     `json:"admins"`
+	Threshold  uint8        `json:"threshold"`
+	Members    []MemberConf `json:"members"`
+	Vote       Vote         `json:"vote"`
 }
 
-// App app config
-type App struct {
-	AESKey     string `json:"aes_key"`
-	GasAssetID string `json:"gas_asset_id"`
-	Genesis    int64  `json:"genesis"`
-	Location   string `json:"location"`
+// MemberConf member info
+type MemberConf struct {
+	ClientID  string `json:"client_id"`
+	VerifyKey string `json:"verify_key"`
 }
 
-// GasWallet gas wallet
-type GasWallet struct {
+// Vote vote config info
+type Vote struct {
+	Asset  string          `json:"asset"`
+	Amount decimal.Decimal `json:"amount"`
+}
+
+// Dapp mixin dapp config
+type Dapp struct {
 	mixin.Keystore
 	ClientSecret string `json:"client_secret"`
 	Pin          string `json:"pin"`

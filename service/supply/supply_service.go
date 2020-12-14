@@ -2,9 +2,7 @@ package supply
 
 import (
 	"compound/core"
-	"compound/pkg/id"
 	"context"
-	"errors"
 
 	"github.com/fox-one/pkg/store/db"
 	"github.com/shopspring/decimal"
@@ -20,7 +18,6 @@ type supplyService struct {
 	accountService core.IAccountService
 	priceService   core.IPriceOracleService
 	blockService   core.IBlockService
-	walletService  core.IWalletService
 	marketService  core.IMarketService
 }
 
@@ -34,7 +31,6 @@ func New(cfg *core.Config,
 	accountService core.IAccountService,
 	priceService core.IPriceOracleService,
 	blockService core.IBlockService,
-	walletService core.IWalletService,
 	marketService core.IMarketService) core.ISupplyService {
 	return &supplyService{
 		config:         cfg,
@@ -46,26 +42,13 @@ func New(cfg *core.Config,
 		accountService: accountService,
 		priceService:   priceService,
 		blockService:   blockService,
-		walletService:  walletService,
 		marketService:  marketService,
 	}
 }
 
 // 赎回
 func (s *supplyService) Redeem(ctx context.Context, redeemTokens decimal.Decimal, market *core.Market) (string, error) {
-	if !s.RedeemAllowed(ctx, redeemTokens, market) {
-		return "", errors.New("redeem not allowed")
-	}
-
-	action := make(core.Action)
-	action[core.ActionKeyService] = core.ActionServiceRedeem
-
-	str, e := action.Format()
-	if e != nil {
-		return "", e
-	}
-
-	return s.walletService.PaySchemaURL(redeemTokens, market.CTokenAssetID, s.mainWallet.Client.ClientID, id.GenTraceID(), str)
+	return "", nil
 }
 
 func (s *supplyService) RedeemAllowed(ctx context.Context, redeemTokens decimal.Decimal, market *core.Market) bool {
@@ -85,31 +68,12 @@ func (s *supplyService) RedeemAllowed(ctx context.Context, redeemTokens decimal.
 
 // 存入
 func (s *supplyService) Supply(ctx context.Context, amount decimal.Decimal, market *core.Market) (string, error) {
-	if amount.LessThanOrEqual(decimal.Zero) {
-		return "", errors.New("invalid amount")
-	}
-
-	action := make(core.Action)
-	action[core.ActionKeyService] = core.ActionServiceSupply
-
-	str, e := action.Format()
-	if e != nil {
-		return "", e
-	}
-	return s.walletService.PaySchemaURL(amount, market.AssetID, s.mainWallet.Client.ClientID, id.GenTraceID(), str)
+	return "", nil
 }
 
 //抵押
 func (s *supplyService) Pledge(ctx context.Context, pledgedTokens decimal.Decimal, market *core.Market) (string, error) {
-	memo := make(core.Action)
-	memo[core.ActionKeyService] = core.ActionServicePledge
-
-	memoStr, e := memo.Format()
-	if e != nil {
-		return "", e
-	}
-
-	return s.walletService.PaySchemaURL(pledgedTokens, market.CTokenAssetID, s.mainWallet.Client.ClientID, id.GenTraceID(), memoStr)
+	return "", nil
 }
 
 //撤销抵押

@@ -2,10 +2,6 @@ package cmd
 
 import (
 	"compound/worker"
-	"compound/worker/priceoracle"
-	"compound/worker/snapshot"
-	"compound/worker/storemanager"
-	"compound/worker/transfer"
 	"os"
 	"os/signal"
 
@@ -18,32 +14,31 @@ var workerCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// ctx := cmd.Context()
 
-		config := provideConfig()
-		db := provideDatabase()
-		mainWallet := provideMainWallet()
+		// config := provideConfig()
+		// db := provideDatabase()
+		// mainWallet := provideMainWallet()
 
-		blockWallet := provideBlockWallet()
+		// propertyStore := providePropertyStore(db)
+		// marketStore := provideMarketStore(db)
+		// supplyStore := provideSupplyStore(db)
+		// borrowStore := provideBorrowStore(db)
+		// transferStore := provideTransferStore(db)
+		// snapshotStore := provideSnapshotStore(db)
 
-		propertyStore := providePropertyStore(db)
-		marketStore := provideMarketStore(db)
-		supplyStore := provideSupplyStore(db)
-		borrowStore := provideBorrowStore(db)
-		transferStore := provideTransferStore(db)
-		snapshotStore := provideSnapshotStore(db)
-
-		walletService := provideWalletService(mainWallet)
-		blockService := provideBlockService()
-		priceService := providePriceService(blockService)
-		marketService := provideMarketService(mainWallet, marketStore, borrowStore, blockService, priceService)
-		accountService := provideAccountService(mainWallet, marketStore, supplyStore, borrowStore, priceService, blockService, walletService, marketService)
-		supplyService := provideSupplyService(db, mainWallet, blockWallet, supplyStore, marketStore, accountService, priceService, blockService, walletService, marketService)
-		borrowService := provideBorrowService(mainWallet, blockWallet, marketStore, borrowStore, blockService, priceService, walletService, accountService, marketService)
+		//TODO
+		// walletService := provideWalletService(mainWallet.Client, walletservice.Config{})
+		// blockService := provideBlockService()
+		// priceService := providePriceService(blockService)
+		// marketService := provideMarketService(mainWallet, marketStore, borrowStore, blockService, priceService)
+		// accountService := provideAccountService(mainWallet, marketStore, supplyStore, borrowStore, priceService, blockService, marketService)
+		// supplyService := provideSupplyService(db, mainWallet, blockWallet, supplyStore, marketStore, accountService, priceService, blockService, marketService)
+		// borrowService := provideBorrowService(mainWallet, blockWallet, marketStore, borrowStore, blockService, priceService, accountService, marketService)
 
 		workers := []worker.IJob{
-			priceoracle.New(mainWallet, blockWallet, config, marketStore, blockService, priceService, walletService),
-			transfer.New(db, mainWallet, config, transferStore, walletService),
-			storemanager.New(config, transferStore, snapshotStore),
-			snapshot.New(config, db, mainWallet, blockWallet, snapshotStore, propertyStore, transferStore, marketStore, supplyStore, borrowStore, walletService, priceService, blockService, marketService, supplyService, borrowService, accountService),
+			// priceoracle.New(mainWallet, blockWallet, config, marketStore, blockService, priceService),
+			// transfer.New(db, mainWallet, config, transferStore),
+			// storemanager.New(config, transferStore, snapshotStore),
+			// snapshot.New(config, db, mainWallet, blockWallet, snapshotStore, propertyStore, transferStore, marketStore, supplyStore, borrowStore, walletService, priceService, blockService, marketService, supplyService, borrowService, accountService),
 		}
 
 		for _, w := range workers {

@@ -2,7 +2,6 @@ package borrow
 
 import (
 	"compound/core"
-	"compound/pkg/id"
 	"context"
 	"errors"
 	"time"
@@ -19,7 +18,6 @@ type borrowService struct {
 	borrowStore    core.IBorrowStore
 	blockService   core.IBlockService
 	priceService   core.IPriceOracleService
-	walletService  core.IWalletService
 	accountService core.IAccountService
 	marketService  core.IMarketService
 }
@@ -32,7 +30,6 @@ func New(cfg *core.Config,
 	borrowStore core.IBorrowStore,
 	blockService core.IBlockService,
 	priceService core.IPriceOracleService,
-	walletService core.IWalletService,
 	accountService core.IAccountService,
 	marketService core.IMarketService) core.IBorrowService {
 	return &borrowService{
@@ -43,27 +40,13 @@ func New(cfg *core.Config,
 		borrowStore:    borrowStore,
 		blockService:   blockService,
 		priceService:   priceService,
-		walletService:  walletService,
 		accountService: accountService,
 		marketService:  marketService,
 	}
 }
 
 func (s *borrowService) Repay(ctx context.Context, amount decimal.Decimal, borrow *core.Borrow) (string, error) {
-	market, e := s.marketStore.Find(ctx, borrow.AssetID)
-	if e != nil {
-		return "", e
-	}
-
-	action := make(core.Action)
-	action[core.ActionKeyService] = core.ActionServiceRepay
-
-	memoStr, e := action.Format()
-	if e != nil {
-		return "", e
-	}
-
-	return s.walletService.PaySchemaURL(amount, market.AssetID, s.mainWallet.Client.ClientID, id.GenTraceID(), memoStr)
+	return "", nil
 }
 
 func (s *borrowService) Borrow(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *core.Market) error {
