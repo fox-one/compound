@@ -31,6 +31,7 @@ type Payee struct {
 	dapp            *core.Wallet
 	propertyStore   property.Store
 	walletStore     core.WalletStore
+	priceStore      core.IPriceStore
 	marketStore     core.IMarketStore
 	supplyStore     core.ISupplyStore
 	borrowStore     core.IBorrowStore
@@ -50,6 +51,8 @@ func NewPayee(location string,
 	system *core.System,
 	dapp *core.Wallet,
 	propertyStore property.Store,
+	walletStore core.WalletStore,
+	priceStore core.IPriceStore,
 	marketStore core.IMarketStore,
 	supplyStore core.ISupplyStore,
 	borrowStore core.IBorrowStore,
@@ -66,6 +69,8 @@ func NewPayee(location string,
 		system:          system,
 		dapp:            dapp,
 		propertyStore:   propertyStore,
+		walletStore:     walletStore,
+		priceStore:      priceStore,
 		marketStore:     marketStore,
 		supplyStore:     supplyStore,
 		borrowStore:     borrowStore,
@@ -167,6 +172,8 @@ func (w *Payee) handleProposalAction(ctx context.Context, output *core.Output, m
 
 	if core.ActionType(actionType) == core.ActionTypeProposalVote {
 		return w.handleVoteProposalEvent(ctx, output, member, traceID.String())
+	} else if core.ActionType(actionType) == core.ActionTypeProposalProvidePrice {
+		return w.handleProposalProvidePriceEvent(ctx, output, member, traceID.String(), body)
 	}
 
 	return w.handleCreateProposalEvent(ctx, output, member, core.ActionType(actionType), traceID.String(), body)

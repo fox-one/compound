@@ -2,11 +2,18 @@ package priceoracle
 
 import (
 	"compound/core"
+	"compound/core/proposal"
+	"compound/pkg/id"
+	"compound/pkg/mtg"
 	"compound/worker"
 	"context"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
+	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
 	"github.com/robfig/cron/v3"
 	"github.com/shopspring/decimal"
@@ -15,29 +22,30 @@ import (
 //Worker block worker
 type Worker struct {
 	worker.BaseJob
-	system             *core.System
-	MainWallet         *core.Wallet
-	BlockWallet        *core.Wallet
+	System             *core.System
+	Dapp               *core.Wallet
 	Config             *core.Config
 	MarketStore        core.IMarketStore
+	PriceStore         core.IPriceStore
 	BlockService       core.IBlockService
 	PriceOracleService core.IPriceOracleService
 }
 
 // New new block worker
-func New(system *core.System, mainWallet *core.Wallet, blockWallet *core.Wallet, cfg *core.Config, marketStore core.IMarketStore, blockSrv core.IBlockService, priceSrv core.IPriceOracleService) *Worker {
+func New(system *core.System, dapp *core.Wallet, cfg *core.Config, marketStore core.IMarketStore, priceStr core.IPriceStore, blockSrv core.IBlockService, priceSrv core.IPriceOracleService) *Worker {
 	job := Worker{
-		MainWallet:         mainWallet,
-		BlockWallet:        blockWallet,
+		System:             system,
+		Dapp:               dapp,
 		Config:             cfg,
 		MarketStore:        marketStore,
+		PriceStore:         priceStr,
 		BlockService:       blockSrv,
 		PriceOracleService: priceSrv,
 	}
 
 	l, _ := time.LoadLocation(job.Config.Location)
 	job.Cron = cron.New(cron.WithLocation(l))
-	spec := "@every 10ms"
+	spec := "@every 100ms"
 	job.Cron.AddFunc(spec, job.Run)
 	job.OnWork = func() error {
 		return job.onWork(context.Background())
@@ -65,18 +73,20 @@ func (w *Worker) onWork(ctx context.Context) error {
 		wg.Add(1)
 		go func(market *core.Market) {
 			defer wg.Done()
-			// do real work
-			ticker, e := w.PriceOracleService.PullPriceTicker(ctx, market.Symbol, time.Now())
-			if e != nil {
-				log.Errorln("pull price ticker error:", e)
-				return
-			}
-			if ticker.Price.LessThanOrEqual(decimal.Zero) {
-				log.Errorln("invalid ticker price:", ticker.Symbol, ":", ticker.Price)
-				return
-			}
+			if !w.isPriceProvided(ctx, market) {
+				// do real work
+				ticker, e := w.PriceOracleService.PullPriceTicker(ctx, market.Symbol, time.Now())
+				if e != nil {
+					log.Errorln("pull price ticker error:", e)
+					return
+				}
+				if ticker.Price.LessThanOrEqual(decimal.Zero) {
+					log.Errorln("invalid ticker price:", ticker.Symbol, ":", ticker.Price)
+					return
+				}
 
-			w.checkAndPushPriceOnChain(ctx, market, ticker)
+				w.pushPriceOnChain(ctx, market, ticker)
+			}
 		}(m)
 	}
 
@@ -85,41 +95,73 @@ func (w *Worker) onWork(ctx context.Context) error {
 	return nil
 }
 
-func (w *Worker) checkAndPushPriceOnChain(ctx context.Context, market *core.Market, ticker *core.PriceTicker) error {
-	// log := logger.FromContext(ctx).WithField("worker", "priceoracle")
+func (w *Worker) isPriceProvided(ctx context.Context, market *core.Market) bool {
+	log := logger.FromContext(ctx).WithField("worker", "priceoracle")
 
-	// blockNum, err := w.BlockService.GetBlock(ctx, time.Now())
-	// if err != nil {
-	// 	log.Errorln(err)
-	// 	return err
-	// }
+	curBlockNum, e := w.BlockService.GetBlock(ctx, time.Now())
+	if e != nil {
+		log.WithError(e).Errorln("GetBlock err")
+		return false
+	}
 
-	// str := fmt.Sprintf("foxone-compound-price-%s-%d", market.Symbol, blockNum)
-	// traceID := id.UUIDFromString(str)
-	// transferInput := mixin.TransferInput{
-	// 	AssetID:    w.Config.Group.Vote.Asset,
-	// 	OpponentID: w.MainWallet.Client.ClientID,
-	// 	Amount:     w.system.VoteAmount,
-	// 	TraceID:    traceID,
-	// }
+	price, e := w.PriceStore.FindByAssetBlock(ctx, market.AssetID, curBlockNum)
+	if e != nil {
+		log.WithError(e).Errorln("findByAssetBlock err")
+		return false
+	}
 
-	// //create new block
-	// memo := make(core.Action)
-	// memo[core.ActionKeyService] = core.ActionServicePrice
-	// memo[core.ActionKeyBlock] = strconv.FormatInt(blockNum, 10)
-	// memo[core.ActionKeySymbol] = market.Symbol
-	// memo[core.ActionKeyPrice] = ticker.Price.Truncate(8).String()
-	// memoStr, err := memo.Format()
-	// if err != nil {
-	// 	log.Errorln("new block memo error:", err)
-	// 	return err
-	// }
+	var priceTickers []*core.PriceTicker
+	if e = json.Unmarshal(price.Content, &priceTickers); e != nil {
+		return false
+	}
 
-	// transferInput.Memo = memoStr
-	// if _, err = w.BlockWallet.Client.Transfer(ctx, &transferInput, w.BlockWallet.Pin); err != nil {
-	// 	log.Errorln("transfer new block error:", err)
-	// 	return err
-	// }
+	for _, p := range priceTickers {
+		if p.Provider == w.System.ClientID {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (w *Worker) pushPriceOnChain(ctx context.Context, market *core.Market, ticker *core.PriceTicker) error {
+	log := logger.FromContext(ctx).WithField("worker", "priceoracle")
+
+	blockNum, e := w.BlockService.GetBlock(ctx, time.Now())
+	if e != nil {
+		log.Errorln(e)
+		return e
+	}
+
+	traceID := id.UUIDFromString(fmt.Sprintf("price-%s-%s-%d", w.System.ClientID, market.AssetID, blockNum))
+	// transfer
+	providePriceReq := proposal.ProvidePriceReq{
+		AssetID: market.AssetID,
+		Price:   ticker.Price,
+	}
+
+	memo, e := mtg.Encode(w.System.ClientID, traceID, int(core.ActionTypeProposalProvidePrice), providePriceReq)
+	if e != nil {
+		return e
+	}
+	sign := mtg.Sign(memo, w.System.SignKey)
+	memo = mtg.Pack(memo, sign)
+
+	input := mixin.TransferInput{
+		AssetID: w.System.VoteAsset,
+		Amount:  w.System.VoteAmount,
+		TraceID: traceID,
+		Memo:    base64.StdEncoding.EncodeToString(memo),
+	}
+
+	input.OpponentMultisig.Receivers = w.System.MemberIDs()
+	input.OpponentMultisig.Threshold = w.System.Threshold
+
+	// multisig transfer
+	_, e = w.Dapp.Client.Transaction(ctx, &input, w.Dapp.Pin)
+	if e != nil {
+		return e
+	}
 
 	return nil
 }
