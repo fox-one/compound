@@ -37,7 +37,9 @@ func Scan(body []byte, dest ...interface{}) ([]byte, error) {
 	return ioutil.ReadAll(r)
 }
 
-func scan(data []byte, dest interface{}) error {
+func scan(data []byte, dest interface{}) (err error) {
+	defer errRecover(&err)
+
 	if u, ok := dest.(encoding.BinaryUnmarshaler); ok {
 		return u.UnmarshalBinary(data)
 	}
@@ -71,4 +73,11 @@ func scan(data []byte, dest interface{}) error {
 	}
 
 	return nil
+}
+
+func errRecover(errp *error) {
+	e := recover()
+	if e != nil {
+		*errp = fmt.Errorf("%v", e)
+	}
 }
