@@ -184,7 +184,7 @@ func (w *Payee) handleUserAction(ctx context.Context, output *core.Output, actio
 	case core.ActionTypeRedeem:
 		return w.handleRedeemEvent(ctx, output, userID, followID, body)
 	case core.ActionTypeRepay:
-		return w.handleReplayEvent(ctx, output, userID, followID, body)
+		return w.handleRepayEvent(ctx, output, userID, followID, body)
 	case core.ActionTypePledge:
 		return w.handlePledgeEvent(ctx, output, userID, followID, body)
 	case core.ActionTypeUnpledge:
