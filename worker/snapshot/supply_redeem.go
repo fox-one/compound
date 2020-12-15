@@ -29,7 +29,7 @@ func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, user
 		return e
 	}
 
-	redeemTokens := output.Amount.Abs()
+	redeemTokens := output.Amount
 	if redeemTokens.GreaterThan(market.CTokens) {
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrRedeemNotAllowed, "")
 	}
