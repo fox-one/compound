@@ -71,7 +71,7 @@ func (w *Worker) onWork(ctx context.Context) error {
 			defer wg.Done()
 			if !w.isPriceProvided(ctx, market) {
 				// do real work
-				ticker, e := w.PriceOracleService.PullPriceTicker(ctx, market.Symbol, time.Now())
+				ticker, e := w.PriceOracleService.PullPriceTicker(ctx, market.AssetID, time.Now())
 				if e != nil {
 					log.Errorln("pull price ticker error:", e)
 					return
