@@ -33,12 +33,12 @@ func Handle(ctx context.Context,
 	})
 
 	router.Get("/markets", allMarketsHandler(ctx, marketStore, supplyStore, borrowStore, marketService))
-	router.Get("/markets/{symbol}", marketHandler(ctx, marketStore, supplyStore, borrowStore, marketService))
+	router.Get("/markets/{asset}", marketHandler(ctx, marketStore, supplyStore, borrowStore, marketService))
 	router.Get("/liquidities/{user}", liquidityHandler(ctx, blockService, accountService))
 
-	// supplies?user=xxxxx&symbol=BTC
+	// supplies?user=xxxxx&asset=xxxxx
 	router.Get("/supplies", suppliesHandler(ctx, marketStore, supplyStore, priceService, blockService))
-	// borrows?user=xxxxx&symbol=BTC
+	// borrows?user=xxxxx&asset=xxxx
 	router.Get("/borrows", borrowsHandler(ctx, marketStore, borrowStore, priceService, blockService))
 
 	return router

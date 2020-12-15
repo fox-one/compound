@@ -7,7 +7,6 @@ import (
 	"compound/handler/views"
 	"context"
 	"net/http"
-	"strings"
 
 	"github.com/shopspring/decimal"
 )
@@ -33,14 +32,13 @@ func allMarketsHandler(ctx context.Context, marketStr core.IMarketStore, supplyS
 func marketHandler(ctx context.Context, marketStr core.IMarketStore, supplyStr core.ISupplyStore, borrowStr core.IBorrowStore, marketSrv core.IMarketService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var params struct {
-			Symbol string `json:"symbol"`
+			Asset string `json:"asset"`
 		}
 		if err := param.Binding(r, &params); err != nil {
 			render.BadRequest(w, err)
 			return
 		}
-		symbol := strings.ToUpper(params.Symbol)
-		market, e := marketStr.FindBySymbol(ctx, symbol)
+		market, _, e := marketStr.Find(ctx, params.Asset)
 		if e != nil {
 			render.BadRequest(w, e)
 			return

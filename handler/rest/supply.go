@@ -7,14 +7,13 @@ import (
 	"compound/handler/views"
 	"context"
 	"net/http"
-	"strings"
 )
 
 func suppliesHandler(ctx context.Context, marketStr core.IMarketStore, supplyStr core.ISupplyStore, priceSrv core.IPriceOracleService, blockSrv core.IBlockService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var params struct {
 			UserID string `json:"user"`
-			Symbol string `json:"symbol"`
+			Asset  string `json:"asset"`
 		}
 
 		if e := param.Binding(r, &params); e != nil {
@@ -23,13 +22,13 @@ func suppliesHandler(ctx context.Context, marketStr core.IMarketStore, supplyStr
 		}
 
 		supplyViews := make([]*views.Supply, 0)
-		if params.Symbol != "" && params.UserID != "" {
-			market, e := marketStr.FindBySymbol(ctx, strings.ToUpper(params.Symbol))
+		if params.Asset != "" && params.UserID != "" {
+			market, _, e := marketStr.Find(ctx, params.Asset)
 			if e != nil {
 				render.BadRequest(w, e)
 				return
 			}
-			supply, e := supplyStr.Find(ctx, params.UserID, market.CTokenAssetID)
+			supply, _, e := supplyStr.Find(ctx, params.UserID, market.CTokenAssetID)
 			if e != nil {
 				render.BadRequest(w, e)
 				return
@@ -45,7 +44,7 @@ func suppliesHandler(ctx context.Context, marketStr core.IMarketStore, supplyStr
 			}
 
 			for _, s := range supplies {
-				market, e := marketStr.FindByCToken(ctx, s.CTokenAssetID)
+				market, _, e := marketStr.FindByCToken(ctx, s.CTokenAssetID)
 				if e != nil {
 					continue
 				}
@@ -54,8 +53,8 @@ func suppliesHandler(ctx context.Context, marketStr core.IMarketStore, supplyStr
 
 				supplyViews = append(supplyViews, v)
 			}
-		} else if params.Symbol != "" {
-			market, e := marketStr.FindBySymbol(ctx, strings.ToUpper(params.Symbol))
+		} else if params.Asset != "" {
+			market, _, e := marketStr.Find(ctx, params.Asset)
 			if e != nil {
 				render.BadRequest(w, e)
 				return
@@ -79,7 +78,7 @@ func suppliesHandler(ctx context.Context, marketStr core.IMarketStore, supplyStr
 			}
 
 			for _, s := range supplies {
-				market, e := marketStr.FindByCToken(ctx, s.CTokenAssetID)
+				market, _, e := marketStr.FindByCToken(ctx, s.CTokenAssetID)
 				if e != nil {
 					continue
 				}

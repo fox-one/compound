@@ -7,14 +7,13 @@ import (
 	"compound/handler/views"
 	"context"
 	"net/http"
-	"strings"
 )
 
 func borrowsHandler(ctx context.Context, marketStr core.IMarketStore, borrowStr core.IBorrowStore, priceSrv core.IPriceOracleService, blockSrv core.IBlockService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var params struct {
 			UserID string `json:"user"`
-			Symbol string `json:"symbol"`
+			Asset  string `json:"asset"`
 		}
 
 		if e := param.Binding(r, &params); e != nil {
@@ -23,13 +22,13 @@ func borrowsHandler(ctx context.Context, marketStr core.IMarketStore, borrowStr 
 		}
 
 		borrowViews := make([]*views.Borrow, 0)
-		if params.Symbol != "" && params.UserID != "" {
-			market, e := marketStr.FindBySymbol(ctx, strings.ToUpper(params.Symbol))
+		if params.Asset != "" && params.UserID != "" {
+			market, _, e := marketStr.FindBySymbol(ctx, params.Asset)
 			if e != nil {
 				render.BadRequest(w, e)
 				return
 			}
-			borrow, e := borrowStr.Find(ctx, params.UserID, market.AssetID)
+			borrow, _, e := borrowStr.Find(ctx, params.UserID, market.AssetID)
 			if e != nil {
 				render.BadRequest(w, e)
 				return
@@ -46,7 +45,7 @@ func borrowsHandler(ctx context.Context, marketStr core.IMarketStore, borrowStr 
 			}
 
 			for _, b := range borrows {
-				market, e := marketStr.Find(ctx, b.AssetID)
+				market, _, e := marketStr.Find(ctx, b.AssetID)
 				if e != nil {
 					continue
 				}
@@ -55,8 +54,8 @@ func borrowsHandler(ctx context.Context, marketStr core.IMarketStore, borrowStr 
 
 				borrowViews = append(borrowViews, v)
 			}
-		} else if params.Symbol != "" {
-			market, e := marketStr.FindBySymbol(ctx, strings.ToUpper(params.Symbol))
+		} else if params.Asset != "" {
+			market, _, e := marketStr.Find(ctx, params.Asset)
 			if e != nil {
 				render.BadRequest(w, e)
 				return
@@ -80,7 +79,7 @@ func borrowsHandler(ctx context.Context, marketStr core.IMarketStore, borrowStr 
 			}
 
 			for _, b := range borrows {
-				market, e := marketStr.Find(ctx, b.AssetID)
+				market, _, e := marketStr.Find(ctx, b.AssetID)
 				if e != nil {
 					continue
 				}
