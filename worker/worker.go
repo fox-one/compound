@@ -1,46 +1,43 @@
 package worker
 
 import (
-	"github.com/robfig/cron/v3"
+	"context"
+	"time"
 )
 
-// type Worker interface {
-// 	Run(ctx context.Context) error
-// }
-
-// IJob job的接口
-type IJob interface {
-	Start() error
-	Run()
-	Stop() error
+// Worker worker interface
+type Worker interface {
+	Run(ctx context.Context) error
 }
 
-type OnWork func() error
-
-type BaseJob struct {
-	Cron      *cron.Cron
-	IsRunning bool
-	OnWork    OnWork
+// TickWorker base worker
+type TickWorker struct {
+	Delay    time.Duration
+	ErrDelay time.Duration
 }
 
-func (job *BaseJob) Start() error {
-	job.Cron.Start()
-	return nil
-}
+// StartTick start tick engine
+func (w *TickWorker) StartTick(ctx context.Context, onTick func(ctx context.Context) error) error {
+	dur := time.Millisecond
 
-func (job *BaseJob) Stop() error {
-	job.Cron.Stop()
-	return nil
-}
-
-func (job *BaseJob) Run() {
-	if job.IsRunning {
-		return
+	if w.Delay <= 0 {
+		w.Delay = 100 * time.Millisecond
 	}
 
-	job.IsRunning = true
+	if w.ErrDelay <= 0 {
+		w.ErrDelay = 300 * time.Millisecond
+	}
 
-	job.OnWork()
-
-	job.IsRunning = false
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(dur):
+			if err := onTick(ctx); err == nil {
+				dur = w.Delay
+			} else {
+				dur = w.ErrDelay
+			}
+		}
+	}
 }

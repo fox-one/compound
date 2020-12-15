@@ -13,24 +13,24 @@ import (
 
 // New new proposal service
 func New(
-	messages core.MessageStore,
 	system *core.System,
 	client *mixin.Client,
 	marketStore core.IMarketStore,
+	messages core.MessageStore,
 ) core.ProposalService {
 	return &parliament{
-		messages:    messages,
 		system:      system,
 		client:      client,
 		marketStore: marketStore,
+		messages:    messages,
 	}
 }
 
 type parliament struct {
-	messages    core.MessageStore
 	system      *core.System
 	client      *mixin.Client
 	marketStore core.IMarketStore
+	messages    core.MessageStore
 }
 
 func (p *parliament) ProposalCreated(ctx context.Context, proposal *core.Proposal, by *core.Member) error {

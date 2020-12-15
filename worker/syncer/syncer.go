@@ -3,7 +3,6 @@ package syncer
 import (
 	"context"
 	"errors"
-	"time"
 
 	"compound/core"
 	"compound/worker"
@@ -12,23 +11,20 @@ import (
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/property"
-	"github.com/robfig/cron/v3"
 )
 
 const checkpointKey = "sync_checkpoint"
 
 // Syncer sync output
 type Syncer struct {
-	worker.BaseJob
+	worker.TickWorker
 	walletStore   core.WalletStore
 	walletService core.WalletService
 	property      property.Store
 }
 
 // New new sync worker
-func New(
-	location string,
-	walletStr core.WalletStore,
+func New(walletStr core.WalletStore,
 	walletSrv core.WalletService,
 	property property.Store,
 ) *Syncer {
@@ -38,15 +34,14 @@ func New(
 		property:      property,
 	}
 
-	l, _ := time.LoadLocation(location)
-	syncer.Cron = cron.New(cron.WithLocation(l))
-	spec := "@every 100ms"
-	syncer.Cron.AddFunc(spec, syncer.Run)
-	syncer.OnWork = func() error {
-		return syncer.onWork(context.Background())
-	}
-
 	return &syncer
+}
+
+// Run run worker
+func (w *Syncer) Run(ctx context.Context) error {
+	return w.StartTick(ctx, func(ctx context.Context) error {
+		return w.onWork(ctx)
+	})
 }
 
 func (w *Syncer) onWork(ctx context.Context) error {

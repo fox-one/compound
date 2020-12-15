@@ -12,27 +12,18 @@ import (
 )
 
 type service struct {
-	mainWallet  *core.Wallet
 	marketStore core.IMarketStore
-	borrowStore core.IBorrowStore
 	blockSrv    core.IBlockService
-	priceSrv    core.IPriceOracleService
 }
 
 // New new market service
 func New(
-	mainWallet *core.Wallet,
 	marketStr core.IMarketStore,
-	borrowStore core.IBorrowStore,
 	blockSrv core.IBlockService,
-	priceSrv core.IPriceOracleService,
 ) core.IMarketService {
 	return &service{
-		mainWallet:  mainWallet,
 		marketStore: marketStr,
-		borrowStore: borrowStore,
 		blockSrv:    blockSrv,
-		priceSrv:    priceSrv,
 	}
 }
 

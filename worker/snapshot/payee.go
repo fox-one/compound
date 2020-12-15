@@ -7,14 +7,12 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
-	"time"
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/property"
 	"github.com/fox-one/pkg/store/db"
 	uuidutil "github.com/fox-one/pkg/uuid"
 	"github.com/gofrs/uuid"
-	"github.com/robfig/cron/v3"
 	"github.com/shopspring/decimal"
 )
 
@@ -25,7 +23,7 @@ const (
 
 // Payee payee worker
 type Payee struct {
-	worker.BaseJob
+	worker.TickWorker
 	db              *db.DB
 	system          *core.System
 	dapp            *core.Wallet
@@ -46,8 +44,7 @@ type Payee struct {
 }
 
 // NewPayee new payee
-func NewPayee(location string,
-	db *db.DB,
+func NewPayee(db *db.DB,
 	system *core.System,
 	dapp *core.Wallet,
 	propertyStore property.Store,
@@ -84,15 +81,14 @@ func NewPayee(location string,
 		accountService:  accountService,
 	}
 
-	l, _ := time.LoadLocation(location)
-	payee.Cron = cron.New(cron.WithLocation(l))
-	spec := "@every 100ms"
-	payee.Cron.AddFunc(spec, payee.Run)
-	payee.OnWork = func() error {
-		return payee.onWork(context.Background())
-	}
-
 	return &payee
+}
+
+// Run run worker
+func (w *Payee) Run(ctx context.Context) error {
+	return w.StartTick(ctx, func(ctx context.Context) error {
+		return w.onWork(ctx)
+	})
 }
 
 func (w *Payee) onWork(ctx context.Context) error {

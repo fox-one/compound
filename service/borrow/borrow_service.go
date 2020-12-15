@@ -11,46 +11,21 @@ import (
 )
 
 type borrowService struct {
-	config         *core.Config
-	mainWallet     *core.Wallet
-	blockWallet    *core.Wallet
-	marketStore    core.IMarketStore
-	borrowStore    core.IBorrowStore
 	blockService   core.IBlockService
 	priceService   core.IPriceOracleService
 	accountService core.IAccountService
-	marketService  core.IMarketService
 }
 
 // New new borrow service
-func New(cfg *core.Config,
-	mainWallet *core.Wallet,
-	blockWallet *core.Wallet,
-	marketStore core.IMarketStore,
-	borrowStore core.IBorrowStore,
+func New(
 	blockService core.IBlockService,
 	priceService core.IPriceOracleService,
-	accountService core.IAccountService,
-	marketService core.IMarketService) core.IBorrowService {
+	accountService core.IAccountService) core.IBorrowService {
 	return &borrowService{
-		config:         cfg,
-		mainWallet:     mainWallet,
-		blockWallet:    blockWallet,
-		marketStore:    marketStore,
-		borrowStore:    borrowStore,
 		blockService:   blockService,
 		priceService:   priceService,
 		accountService: accountService,
-		marketService:  marketService,
 	}
-}
-
-func (s *borrowService) Repay(ctx context.Context, amount decimal.Decimal, borrow *core.Borrow) (string, error) {
-	return "", nil
-}
-
-func (s *borrowService) Borrow(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *core.Market) error {
-	return nil
 }
 
 func (s *borrowService) BorrowAllowed(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *core.Market, time time.Time) bool {

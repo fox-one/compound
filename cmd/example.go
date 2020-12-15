@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"compound/worker"
+	"context"
+
 	"github.com/spf13/cobra"
 )
 
@@ -50,4 +53,18 @@ var exampleCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(exampleCmd)
+}
+
+type ExWorker struct {
+	worker.TickWorker
+}
+
+func (w *ExWorker) Run(ctx context.Context) error {
+	return w.StartTick(ctx, func(ctx context.Context) error {
+		return w.onWork(ctx)
+	})
+}
+
+func (w *ExWorker) onWork(ctx context.Context) error {
+	return nil
 }

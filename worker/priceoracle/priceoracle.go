@@ -15,16 +15,14 @@ import (
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
-	"github.com/robfig/cron/v3"
 	"github.com/shopspring/decimal"
 )
 
 //Worker block worker
 type Worker struct {
-	worker.BaseJob
+	worker.TickWorker
 	System             *core.System
 	Dapp               *core.Wallet
-	Config             *core.Config
 	MarketStore        core.IMarketStore
 	PriceStore         core.IPriceStore
 	BlockService       core.IBlockService
@@ -32,26 +30,24 @@ type Worker struct {
 }
 
 // New new block worker
-func New(system *core.System, dapp *core.Wallet, cfg *core.Config, marketStore core.IMarketStore, priceStr core.IPriceStore, blockSrv core.IBlockService, priceSrv core.IPriceOracleService) *Worker {
+func New(system *core.System, dapp *core.Wallet, marketStore core.IMarketStore, priceStr core.IPriceStore, blockSrv core.IBlockService, priceSrv core.IPriceOracleService) *Worker {
 	job := Worker{
 		System:             system,
 		Dapp:               dapp,
-		Config:             cfg,
 		MarketStore:        marketStore,
 		PriceStore:         priceStr,
 		BlockService:       blockSrv,
 		PriceOracleService: priceSrv,
 	}
 
-	l, _ := time.LoadLocation(job.Config.Location)
-	job.Cron = cron.New(cron.WithLocation(l))
-	spec := "@every 100ms"
-	job.Cron.AddFunc(spec, job.Run)
-	job.OnWork = func() error {
-		return job.onWork(context.Background())
-	}
-
 	return &job
+}
+
+// Run run worker
+func (w *Worker) Run(ctx context.Context) error {
+	return w.StartTick(ctx, func(ctx context.Context) error {
+		return w.onWork(ctx)
+	})
 }
 
 func (w *Worker) onWork(ctx context.Context) error {

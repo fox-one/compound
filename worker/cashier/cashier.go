@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"compound/core"
 	"compound/worker"
@@ -12,13 +11,12 @@ import (
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/uuid"
-	"github.com/robfig/cron/v3"
 	"github.com/shopspring/decimal"
 )
 
 // Cashier cashier
 type Cashier struct {
-	worker.BaseJob
+	worker.TickWorker
 	walletStore   core.WalletStore
 	walletService core.WalletService
 	system        *core.System
@@ -26,7 +24,6 @@ type Cashier struct {
 
 // New new cashier
 func New(
-	location string,
 	walletStr core.WalletStore,
 	walletSrv core.WalletService,
 	system *core.System,
@@ -37,15 +34,14 @@ func New(
 		system:        system,
 	}
 
-	l, _ := time.LoadLocation(location)
-	cashier.Cron = cron.New(cron.WithLocation(l))
-	spec := "@every 100ms"
-	cashier.Cron.AddFunc(spec, cashier.Run)
-	cashier.OnWork = func() error {
-		return cashier.onWork(context.Background())
-	}
-
 	return &cashier
+}
+
+// Run run worker
+func (w *Cashier) Run(ctx context.Context) error {
+	return w.StartTick(ctx, func(ctx context.Context) error {
+		return w.onWork(ctx)
+	})
 }
 
 func (w *Cashier) onWork(ctx context.Context) error {

@@ -1,53 +1,76 @@
 package cmd
 
 import (
+	walletservice "compound/service/wallet"
 	"compound/worker"
-	"os"
-	"os/signal"
+	"compound/worker/cashier"
+	"compound/worker/message"
+	"compound/worker/priceoracle"
+	"compound/worker/snapshot"
+	"compound/worker/syncer"
+	"compound/worker/txsender"
 
+	"github.com/fox-one/pkg/logger"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 )
 
 var workerCmd = &cobra.Command{
 	Use:   "worker",
 	Short: "compound job worker",
 	Run: func(cmd *cobra.Command, args []string) {
-		// ctx := cmd.Context()
+		ctx := cmd.Context()
+		log := logger.FromContext(ctx)
+		ctx = logger.WithContext(ctx, log)
 
-		// config := provideConfig()
-		// db := provideDatabase()
-		// mainWallet := provideMainWallet()
+		db := provideDatabase()
+		dapp := provideDapp()
+		system := provideSystem()
 
-		// propertyStore := providePropertyStore(db)
-		// marketStore := provideMarketStore(db)
-		// supplyStore := provideSupplyStore(db)
-		// borrowStore := provideBorrowStore(db)
+		propertyStore := providePropertyStore(db)
+		marketStore := provideMarketStore(db)
+		supplyStore := provideSupplyStore(db)
+		borrowStore := provideBorrowStore(db)
+		walletStore := provideWalletStore(db)
+		messageStore := provideMessageStore(db)
+		priceStore := providePriceStore(db)
+		proposalStore := provideProposalStore(db)
 		// transferStore := provideTransferStore(db)
-		// snapshotStore := provideSnapshotStore(db)
 
-		//TODO
-		// walletService := provideWalletService(mainWallet.Client, walletservice.Config{})
-		// blockService := provideBlockService()
-		// priceService := providePriceService(blockService)
-		// marketService := provideMarketService(mainWallet, marketStore, borrowStore, blockService, priceService)
-		// accountService := provideAccountService(mainWallet, marketStore, supplyStore, borrowStore, priceService, blockService, marketService)
-		// supplyService := provideSupplyService(db, mainWallet, blockWallet, supplyStore, marketStore, accountService, priceService, blockService, marketService)
-		// borrowService := provideBorrowService(mainWallet, blockWallet, marketStore, borrowStore, blockService, priceService, accountService, marketService)
+		walletService := provideWalletService(dapp.Client, walletservice.Config{
+			Pin:       dapp.Pin,
+			Members:   system.MemberIDs(),
+			Threshold: system.Threshold,
+		})
 
-		workers := []worker.IJob{
-			// priceoracle.New(mainWallet, blockWallet, config, marketStore, blockService, priceService),
-			// transfer.New(db, mainWallet, config, transferStore),
-			// storemanager.New(config, transferStore, snapshotStore),
-			// snapshot.New(config, db, mainWallet, blockWallet, snapshotStore, propertyStore, transferStore, marketStore, supplyStore, borrowStore, walletService, priceService, blockService, marketService, supplyService, borrowService, accountService),
+		blockService := provideBlockService()
+		priceService := providePriceService(blockService)
+		marketService := provideMarketService(marketStore, blockService)
+		accountService := provideAccountService(marketStore, supplyStore, borrowStore, priceService, blockService, marketService)
+		supplyService := provideSupplyService(marketService)
+		borrowService := provideBorrowService(blockService, priceService, accountService)
+		messageService := provideMessageService(dapp.Client)
+		proposalService := provideProposalService(dapp.Client, system, marketStore, messageStore)
+
+		workers := []worker.Worker{
+			cashier.New(walletStore, walletService, system),
+			message.New(messageStore, messageService),
+			priceoracle.New(system, dapp, marketStore, priceStore, blockService, priceService),
+			snapshot.NewPayee(db, system, dapp, propertyStore, walletStore, priceStore, marketStore, supplyStore, borrowStore, proposalStore, proposalService, priceService, blockService, marketService, supplyService, borrowService, accountService),
+			syncer.New(walletStore, walletService, propertyStore),
+			txsender.New(walletStore),
 		}
 
+		var g errgroup.Group
 		for _, w := range workers {
-			w.Start()
+			g.Go(func() error {
+				return w.Run(ctx)
+			})
 		}
 
-		sig := make(chan os.Signal)
-		signal.Notify(sig, os.Interrupt, os.Kill)
-		<-sig
+		if err := g.Wait(); err != nil {
+			cmd.PrintErrln("run worker error:", err)
+		}
 	},
 }
 

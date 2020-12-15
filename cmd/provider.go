@@ -7,12 +7,19 @@ import (
 	"compound/service/block"
 	borrowservice "compound/service/borrow"
 	marketservice "compound/service/market"
+	messageservice "compound/service/message"
 	oracle "compound/service/oracle"
+	proposalservice "compound/service/proposal"
 	supplyservice "compound/service/supply"
 	walletservice "compound/service/wallet"
 	"compound/store/borrow"
 	"compound/store/market"
+	"compound/store/message"
+	"compound/store/price"
+	"compound/store/proposal"
 	"compound/store/supply"
+	"compound/store/wallet"
+
 	"fmt"
 
 	"github.com/fox-one/mixin-sdk-go"
@@ -96,18 +103,37 @@ func provideBorrowStore(db *db.DB) core.IBorrowStore {
 	return borrow.New(db)
 }
 
+func provideWalletStore(db *db.DB) core.WalletStore {
+	return wallet.New(db)
+}
+
+func provideMessageStore(db *db.DB) core.MessageStore {
+	return message.New(db)
+}
+
+func providePriceStore(db *db.DB) core.IPriceStore {
+	return price.New(db)
+}
+
+func provideProposalStore(db *db.DB) core.ProposalStore {
+	return proposal.New(db)
+}
+
 // func provideTransferStore(db *db.DB) core.ITransferStore {
 // 	return transfer.New(db)
 // }
 
-// func provideSnapshotStore(db *db.DB) core.ISnapshotStore {
-// 	return snapshot.New(db)
-// }
-
 // ------------------service------------------------------------
+func provideProposalService(client *mixin.Client, system *core.System, marketStore core.IMarketStore, messageStore core.MessageStore) core.ProposalService {
+	return proposalservice.New(system, client, marketStore, messageStore)
+}
+
+func provideMessageService(client *mixin.Client) core.MessageService {
+	return messageservice.New(client)
+}
+
 func provideWalletService(client *mixin.Client, cfg walletservice.Config) core.WalletService {
-	// return wallet.New(mainWallet)
-	return nil
+	return walletservice.New(client, cfg)
 }
 
 func provideBlockService() core.IBlockService {
@@ -118,45 +144,27 @@ func providePriceService(blockSrv core.IBlockService) core.IPriceOracleService {
 	return oracle.New(&cfg, blockSrv)
 }
 
-func provideMarketService(mainWallet *core.Wallet, marketStr core.IMarketStore, borrowStr core.IBorrowStore, blockSrv core.IBlockService, priceSrv core.IPriceOracleService) core.IMarketService {
+func provideMarketService(marketStr core.IMarketStore, blockSrv core.IBlockService) core.IMarketService {
 	return marketservice.New(
-		mainWallet,
 		marketStr,
-		borrowStr,
-		blockSrv,
-		priceSrv)
+		blockSrv)
 }
 
-func provideSupplyService(db *db.DB, mainWallet *core.Wallet, blockWallet *core.Wallet, supplyStr core.ISupplyStore, marketStr core.IMarketStore, accountSrv core.IAccountService, priceSrv core.IPriceOracleService, blockSrv core.IBlockService, marketSrv core.IMarketService) core.ISupplyService {
+func provideSupplyService(marketSrv core.IMarketService) core.ISupplyService {
 	return supplyservice.New(
-		&cfg,
-		db,
-		mainWallet,
-		blockWallet,
-		supplyStr,
-		marketStr,
-		accountSrv,
-		priceSrv,
-		blockSrv,
 		marketSrv,
 	)
 }
 
-func provideBorrowService(mainWallet *core.Wallet, blockWallet *core.Wallet, marketStr core.IMarketStore, borrowStr core.IBorrowStore, blockSrv core.IBlockService, priceSrv core.IPriceOracleService, accountSrv core.IAccountService, marketSrv core.IMarketService) core.IBorrowService {
+func provideBorrowService(blockSrv core.IBlockService, priceSrv core.IPriceOracleService, accountSrv core.IAccountService) core.IBorrowService {
 	return borrowservice.New(
-		&cfg,
-		mainWallet,
-		blockWallet,
-		marketStr,
-		borrowStr,
 		blockSrv,
 		priceSrv,
 		accountSrv,
-		marketSrv,
 	)
 }
 
-func provideAccountService(mainWallet *core.Wallet,
+func provideAccountService(
 	marketStore core.IMarketStore,
 	supplyStore core.ISupplyStore,
 	borrowStore core.IBorrowStore,
@@ -164,5 +172,5 @@ func provideAccountService(mainWallet *core.Wallet,
 	blockSrv core.IBlockService,
 	marketSrv core.IMarketService) core.IAccountService {
 
-	return accountservice.New(mainWallet, marketStore, supplyStore, borrowStore, priceSrv, blockSrv, marketSrv)
+	return accountservice.New(marketStore, supplyStore, borrowStore, priceSrv, blockSrv, marketSrv)
 }

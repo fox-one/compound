@@ -10,30 +10,29 @@ import (
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
-	"github.com/robfig/cron/v3"
 	"golang.org/x/sync/errgroup"
 )
 
 // Sender tx sender
 type Sender struct {
-	worker.BaseJob
+	worker.TickWorker
 	wallets core.WalletStore
 }
 
-func New(location string, wallets core.WalletStore) *Sender {
+// New new send worker
+func New(wallets core.WalletStore) *Sender {
 	sender := Sender{
 		wallets: wallets,
 	}
 
-	l, _ := time.LoadLocation(location)
-	sender.Cron = cron.New(cron.WithLocation(l))
-	spec := "@every 100ms"
-	sender.Cron.AddFunc(spec, sender.Run)
-	sender.OnWork = func() error {
-		return sender.onWork(context.Background())
-	}
-
 	return &sender
+}
+
+// Run run worker
+func (w *Sender) Run(ctx context.Context) error {
+	return w.StartTick(ctx, func(ctx context.Context) error {
+		return w.onWork(ctx)
+	})
 }
 
 func (w *Sender) onWork(ctx context.Context) error {

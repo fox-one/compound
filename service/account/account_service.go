@@ -10,7 +10,6 @@ import (
 )
 
 type accountService struct {
-	mainWallet    *core.Wallet
 	marketStore   core.IMarketStore
 	supplyStore   core.ISupplyStore
 	borrowStore   core.IBorrowStore
@@ -21,7 +20,6 @@ type accountService struct {
 
 // New new account service
 func New(
-	mainWallet *core.Wallet,
 	marketStore core.IMarketStore,
 	supplyStore core.ISupplyStore,
 	borrowStore core.IBorrowStore,
@@ -30,7 +28,6 @@ func New(
 	marketServie core.IMarketService,
 ) core.IAccountService {
 	return &accountService{
-		mainWallet:    mainWallet,
 		marketStore:   marketStore,
 		supplyStore:   supplyStore,
 		borrowStore:   borrowStore,

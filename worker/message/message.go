@@ -1,39 +1,36 @@
-package messenger
+package message
 
 import (
 	"compound/core"
 	"compound/worker"
 	"context"
 	"errors"
-	"time"
 
 	"github.com/fox-one/pkg/logger"
-	"github.com/robfig/cron/v3"
 )
 
 // Messager message worker
 type Messager struct {
-	worker.BaseJob
+	worker.TickWorker
 	messageStore   core.MessageStore
 	messageService core.MessageService
 }
 
 // New new message worker
-func New(location string, messages core.MessageStore, messagez core.MessageService) *Messager {
+func New(messages core.MessageStore, messagez core.MessageService) *Messager {
 	messager := Messager{
 		messageStore:   messages,
 		messageService: messagez,
 	}
 
-	l, _ := time.LoadLocation(location)
-	messager.Cron = cron.New(cron.WithLocation(l))
-	spec := "@every 1s"
-	messager.Cron.AddFunc(spec, messager.Run)
-	messager.OnWork = func() error {
-		return messager.onWork(context.Background())
-	}
-
 	return &messager
+}
+
+// Run run worker
+func (w *Messager) Run(ctx context.Context) error {
+	return w.StartTick(ctx, func(ctx context.Context) error {
+		return w.onWork(ctx)
+	})
 }
 
 func (w *Messager) onWork(ctx context.Context) error {
