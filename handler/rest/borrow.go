@@ -5,12 +5,13 @@ import (
 	"compound/handler/param"
 	"compound/handler/render"
 	"compound/handler/views"
-	"context"
 	"net/http"
 )
 
-func borrowsHandler(ctx context.Context, marketStr core.IMarketStore, borrowStr core.IBorrowStore, priceSrv core.IPriceOracleService, blockSrv core.IBlockService) http.HandlerFunc {
+func borrowsHandler(marketStr core.IMarketStore, borrowStr core.IBorrowStore, priceSrv core.IPriceOracleService, blockSrv core.IBlockService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
 		var params struct {
 			UserID string `json:"user"`
 			Asset  string `json:"asset"`
@@ -34,7 +35,7 @@ func borrowsHandler(ctx context.Context, marketStr core.IMarketStore, borrowStr 
 				return
 			}
 
-			v := convert2BorrowView(ctx, market, borrow)
+			v := convert2BorrowView(market, borrow)
 
 			borrowViews = append(borrowViews, v)
 		} else if params.UserID != "" {
@@ -50,7 +51,7 @@ func borrowsHandler(ctx context.Context, marketStr core.IMarketStore, borrowStr 
 					continue
 				}
 
-				v := convert2BorrowView(ctx, market, b)
+				v := convert2BorrowView(market, b)
 
 				borrowViews = append(borrowViews, v)
 			}
@@ -67,7 +68,7 @@ func borrowsHandler(ctx context.Context, marketStr core.IMarketStore, borrowStr 
 			}
 
 			for _, b := range borrows {
-				v := convert2BorrowView(ctx, market, b)
+				v := convert2BorrowView(market, b)
 
 				borrowViews = append(borrowViews, v)
 			}
@@ -83,7 +84,7 @@ func borrowsHandler(ctx context.Context, marketStr core.IMarketStore, borrowStr 
 				if e != nil {
 					continue
 				}
-				v := convert2BorrowView(ctx, market, b)
+				v := convert2BorrowView(market, b)
 
 				borrowViews = append(borrowViews, v)
 			}
@@ -93,7 +94,7 @@ func borrowsHandler(ctx context.Context, marketStr core.IMarketStore, borrowStr 
 	}
 }
 
-func convert2BorrowView(ctx context.Context, market *core.Market, borrow *core.Borrow) *views.Borrow {
+func convert2BorrowView(market *core.Market, borrow *core.Borrow) *views.Borrow {
 	borrowView := views.Borrow{
 		Borrow: *borrow,
 	}

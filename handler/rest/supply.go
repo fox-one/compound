@@ -5,12 +5,13 @@ import (
 	"compound/handler/param"
 	"compound/handler/render"
 	"compound/handler/views"
-	"context"
 	"net/http"
 )
 
-func suppliesHandler(ctx context.Context, marketStr core.IMarketStore, supplyStr core.ISupplyStore, priceSrv core.IPriceOracleService, blockSrv core.IBlockService) http.HandlerFunc {
+func suppliesHandler(marketStr core.IMarketStore, supplyStr core.ISupplyStore, priceSrv core.IPriceOracleService, blockSrv core.IBlockService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
 		var params struct {
 			UserID string `json:"user"`
 			Asset  string `json:"asset"`
@@ -33,7 +34,7 @@ func suppliesHandler(ctx context.Context, marketStr core.IMarketStore, supplyStr
 				render.BadRequest(w, e)
 				return
 			}
-			v := convert2SupplyView(ctx, market, supply)
+			v := convert2SupplyView(market, supply)
 
 			supplyViews = append(supplyViews, v)
 		} else if params.UserID != "" {
@@ -49,7 +50,7 @@ func suppliesHandler(ctx context.Context, marketStr core.IMarketStore, supplyStr
 					continue
 				}
 
-				v := convert2SupplyView(ctx, market, s)
+				v := convert2SupplyView(market, s)
 
 				supplyViews = append(supplyViews, v)
 			}
@@ -66,7 +67,7 @@ func suppliesHandler(ctx context.Context, marketStr core.IMarketStore, supplyStr
 			}
 
 			for _, s := range supplies {
-				v := convert2SupplyView(ctx, market, s)
+				v := convert2SupplyView(market, s)
 
 				supplyViews = append(supplyViews, v)
 			}
@@ -82,7 +83,7 @@ func suppliesHandler(ctx context.Context, marketStr core.IMarketStore, supplyStr
 				if e != nil {
 					continue
 				}
-				v := convert2SupplyView(ctx, market, s)
+				v := convert2SupplyView(market, s)
 
 				supplyViews = append(supplyViews, v)
 			}
@@ -92,7 +93,7 @@ func suppliesHandler(ctx context.Context, marketStr core.IMarketStore, supplyStr
 	}
 }
 
-func convert2SupplyView(ctx context.Context, market *core.Market, supply *core.Supply) *views.Supply {
+func convert2SupplyView(market *core.Market, supply *core.Supply) *views.Supply {
 	supplyView := views.Supply{
 		Supply: *supply,
 	}

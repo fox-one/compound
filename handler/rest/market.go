@@ -11,8 +11,10 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-func allMarketsHandler(ctx context.Context, marketStr core.IMarketStore, supplyStr core.ISupplyStore, borrowStr core.IBorrowStore, marketSrv core.IMarketService) http.HandlerFunc {
+func allMarketsHandler(marketStr core.IMarketStore, supplyStr core.ISupplyStore, borrowStr core.IBorrowStore, marketSrv core.IMarketService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
 		markets, e := marketStr.All(ctx)
 		if e != nil {
 			render.BadRequest(w, e)
@@ -29,8 +31,10 @@ func allMarketsHandler(ctx context.Context, marketStr core.IMarketStore, supplyS
 	}
 }
 
-func marketHandler(ctx context.Context, marketStr core.IMarketStore, supplyStr core.ISupplyStore, borrowStr core.IBorrowStore, marketSrv core.IMarketService) http.HandlerFunc {
+func marketHandler(marketStr core.IMarketStore, supplyStr core.ISupplyStore, borrowStr core.IBorrowStore, marketSrv core.IMarketService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
 		var params struct {
 			Asset string `json:"asset"`
 		}

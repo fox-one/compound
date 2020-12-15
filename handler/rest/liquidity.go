@@ -5,13 +5,14 @@ import (
 	"compound/handler/param"
 	"compound/handler/render"
 	"compound/handler/views"
-	"context"
 	"net/http"
 	"time"
 )
 
-func liquidityHandler(ctx context.Context, blockSrv core.IBlockService, accountSrv core.IAccountService) http.HandlerFunc {
+func liquidityHandler(blockSrv core.IBlockService, accountSrv core.IAccountService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
 		var params struct {
 			UserID string `json:"user"`
 		}
