@@ -12,10 +12,15 @@ func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, user
 	log := logger.FromContext(ctx).WithField("worker", "supply_redeem")
 	ctokenAssetID := output.AssetID
 
-	market, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
-	if e != nil {
-		log.Errorln(e)
+	market, isRecordNotFound, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
+	if isRecordNotFound {
+		log.Warningln("market not found")
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
+	}
+
+	if e != nil {
+		log.WithError(e).Errorln("find market error")
+		return e
 	}
 
 	//accrue interest

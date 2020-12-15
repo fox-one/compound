@@ -100,7 +100,7 @@ func (w *Worker) isPriceProvided(ctx context.Context, market *core.Market) bool 
 		return false
 	}
 
-	price, e := w.PriceStore.FindByAssetBlock(ctx, market.AssetID, curBlockNum)
+	price, _, e := w.PriceStore.FindByAssetBlock(ctx, market.AssetID, curBlockNum)
 	if e != nil {
 		log.WithError(e).Errorln("findByAssetBlock err")
 		return false

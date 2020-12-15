@@ -23,16 +23,24 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 	}
 
 	ctokenAssetID := ctokenAsset.String()
-	market, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
-	if e != nil {
-		log.Errorln(e)
+	market, isRecordNotFound, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
+	if isRecordNotFound {
+		log.Warningln("market not found")
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
 	}
-
-	supply, e := w.supplyStore.Find(ctx, userID, market.CTokenAssetID)
 	if e != nil {
-		log.Errorln(e)
+		log.WithError(e).Errorln("find market error")
+		return e
+	}
+
+	supply, isRecordNotFound, e := w.supplyStore.Find(ctx, userID, market.CTokenAssetID)
+	if isRecordNotFound {
+		log.Warningln("supply not found")
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrSupplyNotFound, "")
+	}
+	if e != nil {
+		log.WithError(e).Errorln("find supply error")
+		return e
 	}
 
 	//accrue interest
@@ -77,12 +85,6 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 	}
 
 	return w.db.Tx(func(tx *db.DB) error {
-		supply, e := w.supplyStore.Find(ctx, userID, market.CTokenAssetID)
-		if e != nil {
-			log.Errorln(e)
-			return e
-		}
-
 		supply.Collaterals = supply.Collaterals.Sub(unpledgedAmount).Truncate(16)
 		if supply.Collaterals.LessThan(decimal.Zero) {
 			supply.Collaterals = decimal.Zero

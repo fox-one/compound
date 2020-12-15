@@ -15,9 +15,15 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 	repayAmount := output.Amount
 	assetID := output.AssetID
 
-	market, e := w.marketStore.Find(ctx, assetID)
-	if e != nil {
+	market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)
+	if isRecordNotFound {
+		log.Warningln("market not found")
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
+	}
+
+	if e != nil {
+		log.WithError(e).Errorln("find market error")
+		return e
 	}
 
 	//update interest
@@ -26,10 +32,14 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 		return e
 	}
 
-	borrow, e := w.borrowStore.Find(ctx, userID, market.AssetID)
+	borrow, isRecordNotFound, e := w.borrowStore.Find(ctx, userID, market.AssetID)
+	if isRecordNotFound {
+		log.Warningln("borrow not found")
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrBorrowNotFound, "")
+	}
 	if e != nil {
 		log.Errorln(e)
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrBorrowNotFound, "")
+		return e
 	}
 
 	return w.db.Tx(func(tx *db.DB) error {

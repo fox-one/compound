@@ -44,7 +44,7 @@ func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID s
 	}
 	supplyValue := decimal.Zero
 	for _, supply := range supplies {
-		market, e := s.marketStore.FindByCToken(ctx, supply.CTokenAssetID)
+		market, _, e := s.marketStore.FindByCToken(ctx, supply.CTokenAssetID)
 		if e != nil {
 			continue
 		}
@@ -70,7 +70,7 @@ func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID s
 	borrowValue := decimal.Zero
 
 	for _, borrow := range borrows {
-		market, e := s.marketStore.Find(ctx, borrow.AssetID)
+		market, _, e := s.marketStore.Find(ctx, borrow.AssetID)
 		if e != nil {
 			continue
 		}
@@ -136,7 +136,7 @@ func (s *accountService) MaxSeize(ctx context.Context, supply *core.Supply, borr
 		return decimal.Zero, errors.New("different user bettween supply and borrow")
 	}
 
-	supplyMarket, e := s.marketStore.FindByCToken(ctx, supply.CTokenAssetID)
+	supplyMarket, _, e := s.marketStore.FindByCToken(ctx, supply.CTokenAssetID)
 	if e != nil {
 		return decimal.Zero, e
 	}
@@ -152,7 +152,7 @@ func (s *accountService) MaxSeize(ctx context.Context, supply *core.Supply, borr
 	if e != nil {
 		return decimal.Zero, e
 	}
-	borrowMarket, e := s.marketStore.Find(ctx, borrow.AssetID)
+	borrowMarket, _, e := s.marketStore.Find(ctx, borrow.AssetID)
 	if e != nil {
 		return decimal.Zero, e
 	}

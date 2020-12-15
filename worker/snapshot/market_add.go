@@ -5,18 +5,16 @@ import (
 	"compound/core/proposal"
 	"context"
 	"strings"
-
-	"github.com/jinzhu/gorm"
 )
 
 func (w *Payee) handleAddMarketEvent(ctx context.Context, p *core.Proposal, req proposal.AddMarketReq) error {
-	_, e := w.marketStore.Find(ctx, req.AssetID)
+	_, isRecordNotFound, e := w.marketStore.Find(ctx, req.AssetID)
 	if e == nil {
 		//market exists
 		return nil
 	}
 
-	if gorm.IsRecordNotFoundError(e) {
+	if isRecordNotFound {
 		market := core.Market{
 			Symbol:        strings.ToUpper(req.Symbol),
 			AssetID:       req.AssetID,

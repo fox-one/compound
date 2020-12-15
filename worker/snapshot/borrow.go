@@ -8,7 +8,6 @@ import (
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/store/db"
 	"github.com/gofrs/uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/shopspring/decimal"
 )
 
@@ -22,10 +21,15 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 	}
 
 	assetID := asset.String()
-	market, e := w.marketStore.Find(ctx, assetID)
+	market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)
+	if isRecordNotFound {
+		log.Warningln("market not found, refund")
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
+	}
+
 	if e != nil {
 		log.Errorln("query market error:", e)
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
+		return e
 	}
 
 	// accrue interest
@@ -53,9 +57,9 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 			return e
 		}
 
-		borrow, e := w.borrowStore.Find(ctx, userID, market.AssetID)
+		borrow, isRecordNotFound, e := w.borrowStore.Find(ctx, userID, market.AssetID)
 		if e != nil {
-			if gorm.IsRecordNotFoundError(e) {
+			if isRecordNotFound {
 				//new
 				borrow = &core.Borrow{
 					UserID:        userID,
@@ -88,6 +92,7 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 			}
 		}
 
+		//transfer borrowed asset
 		transferAction := core.TransferAction{
 			Source:        core.ActionTypeBorrowTransfer,
 			TransactionID: followID,

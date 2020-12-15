@@ -9,16 +9,15 @@ import (
 	"time"
 
 	"github.com/fox-one/pkg/logger"
-	"github.com/jinzhu/gorm"
 	"github.com/shopspring/decimal"
 )
 
 func (w *Payee) handleUpdateMarketEvent(ctx context.Context, p *core.Proposal, req proposal.UpdateMarketReq, t time.Time) error {
 	log := logger.FromContext(ctx).WithField("worker", "update-market")
-	
-	market, e := w.marketStore.FindBySymbol(ctx, strings.ToUpper(req.Symbol))
+
+	market, isRecordNotFound, e := w.marketStore.FindBySymbol(ctx, strings.ToUpper(req.Symbol))
 	if e != nil {
-		if gorm.IsRecordNotFoundError(e) {
+		if isRecordNotFound {
 			return nil
 		}
 
@@ -36,7 +35,7 @@ func (w *Payee) handleUpdateMarketEvent(ctx context.Context, p *core.Proposal, r
 	if req.ReserveFactor.GreaterThan(decimal.Zero) && req.ReserveFactor.LessThan(decimal.NewFromInt(1)) {
 		market.ReserveFactor = req.ReserveFactor
 	}
-		
+
 	if req.LiquidationIncentive.GreaterThanOrEqual(compound.LiquidationIncentiveMin) && req.LiquidationIncentive.LessThanOrEqual(compound.LiquidationIncentiveMax) {
 		market.LiquidationIncentive = req.LiquidationIncentive
 	}
@@ -72,7 +71,7 @@ func (w *Payee) handleUpdateMarketEvent(ctx context.Context, p *core.Proposal, r
 	if e = w.marketStore.Update(ctx, w.db, market); e != nil {
 		log.Errorln(e)
 		return e
-	}	
+	}
 
 	return nil
 }

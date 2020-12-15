@@ -7,7 +7,6 @@ import (
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/store/db"
-	"github.com/jinzhu/gorm"
 	"github.com/shopspring/decimal"
 )
 
@@ -16,10 +15,14 @@ func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, user
 	ctokens := output.Amount
 	ctokenAssetID := output.AssetID
 
-	market, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
-	if e != nil {
-		log.Errorln(e)
+	market, isRecordNotFound, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
+	if isRecordNotFound {
+		log.Warningln("market not found")
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
+	}
+	if e != nil {
+		log.WithError(e).Errorln("find market error")
+		return e
 	}
 
 	if ctokens.GreaterThan(market.CTokens) {
@@ -39,9 +42,9 @@ func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, user
 			return e
 		}
 
-		supply, e := w.supplyStore.Find(ctx, userID, ctokenAssetID)
+		supply, isRecordNotFound, e := w.supplyStore.Find(ctx, userID, ctokenAssetID)
 		if e != nil {
-			if gorm.IsRecordNotFoundError(e) {
+			if isRecordNotFound {
 				//new
 				supply = &core.Supply{
 					UserID:        userID,

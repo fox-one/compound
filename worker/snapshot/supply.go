@@ -15,11 +15,14 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 	supplyAmount := output.Amount.Abs()
 	assetID := output.AssetID
 
-	market, e := w.marketStore.Find(ctx, assetID)
-	if e != nil {
-		//refund to user
-		log.Errorln(e)
+	market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)
+	if isRecordNotFound {
+		log.Warningln("market not found")
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
+	}
+	if e != nil {
+		log.WithError(e).Errorln("find market error")
+		return e
 	}
 
 	//accrue interest

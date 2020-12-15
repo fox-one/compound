@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/fox-one/pkg/store/db"
+	"github.com/jinzhu/gorm"
 	"github.com/shopspring/decimal"
 )
 
@@ -37,13 +38,13 @@ func (s *supplyStore) Save(ctx context.Context, tx *db.DB, supply *core.Supply) 
 
 	return nil
 }
-func (s *supplyStore) Find(ctx context.Context, userID string, ctokenAssetID string) (*core.Supply, error) {
+func (s *supplyStore) Find(ctx context.Context, userID string, ctokenAssetID string) (*core.Supply, bool, error) {
 	var supply core.Supply
 	if e := s.db.View().Where("user_id=? and c_token_asset_id=?", userID, ctokenAssetID).First(&supply).Error; e != nil {
-		return nil, e
+		return nil, gorm.IsRecordNotFoundError(e), e
 	}
 
-	return &supply, nil
+	return &supply, false, nil
 }
 
 func (s *supplyStore) FindByUser(ctx context.Context, userID string) ([]*core.Supply, error) {

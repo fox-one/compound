@@ -27,7 +27,7 @@ func generateButtons(ctx context.Context, marketStore core.IMarketStore, p *core
 		var action proposal.UpdateMarketReq
 		_ = json.Unmarshal(p.Content, &action)
 		symbol := strings.ToUpper(action.Symbol)
-		market, e := marketStore.FindBySymbol(ctx, symbol)
+		market, _, e := marketStore.FindBySymbol(ctx, symbol)
 		if e != nil {
 			return buttons
 		}

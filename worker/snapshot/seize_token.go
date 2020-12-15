@@ -27,9 +27,14 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 	userPayAssetID := output.AssetID
 
 	// to seize
-	supplyMarket, e := w.marketStore.Find(ctx, seizedAssetID)
-	if e != nil {
+	supplyMarket, isRecordNotFound, e := w.marketStore.Find(ctx, seizedAssetID)
+	if isRecordNotFound {
+		log.Warningln("supply market not found")
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
+	}
+	if e != nil {
+		log.WithError(e).Errorln("find supply market error")
+		return e
 	}
 
 	supplyExchangeRate, e := w.marketService.CurExchangeRate(ctx, supplyMarket)
@@ -39,10 +44,14 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 	}
 
 	// to repay
-	borrowMarket, e := w.marketStore.Find(ctx, userPayAssetID)
-	if e != nil {
-		log.Errorln(e)
+	borrowMarket, isRecordNotFound, e := w.marketStore.Find(ctx, userPayAssetID)
+	if isRecordNotFound {
+		log.Warningln("borrow market not found")
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
+	}
+	if e != nil {
+		log.WithError(e).Errorln("find borrow market error")
+		return e
 	}
 
 	//supply market accrue interest
@@ -57,16 +66,25 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 		return e
 	}
 
-	supply, e := w.supplyStore.Find(ctx, seizedUserID, supplyMarket.CTokenAssetID)
-	if e != nil {
-		log.Errorln(e)
+	supply, isRecordNotFound, e := w.supplyStore.Find(ctx, seizedUserID, supplyMarket.CTokenAssetID)
+	if isRecordNotFound {
+		log.Warningln("supply not found")
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrSupplyNotFound, "")
 	}
 
-	borrow, e := w.borrowStore.Find(ctx, seizedUserID, borrowMarket.AssetID)
 	if e != nil {
-		log.Errorln(e)
+		log.WithError(e).Errorln("find supply error")
+		return e
+	}
+
+	borrow, isRecordNotFound, e := w.borrowStore.Find(ctx, seizedUserID, borrowMarket.AssetID)
+	if isRecordNotFound {
+		log.Warningln("borrow not found")
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrBorrowNotFound, "")
+	}
+	if e != nil {
+		log.WithError(e).Errorln("find borrow error")
+		return e
 	}
 
 	borrowPrice, e := w.priceService.GetCurrentUnderlyingPrice(ctx, borrowMarket)

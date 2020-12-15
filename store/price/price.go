@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/fox-one/pkg/store/db"
+	"github.com/jinzhu/gorm"
 )
 
 type priceStore struct {
@@ -34,12 +35,12 @@ func (s *priceStore) Create(ctx context.Context, tx *db.DB, price *core.Price) e
 	return tx.Update().Where("asset_id=? and block_number=?", price.AssetID, price.BlockNumber).FirstOrCreate(price).Error
 }
 
-func (s *priceStore) FindByAssetBlock(ctx context.Context, assetID string, blockNumber int64) (*core.Price, error) {
+func (s *priceStore) FindByAssetBlock(ctx context.Context, assetID string, blockNumber int64) (*core.Price, bool, error) {
 	var price core.Price
 	if e := s.db.View().Where("asset_id=? and block_number=?", assetID, blockNumber).Find(&price).Error; e != nil {
-		return nil, e
+		return nil, gorm.IsRecordNotFoundError(e), e
 	}
-	return &price, nil
+	return &price, false, nil
 }
 
 func (s *priceStore) Update(ctx context.Context, tx *db.DB, price *core.Price) error {

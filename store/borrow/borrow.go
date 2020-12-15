@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/fox-one/pkg/store/db"
+	"github.com/jinzhu/gorm"
 )
 
 type borrowStore struct {
@@ -37,13 +38,13 @@ func (s *borrowStore) Save(ctx context.Context, tx *db.DB, borrow *core.Borrow) 
 	return nil
 }
 
-func (s *borrowStore) Find(ctx context.Context, userID string, assetID string) (*core.Borrow, error) {
+func (s *borrowStore) Find(ctx context.Context, userID string, assetID string) (*core.Borrow, bool, error) {
 	var borrow core.Borrow
 	if e := s.db.View().Where("user_id=? and asset_id=?", userID, assetID).First(&borrow).Error; e != nil {
-		return nil, e
+		return nil, gorm.IsRecordNotFoundError(e), e
 	}
 
-	return &borrow, nil
+	return &borrow, false, nil
 }
 
 func (s *borrowStore) FindByUser(ctx context.Context, userID string) ([]*core.Borrow, error) {

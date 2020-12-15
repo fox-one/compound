@@ -11,7 +11,6 @@ import (
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/store/db"
-	"github.com/jinzhu/gorm"
 	"github.com/shopspring/decimal"
 )
 
@@ -29,9 +28,9 @@ func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *cor
 
 	return w.db.Tx(func(tx *db.DB) error {
 		priceTickers := make([]*core.PriceTicker, 0)
-		price, e := w.priceStore.FindByAssetBlock(ctx, data.AssetID, blockNum)
+		price, isRecordNotFound, e := w.priceStore.FindByAssetBlock(ctx, data.AssetID, blockNum)
 		if e != nil {
-			if gorm.IsRecordNotFoundError(e) {
+			if isRecordNotFound {
 				// new one
 				priceTickers = append(priceTickers, &core.PriceTicker{
 					Provider: member.ClientID,
@@ -126,7 +125,11 @@ func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *cor
 		}
 
 		// update market
-		market, e := w.marketStore.Find(ctx, data.AssetID)
+		market, isRecordNotFound, e := w.marketStore.Find(ctx, data.AssetID)
+		if isRecordNotFound {
+			return nil
+		}
+
 		if e != nil {
 			return e
 		}

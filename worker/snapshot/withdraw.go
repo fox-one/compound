@@ -6,15 +6,14 @@ import (
 	"context"
 
 	"github.com/fox-one/pkg/logger"
-	"github.com/jinzhu/gorm"
 )
 
 func (w *Payee) handleWithdrawEvent(ctx context.Context, p *core.Proposal, req proposal.WithdrawReq) error {
 	log := logger.FromContext(ctx)
 
-	_, e := w.marketStore.Find(ctx, req.Asset)
+	_, isRecordNotFound, e := w.marketStore.Find(ctx, req.Asset)
 	if e != nil {
-		if gorm.IsRecordNotFoundError(e) {
+		if isRecordNotFound {
 			log.WithError(e).Errorln("no market found:", req.Asset)
 			return nil
 		}

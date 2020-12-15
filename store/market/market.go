@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/fox-one/pkg/store/db"
+	"github.com/jinzhu/gorm"
 )
 
 type marketStore struct {
@@ -31,43 +32,43 @@ func init() {
 func (s *marketStore) Save(ctx context.Context, tx *db.DB, market *core.Market) error {
 	return tx.Update().Where("asset_id=?", market.AssetID).Create(market).Error
 }
-func (s *marketStore) Find(ctx context.Context, assetID string) (*core.Market, error) {
+func (s *marketStore) Find(ctx context.Context, assetID string) (*core.Market, bool, error) {
 	if assetID == "" {
-		return nil, errors.New("invalid asset_id")
+		return nil, true, errors.New("invalid asset_id")
 	}
 
 	var market core.Market
 	if err := s.db.View().Where("asset_id=?", assetID).First(&market).Error; err != nil {
-		return nil, err
+		return nil, gorm.IsRecordNotFoundError(err), err
 	}
 
-	return &market, nil
+	return &market, false, nil
 }
 
-func (s *marketStore) FindBySymbol(ctx context.Context, symbol string) (*core.Market, error) {
+func (s *marketStore) FindBySymbol(ctx context.Context, symbol string) (*core.Market, bool, error) {
 	if symbol == "" {
-		return nil, errors.New("invalid symbol")
+		return nil, true, errors.New("invalid symbol")
 	}
 
 	var market core.Market
 	if err := s.db.View().Where("symbol=?", symbol).First(&market).Error; err != nil {
-		return nil, err
+		return nil, gorm.IsRecordNotFoundError(err), err
 	}
 
-	return &market, nil
+	return &market, false, nil
 }
 
-func (s *marketStore) FindByCToken(ctx context.Context, ctokenAssetID string) (*core.Market, error) {
+func (s *marketStore) FindByCToken(ctx context.Context, ctokenAssetID string) (*core.Market, bool, error) {
 	if ctokenAssetID == "" {
-		return nil, errors.New("invalid ctoken_asset_id")
+		return nil, true, errors.New("invalid ctoken_asset_id")
 	}
 
 	var market core.Market
 	if err := s.db.View().Where("c_token_asset_id=?", ctokenAssetID).First(&market).Error; err != nil {
-		return nil, err
+		return nil, gorm.IsRecordNotFoundError(err), err
 	}
 
-	return &market, nil
+	return &market, false, nil
 }
 
 func (s *marketStore) All(ctx context.Context) ([]*core.Market, error) {

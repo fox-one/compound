@@ -33,7 +33,7 @@ type PriceTicker struct {
 // IPriceStore price store interface
 type IPriceStore interface {
 	Create(ctx context.Context, tx *db.DB, price *Price) error
-	FindByAssetBlock(ctx context.Context, assetID string, blockNumber int64) (*Price, error)
+	FindByAssetBlock(ctx context.Context, assetID string, blockNumber int64) (*Price, bool, error)
 	Update(ctx context.Context, tx *db.DB, price *Price) error
 }
 

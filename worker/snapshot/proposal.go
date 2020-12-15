@@ -11,16 +11,15 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	"github.com/fox-one/pkg/logger"
-	"github.com/fox-one/pkg/store"
 )
 
 func (w *Payee) handleVoteProposalEvent(ctx context.Context, output *core.Output, member *core.Member, traceID string) error {
 	log := logger.FromContext(ctx).WithField("proposal", traceID)
 
-	p, err := w.proposalStore.Find(ctx, traceID)
+	p, isRecordNotFound, err := w.proposalStore.Find(ctx, traceID)
 	if err != nil {
 		// 如果 proposal 不存在，直接跳过
-		if store.IsErrNotFound(err) {
+		if isRecordNotFound {
 			log.WithError(err).Debugln("proposal not found")
 			return nil
 		}
