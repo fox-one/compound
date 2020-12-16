@@ -24,23 +24,25 @@ const (
 // Payee payee worker
 type Payee struct {
 	worker.TickWorker
-	db              *db.DB
-	system          *core.System
-	dapp            *core.Wallet
-	propertyStore   property.Store
-	walletStore     core.WalletStore
-	priceStore      core.IPriceStore
-	marketStore     core.IMarketStore
-	supplyStore     core.ISupplyStore
-	borrowStore     core.IBorrowStore
-	proposalStore   core.ProposalStore
-	proposalService core.ProposalService
-	blockService    core.IBlockService
-	priceService    core.IPriceOracleService
-	marketService   core.IMarketService
-	supplyService   core.ISupplyService
-	borrowService   core.IBorrowService
-	accountService  core.IAccountService
+	db               *db.DB
+	system           *core.System
+	dapp             *core.Wallet
+	propertyStore    property.Store
+	userStore        core.UserStore
+	walletStore      core.WalletStore
+	priceStore       core.IPriceStore
+	marketStore      core.IMarketStore
+	supplyStore      core.ISupplyStore
+	borrowStore      core.IBorrowStore
+	proposalStore    core.ProposalStore
+	transactionStore core.TransactionStore
+	proposalService  core.ProposalService
+	blockService     core.IBlockService
+	priceService     core.IPriceOracleService
+	marketService    core.IMarketService
+	supplyService    core.ISupplyService
+	borrowService    core.IBorrowService
+	accountService   core.IAccountService
 }
 
 // NewPayee new payee
@@ -48,12 +50,14 @@ func NewPayee(db *db.DB,
 	system *core.System,
 	dapp *core.Wallet,
 	propertyStore property.Store,
+	userStore core.UserStore,
 	walletStore core.WalletStore,
 	priceStore core.IPriceStore,
 	marketStore core.IMarketStore,
 	supplyStore core.ISupplyStore,
 	borrowStore core.IBorrowStore,
 	proposalStore core.ProposalStore,
+	transactionStore core.TransactionStore,
 	proposalService core.ProposalService,
 	priceSrv core.IPriceOracleService,
 	blockService core.IBlockService,
@@ -62,23 +66,25 @@ func NewPayee(db *db.DB,
 	borrowService core.IBorrowService,
 	accountService core.IAccountService) *Payee {
 	payee := Payee{
-		db:              db,
-		system:          system,
-		dapp:            dapp,
-		propertyStore:   propertyStore,
-		walletStore:     walletStore,
-		priceStore:      priceStore,
-		marketStore:     marketStore,
-		supplyStore:     supplyStore,
-		borrowStore:     borrowStore,
-		proposalStore:   proposalStore,
-		proposalService: proposalService,
-		priceService:    priceSrv,
-		blockService:    blockService,
-		marketService:   marketSrv,
-		supplyService:   supplyService,
-		borrowService:   borrowService,
-		accountService:  accountService,
+		db:               db,
+		system:           system,
+		dapp:             dapp,
+		propertyStore:    propertyStore,
+		userStore:        userStore,
+		walletStore:      walletStore,
+		priceStore:       priceStore,
+		marketStore:      marketStore,
+		supplyStore:      supplyStore,
+		borrowStore:      borrowStore,
+		proposalStore:    proposalStore,
+		transactionStore: transactionStore,
+		proposalService:  proposalService,
+		priceService:     priceSrv,
+		blockService:     blockService,
+		marketService:    marketSrv,
+		supplyService:    supplyService,
+		borrowService:    borrowService,
+		accountService:   accountService,
 	}
 
 	return &payee
@@ -149,6 +155,14 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 	if err != nil {
 		log.WithError(err).Errorln("scan userID and followID error")
 		return nil
+	}
+
+	//upsert user
+	user := core.User{
+		UserID: userID.String(),
+	}
+	if err = w.userStore.Save(ctx, &user); err != nil {
+		return err
 	}
 
 	return w.handleUserAction(ctx, output, actionType, userID.String(), followID.String(), body)

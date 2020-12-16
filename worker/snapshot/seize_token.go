@@ -14,6 +14,7 @@ import (
 func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
 	log := logger.FromContext(ctx).WithField("worker", "seize_token")
 
+	//TODO 使用supply_id, borrow_id
 	var seizedUser uuid.UUID
 	var seizedAsset uuid.UUID
 	if _, err := mtg.Scan(body, &seizedUser, &seizedAsset); err != nil {
@@ -187,11 +188,21 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 			return e
 		}
 
+		// add transaction
+		extra := core.NewTransactionExtra()
+		extra.Put(core.TransactionKeyAssetID, seizedAsset)
+		extra.Put(core.TransactionKeyAmount, seizedAmount)
+		transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeSeizeToken, output, &extra)
+		if e = w.transactionStore.Create(ctx, tx, transaction); e != nil {
+			log.WithError(e).Errorln("create transaction error")
+			return e
+		}
+
+		// transfer
 		transferAction := core.TransferAction{
 			Source:        core.ActionTypeSeizeTokenTransfer,
 			TransactionID: followID,
 		}
-
 		if e = w.transferOut(ctx, userID, followID, output.TraceID, supplyMarket.AssetID, seizedAmount, &transferAction); e != nil {
 			return e
 		}
@@ -204,7 +215,6 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 				Source:        core.ActionTypeRefundTransfer,
 				TransactionID: followID,
 			}
-
 			if e = w.transferOut(ctx, userID, followID, output.TraceID, output.AssetID, refundAmount, &refundTransferAction); e != nil {
 				return e
 			}

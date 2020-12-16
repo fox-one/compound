@@ -92,11 +92,21 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 			return e
 		}
 
+		// add transaction
+		extra := core.NewTransactionExtra()
+		extra.Put(core.TransactionKeyCTokenAssetID, ctokenAssetID)
+		extra.Put(core.TransactionKeyAmount, unpledgedAmount)
+		transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeUnpledge, output, &extra)
+		if e = w.transactionStore.Create(ctx, tx, transaction); e != nil {
+			log.WithError(e).Errorln("create transaction error")
+			return e
+		}
+
+		// add transfer
 		transferAction := core.TransferAction{
 			Source:        core.ActionTypeUnpledgeTransfer,
 			TransactionID: followID,
 		}
-
 		return w.transferOut(ctx, userID, followID, output.TraceID, market.CTokenAssetID, unpledgedAmount, &transferAction)
 	})
 }

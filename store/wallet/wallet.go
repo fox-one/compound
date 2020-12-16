@@ -184,8 +184,8 @@ func updateTransfer(db *db.DB, transfer *core.Transfer) error {
 	}).Error
 }
 
-func (s *walletStore) UpdateTransfer(ctx context.Context, transfer *core.Transfer) error {
-	return updateTransfer(s.db, transfer)
+func (s *walletStore) UpdateTransfer(ctx context.Context, tx *db.DB, transfer *core.Transfer) error {
+	return updateTransfer(tx, transfer)
 }
 
 func (s *walletStore) ListPendingTransfers(_ context.Context) ([]*core.Transfer, error) {

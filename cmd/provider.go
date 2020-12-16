@@ -18,6 +18,8 @@ import (
 	"compound/store/price"
 	"compound/store/proposal"
 	"compound/store/supply"
+	"compound/store/transaction"
+	"compound/store/user"
 	"compound/store/wallet"
 
 	"fmt"
@@ -117,6 +119,14 @@ func providePriceStore(db *db.DB) core.IPriceStore {
 
 func provideProposalStore(db *db.DB) core.ProposalStore {
 	return proposal.New(db)
+}
+
+func provideUserStore(db *db.DB) core.UserStore {
+	return user.New(db)
+}
+
+func provideTransactionStore(db *db.DB) core.TransactionStore {
+	return transaction.New(db)
 }
 
 // func provideTransferStore(db *db.DB) core.ITransferStore {

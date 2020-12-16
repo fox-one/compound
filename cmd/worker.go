@@ -7,6 +7,7 @@ import (
 	"compound/worker/message"
 	"compound/worker/priceoracle"
 	"compound/worker/snapshot"
+	"compound/worker/spentsync"
 	"compound/worker/syncer"
 	"compound/worker/txsender"
 
@@ -35,7 +36,8 @@ var workerCmd = &cobra.Command{
 		messageStore := provideMessageStore(db)
 		priceStore := providePriceStore(db)
 		proposalStore := provideProposalStore(db)
-		// transferStore := provideTransferStore(db)
+		userStore := provideUserStore(db)
+		transactionStore := provideTransactionStore(db)
 
 		walletService := provideWalletService(dapp.Client, walletservice.Config{
 			Pin:       dapp.Pin,
@@ -56,9 +58,10 @@ var workerCmd = &cobra.Command{
 			cashier.New(walletStore, walletService, system),
 			message.New(messageStore, messageService),
 			priceoracle.New(system, dapp, marketStore, priceStore, blockService, priceService),
-			snapshot.NewPayee(db, system, dapp, propertyStore, walletStore, priceStore, marketStore, supplyStore, borrowStore, proposalStore, proposalService, priceService, blockService, marketService, supplyService, borrowService, accountService),
+			snapshot.NewPayee(db, system, dapp, propertyStore, userStore, walletStore, priceStore, marketStore, supplyStore, borrowStore, proposalStore, transactionStore, proposalService, priceService, blockService, marketService, supplyService, borrowService, accountService),
 			syncer.New(walletStore, walletService, propertyStore),
 			txsender.New(walletStore),
+			spentsync.New(db, walletStore, transactionStore),
 		}
 
 		var g errgroup.Group

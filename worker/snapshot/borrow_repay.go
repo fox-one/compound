@@ -80,6 +80,13 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 			return e
 		}
 
+		// add transaction
+		transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeRepay, output, nil)
+		if e = w.transactionStore.Create(ctx, tx, transaction); e != nil {
+			log.WithError(e).Errorln("create transaction error")
+			return e
+		}
+
 		if redundantAmount.GreaterThan(decimal.Zero) {
 			refundAmount := redundantAmount.Truncate(8)
 			transferAction := core.TransferAction{

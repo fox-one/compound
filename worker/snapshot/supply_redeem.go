@@ -63,11 +63,18 @@ func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, user
 			return e
 		}
 
+		// add transaction
+		transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeRedeem, output, nil)
+		if e = w.transactionStore.Create(ctx, tx, transaction); e != nil {
+			log.WithError(e).Errorln("create transaction error")
+			return e
+		}
+
+		// transfer
 		transferAction := core.TransferAction{
 			Source:        core.ActionTypeRedeemTransfer,
 			TransactionID: followID,
 		}
-
 		return w.transferOut(ctx, userID, followID, output.TraceID, market.AssetID, amount, &transferAction)
 	})
 }

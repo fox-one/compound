@@ -92,12 +92,21 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 			}
 		}
 
+		//transaction
+		extra := core.NewTransactionExtra()
+		extra.Put(core.TransactionKeyAssetID, assetID)
+		extra.Put(core.TransactionKeyAmount, borrowAmount)
+		transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeBorrow, output, &extra)
+		if e = w.transactionStore.Create(ctx, tx, transaction); e != nil {
+			log.WithError(e).Errorln("create transaction error")
+			return e
+		}
+
 		//transfer borrowed asset
 		transferAction := core.TransferAction{
 			Source:        core.ActionTypeBorrowTransfer,
 			TransactionID: followID,
 		}
-
 		return w.transferOut(ctx, userID, followID, output.TraceID, assetID, borrowAmount, &transferAction)
 	})
 }

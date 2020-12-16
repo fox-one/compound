@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/fox-one/mixin-sdk-go"
+	"github.com/fox-one/pkg/store/db"
 	"github.com/jmoiron/sqlx/types"
 	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
@@ -53,6 +54,7 @@ type Transfer struct {
 	Opponents pq.StringArray  `sql:"type:varchar(1024)" json:"opponents,omitempty"`
 }
 
+// RawTransaction raw transaction
 type RawTransaction struct {
 	ID        int64     `sql:"PRIMARY_KEY" json:"id,omitempty"`
 	CreatedAt time.Time `json:"created_at,omitempty"`
@@ -71,7 +73,7 @@ type WalletStore interface {
 	ListSpentBy(ctx context.Context, assetID string, spentBy string) ([]*Output, error)
 	// Transfers
 	CreateTransfers(ctx context.Context, transfers []*Transfer) error
-	UpdateTransfer(ctx context.Context, transfer *Transfer) error
+	UpdateTransfer(ctx context.Context, tx *db.DB, transfer *Transfer) error
 	ListPendingTransfers(ctx context.Context) ([]*Transfer, error)
 	ListNotPassedTransfers(ctx context.Context) ([]*Transfer, error)
 	Spent(ctx context.Context, outputs []*Output, transfer *Transfer) error
@@ -80,27 +82,6 @@ type WalletStore interface {
 	ListPendingRawTransactions(ctx context.Context, limit int) ([]*RawTransaction, error)
 	ExpireRawTransaction(ctx context.Context, tx *RawTransaction) error
 }
-
-//Snapshot Deprecated snapshot
-type Snapshot struct {
-	ID         uint64          `sql:"PRIMARY_KEY;AUTO_INCREMENT" json:"id"`
-	SnapshotID string          `sql:"size:36;unique_index:snapshot_idx" json:"snapshot_id,omitempty"`
-	TraceID    string          `sql:"size:36;unique_index:trace_idx" json:"trace_id,omitempty"`
-	UserID     string          `sql:"size:36" json:"user_id,omitempty"`
-	OpponentID string          `sql:"size:36" json:"opponent_id,omitempty"`
-	AssetID    string          `sql:"size:36" json:"asset_id,omitempty"`
-	Amount     decimal.Decimal `sql:"type:decimal(20,8)" json:"amount,omitempty"`
-	Memo       string          `sql:"size:256" json:"memo,omitempty"`
-	CreatedAt  time.Time       `json:"created_at,omitempty"`
-}
-
-// // ISnapshotStore snapshot store interface
-// type ISnapshotStore interface {
-// 	Save(ctx context.Context, snapshot *Snapshot) error
-// 	Find(ctx context.Context, snapshotID string) (*Snapshot, error)
-// 	DeleteByTime(t time.Time) error
-
-// }
 
 // WalletService wallet service interface
 type WalletService interface {

@@ -57,11 +57,18 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 			return e
 		}
 
+		// add transaction
+		transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeSupply, output, nil)
+		if e = w.transactionStore.Create(ctx, tx, transaction); e != nil {
+			log.WithError(e).Errorln("create transaction error")
+			return e
+		}
+
+		// add transfer task
 		transferAction := core.TransferAction{
 			Source:        core.ActionTypeMint,
 			TransactionID: followID,
 		}
-
 		return w.transferOut(ctx, userID, followID, output.TraceID, assetID, ctokens, &transferAction)
 	})
 }
