@@ -10,7 +10,9 @@ import (
 )
 
 // Handle handle rest request
-func Handle(marketStore core.IMarketStore,
+func Handle(
+	userStore core.UserStore,
+	marketStore core.IMarketStore,
 	supplyStore core.ISupplyStore,
 	borrowStore core.IBorrowStore,
 	blockService core.IBlockService,
@@ -25,12 +27,12 @@ func Handle(marketStore core.IMarketStore,
 
 	router.Get("/markets", allMarketsHandler(marketStore, supplyStore, borrowStore, marketService))
 	router.Get("/markets/{asset}", marketHandler(marketStore, supplyStore, borrowStore, marketService))
-	router.Get("/liquidities/{user}", liquidityHandler(blockService, accountService))
+	router.Get("/liquidities/{address}", liquidityHandler(userStore, blockService, accountService))
 
 	// supplies?user=xxxxx&asset=xxxxx
-	router.Get("/supplies", suppliesHandler(marketStore, supplyStore, priceService, blockService))
+	router.Get("/supplies", suppliesHandler(userStore, marketStore, supplyStore, priceService, blockService))
 	// borrows?user=xxxxx&asset=xxxx
-	router.Get("/borrows", borrowsHandler(marketStore, borrowStore, priceService, blockService))
+	router.Get("/borrows", borrowsHandler(userStore, marketStore, borrowStore, priceService, blockService))
 
 	return router
 }

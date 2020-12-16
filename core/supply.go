@@ -11,7 +11,7 @@ import (
 // Supply supply info
 type Supply struct {
 	ID            uint64          `sql:"PRIMARY_KEY;AUTO_INCREMENT" json:"id"`
-	UserID        string          `sql:"size:36;unique_index:supply_idx" json:"user_id"`
+	UserID        string          `sql:"size:36;unique_index:supply_idx" json:"-"`
 	CTokenAssetID string          `sql:"size:36;unique_index:supply_idx" json:"ctoken_asset_id"`
 	Collaterals   decimal.Decimal `sql:"type:decimal(32,16)" json:"collaterals"`
 	Version       int64           `sql:"default:0" json:"version"`

@@ -8,13 +8,13 @@ import (
 	"net/http"
 )
 
-func suppliesHandler(marketStr core.IMarketStore, supplyStr core.ISupplyStore, priceSrv core.IPriceOracleService, blockSrv core.IBlockService) http.HandlerFunc {
+func suppliesHandler(userStr core.UserStore, marketStr core.IMarketStore, supplyStr core.ISupplyStore, priceSrv core.IPriceOracleService, blockSrv core.IBlockService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
 		var params struct {
-			UserID string `json:"user"`
-			Asset  string `json:"asset"`
+			Address string `json:"address"`
+			Asset   string `json:"asset"`
 		}
 
 		if e := param.Binding(r, &params); e != nil {
@@ -23,34 +23,41 @@ func suppliesHandler(marketStr core.IMarketStore, supplyStr core.ISupplyStore, p
 		}
 
 		supplyViews := make([]*views.Supply, 0)
-		if params.Asset != "" && params.UserID != "" {
+		if params.Asset != "" && params.Address != "" {
 			market, _, e := marketStr.Find(ctx, params.Asset)
 			if e != nil {
 				render.BadRequest(w, e)
 				return
 			}
-			supply, _, e := supplyStr.Find(ctx, params.UserID, market.CTokenAssetID)
+			user, e := userStr.FindByAddress(ctx, params.Address)
 			if e != nil {
 				render.BadRequest(w, e)
 				return
 			}
-			v := convert2SupplyView(market, supply)
+
+			supply, _, e := supplyStr.Find(ctx, user.UserID, market.CTokenAssetID)
+			if e != nil {
+				render.BadRequest(w, e)
+				return
+			}
+			v := convert2SupplyView(user.Address, supply)
 
 			supplyViews = append(supplyViews, v)
-		} else if params.UserID != "" {
-			supplies, e := supplyStr.FindByUser(ctx, params.UserID)
+		} else if params.Address != "" {
+			user, e := userStr.FindByAddress(ctx, params.Address)
+			if e != nil {
+				render.BadRequest(w, e)
+				return
+			}
+
+			supplies, e := supplyStr.FindByUser(ctx, user.UserID)
 			if e != nil {
 				render.BadRequest(w, e)
 				return
 			}
 
 			for _, s := range supplies {
-				market, _, e := marketStr.FindByCToken(ctx, s.CTokenAssetID)
-				if e != nil {
-					continue
-				}
-
-				v := convert2SupplyView(market, s)
+				v := convert2SupplyView(user.Address, s)
 
 				supplyViews = append(supplyViews, v)
 			}
@@ -67,7 +74,7 @@ func suppliesHandler(marketStr core.IMarketStore, supplyStr core.ISupplyStore, p
 			}
 
 			for _, s := range supplies {
-				v := convert2SupplyView(market, s)
+				v := convert2SupplyView(core.BuildUserAddress(s.UserID), s)
 
 				supplyViews = append(supplyViews, v)
 			}
@@ -79,11 +86,7 @@ func suppliesHandler(marketStr core.IMarketStore, supplyStr core.ISupplyStore, p
 			}
 
 			for _, s := range supplies {
-				market, _, e := marketStr.FindByCToken(ctx, s.CTokenAssetID)
-				if e != nil {
-					continue
-				}
-				v := convert2SupplyView(market, s)
+				v := convert2SupplyView(core.BuildUserAddress(s.UserID), s)
 
 				supplyViews = append(supplyViews, v)
 			}
@@ -93,9 +96,10 @@ func suppliesHandler(marketStr core.IMarketStore, supplyStr core.ISupplyStore, p
 	}
 }
 
-func convert2SupplyView(market *core.Market, supply *core.Supply) *views.Supply {
+func convert2SupplyView(address string, supply *core.Supply) *views.Supply {
 	supplyView := views.Supply{
-		Supply: *supply,
+		Supply:  *supply,
+		Address: address,
 	}
 
 	return &supplyView

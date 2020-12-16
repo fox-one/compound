@@ -8,13 +8,13 @@ import (
 	"net/http"
 )
 
-func borrowsHandler(marketStr core.IMarketStore, borrowStr core.IBorrowStore, priceSrv core.IPriceOracleService, blockSrv core.IBlockService) http.HandlerFunc {
+func borrowsHandler(userStr core.UserStore, marketStr core.IMarketStore, borrowStr core.IBorrowStore, priceSrv core.IPriceOracleService, blockSrv core.IBlockService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
 		var params struct {
-			UserID string `json:"user"`
-			Asset  string `json:"asset"`
+			Address string `json:"address"`
+			Asset   string `json:"asset"`
 		}
 
 		if e := param.Binding(r, &params); e != nil {
@@ -23,35 +23,42 @@ func borrowsHandler(marketStr core.IMarketStore, borrowStr core.IBorrowStore, pr
 		}
 
 		borrowViews := make([]*views.Borrow, 0)
-		if params.Asset != "" && params.UserID != "" {
+		if params.Asset != "" && params.Address != "" {
 			market, _, e := marketStr.FindBySymbol(ctx, params.Asset)
 			if e != nil {
 				render.BadRequest(w, e)
 				return
 			}
-			borrow, _, e := borrowStr.Find(ctx, params.UserID, market.AssetID)
+			user, e := userStr.FindByAddress(ctx, params.Address)
 			if e != nil {
 				render.BadRequest(w, e)
 				return
 			}
 
-			v := convert2BorrowView(market, borrow)
+			borrow, _, e := borrowStr.Find(ctx, user.UserID, market.AssetID)
+			if e != nil {
+				render.BadRequest(w, e)
+				return
+			}
+
+			v := convert2BorrowView(user.Address, borrow)
 
 			borrowViews = append(borrowViews, v)
-		} else if params.UserID != "" {
-			borrows, e := borrowStr.FindByUser(ctx, params.UserID)
+		} else if params.Address != "" {
+			user, e := userStr.FindByAddress(ctx, params.Address)
+			if e != nil {
+				render.BadRequest(w, e)
+				return
+			}
+
+			borrows, e := borrowStr.FindByUser(ctx, user.UserID)
 			if e != nil {
 				render.BadRequest(w, e)
 				return
 			}
 
 			for _, b := range borrows {
-				market, _, e := marketStr.Find(ctx, b.AssetID)
-				if e != nil {
-					continue
-				}
-
-				v := convert2BorrowView(market, b)
+				v := convert2BorrowView(user.Address, b)
 
 				borrowViews = append(borrowViews, v)
 			}
@@ -68,7 +75,7 @@ func borrowsHandler(marketStr core.IMarketStore, borrowStr core.IBorrowStore, pr
 			}
 
 			for _, b := range borrows {
-				v := convert2BorrowView(market, b)
+				v := convert2BorrowView(core.BuildUserAddress(b.UserID), b)
 
 				borrowViews = append(borrowViews, v)
 			}
@@ -80,11 +87,7 @@ func borrowsHandler(marketStr core.IMarketStore, borrowStr core.IBorrowStore, pr
 			}
 
 			for _, b := range borrows {
-				market, _, e := marketStr.Find(ctx, b.AssetID)
-				if e != nil {
-					continue
-				}
-				v := convert2BorrowView(market, b)
+				v := convert2BorrowView(core.BuildUserAddress(b.UserID), b)
 
 				borrowViews = append(borrowViews, v)
 			}
@@ -94,9 +97,10 @@ func borrowsHandler(marketStr core.IMarketStore, borrowStr core.IBorrowStore, pr
 	}
 }
 
-func convert2BorrowView(market *core.Market, borrow *core.Borrow) *views.Borrow {
+func convert2BorrowView(address string, borrow *core.Borrow) *views.Borrow {
 	borrowView := views.Borrow{
-		Borrow: *borrow,
+		Borrow:  *borrow,
+		Address: address,
 	}
 
 	return &borrowView

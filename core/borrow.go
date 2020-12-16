@@ -12,7 +12,7 @@ import (
 // Borrow borrow info
 type Borrow struct {
 	ID            uint64          `sql:"PRIMARY_KEY;AUTO_INCREMENT" json:"id"`
-	UserID        string          `sql:"size:36;unique_index:borrow_idx" json:"user_id"`
+	UserID        string          `sql:"size:36;unique_index:borrow_idx" json:"-"`
 	AssetID       string          `sql:"size:36;unique_index:borrow_idx" json:"asset_id"`
 	Principal     decimal.Decimal `sql:"type:decimal(32,16)" json:"principal"`
 	InterestIndex decimal.Decimal `sql:"type:decimal(32,16);default:1" json:"interest_index"`

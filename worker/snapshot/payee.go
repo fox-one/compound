@@ -159,7 +159,8 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 
 	//upsert user
 	user := core.User{
-		UserID: userID.String(),
+		UserID:  userID.String(),
+		Address: core.BuildUserAddress(userID.String()),
 	}
 	if err = w.userStore.Save(ctx, &user); err != nil {
 		return err

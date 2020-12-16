@@ -14,14 +14,18 @@ import (
 func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
 	log := logger.FromContext(ctx).WithField("worker", "seize_token")
 
-	//TODO 使用supply_id, borrow_id
-	var seizedUser uuid.UUID
+	var seizedAddress uuid.UUID
 	var seizedAsset uuid.UUID
-	if _, err := mtg.Scan(body, &seizedUser, &seizedAsset); err != nil {
+	if _, err := mtg.Scan(body, &seizedAddress, &seizedAsset); err != nil {
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrInvalidArgument, "")
 	}
 
-	seizedUserID := seizedUser.String()
+	seizedUser, e := w.userStore.FindByAddress(ctx, seizedAddress.String())
+	if e != nil {
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrInvalidArgument, "")
+	}
+
+	seizedUserID := seizedUser.UserID
 	seizedAssetID := seizedAsset.String()
 
 	userPayAmount := output.Amount.Abs()

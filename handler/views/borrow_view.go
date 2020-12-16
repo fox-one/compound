@@ -7,4 +7,5 @@ import (
 // Borrow supply view
 type Borrow struct {
 	core.Borrow
+	Address string `json:"address"`
 }

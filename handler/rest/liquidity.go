@@ -9,12 +9,12 @@ import (
 	"time"
 )
 
-func liquidityHandler(blockSrv core.IBlockService, accountSrv core.IAccountService) http.HandlerFunc {
+func liquidityHandler(userStr core.UserStore, blockSrv core.IBlockService, accountSrv core.IAccountService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
 		var params struct {
-			UserID string `json:"user"`
+			Address string `json:"address"`
 		}
 
 		if e := param.Binding(r, &params); e != nil {
@@ -27,7 +27,14 @@ func liquidityHandler(blockSrv core.IBlockService, accountSrv core.IAccountServi
 			render.BadRequest(w, e)
 			return
 		}
-		liqudity, e := accountSrv.CalculateAccountLiquidity(ctx, params.UserID, blockNum)
+
+		user, e := userStr.FindByAddress(ctx, params.Address)
+		if e != nil {
+			render.BadRequest(w, e)
+			return
+		}
+
+		liqudity, e := accountSrv.CalculateAccountLiquidity(ctx, user.UserID, blockNum)
 		if e != nil {
 			render.BadRequest(w, e)
 			return
