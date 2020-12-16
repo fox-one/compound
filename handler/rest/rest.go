@@ -29,9 +29,9 @@ func Handle(
 	router.Get("/markets/{asset}", marketHandler(marketStore, supplyStore, borrowStore, marketService))
 	router.Get("/liquidities/{address}", liquidityHandler(userStore, blockService, accountService))
 
-	// supplies?user=xxxxx&asset=xxxxx
+	// supplies?address=xxxxx&asset=xxxxx
 	router.Get("/supplies", suppliesHandler(userStore, marketStore, supplyStore, priceService, blockService))
-	// borrows?user=xxxxx&asset=xxxx
+	// borrows?address=xxxxx&asset=xxxx
 	router.Get("/borrows", borrowsHandler(userStore, marketStore, borrowStore, priceService, blockService))
 
 	return router
