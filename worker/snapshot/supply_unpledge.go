@@ -104,8 +104,8 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 
 		// add transfer
 		transferAction := core.TransferAction{
-			Source:        core.ActionTypeUnpledgeTransfer,
-			TransactionID: followID,
+			Source:   core.ActionTypeUnpledgeTransfer,
+			FollowID: followID,
 		}
 		return w.transferOut(ctx, userID, followID, output.TraceID, market.CTokenAssetID, unpledgedAmount, &transferAction)
 	})

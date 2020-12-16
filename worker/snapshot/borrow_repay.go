@@ -90,8 +90,8 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 		if redundantAmount.GreaterThan(decimal.Zero) {
 			refundAmount := redundantAmount.Truncate(8)
 			transferAction := core.TransferAction{
-				Source:        core.ActionTypeRefundTransfer,
-				TransactionID: followID,
+				Source:   core.ActionTypeRepayRefundTransfer,
+				FollowID: followID,
 			}
 
 			return w.transferOut(ctx, userID, followID, output.TraceID, assetID, refundAmount, &transferAction)

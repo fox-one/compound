@@ -66,8 +66,8 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 
 		// add transfer task
 		transferAction := core.TransferAction{
-			Source:        core.ActionTypeMint,
-			TransactionID: followID,
+			Source:   core.ActionTypeMint,
+			FollowID: followID,
 		}
 		return w.transferOut(ctx, userID, followID, output.TraceID, assetID, ctokens, &transferAction)
 	})

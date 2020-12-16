@@ -104,8 +104,8 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 
 		//transfer borrowed asset
 		transferAction := core.TransferAction{
-			Source:        core.ActionTypeBorrowTransfer,
-			TransactionID: followID,
+			Source:   core.ActionTypeBorrowTransfer,
+			FollowID: followID,
 		}
 		return w.transferOut(ctx, userID, followID, output.TraceID, assetID, borrowAmount, &transferAction)
 	})

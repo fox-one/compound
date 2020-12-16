@@ -200,8 +200,8 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 
 		// transfer
 		transferAction := core.TransferAction{
-			Source:        core.ActionTypeSeizeTokenTransfer,
-			TransactionID: followID,
+			Source:   core.ActionTypeSeizeTokenTransfer,
+			FollowID: followID,
 		}
 		if e = w.transferOut(ctx, userID, followID, output.TraceID, supplyMarket.AssetID, seizedAmount, &transferAction); e != nil {
 			return e
@@ -212,8 +212,8 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 			refundAmount := redundantAmount.Truncate(8)
 
 			refundTransferAction := core.TransferAction{
-				Source:        core.ActionTypeRefundTransfer,
-				TransactionID: followID,
+				Source:   core.ActionTypeSeizeRefundTransfer,
+				FollowID: followID,
 			}
 			if e = w.transferOut(ctx, userID, followID, output.TraceID, output.AssetID, refundAmount, &refundTransferAction); e != nil {
 				return e

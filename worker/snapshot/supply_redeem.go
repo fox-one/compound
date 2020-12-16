@@ -72,8 +72,8 @@ func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, user
 
 		// transfer
 		transferAction := core.TransferAction{
-			Source:        core.ActionTypeRedeemTransfer,
-			TransactionID: followID,
+			Source:   core.ActionTypeRedeemTransfer,
+			FollowID: followID,
 		}
 		return w.transferOut(ctx, userID, followID, output.TraceID, market.AssetID, amount, &transferAction)
 	})

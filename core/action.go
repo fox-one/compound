@@ -33,6 +33,10 @@ const (
 	ActionTypeSeizeTokenTransfer
 	// ActionTypeRefundTransfer refund
 	ActionTypeRefundTransfer
+	// ActionTypeRepayRefundTransfer repay refund
+	ActionTypeRepayRefundTransfer
+	// ActionTypeSeizeRefundTransfer seize refund
+	ActionTypeSeizeRefundTransfer
 	// ActionTypeProposalAddMarket add market
 	ActionTypeProposalAddMarket
 	// ActionTypeProposalUpdateMarket update market

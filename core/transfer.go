@@ -7,9 +7,10 @@ import (
 
 // TransferAction  transfer action
 type TransferAction struct {
-	Source        ActionType `json:"s,omitempty"`
-	TransactionID string     `json:"t,omitempty"`
-	Message       string     `json:"m,omitempty"`
+	Code     int        `json:"c,omitempty"`
+	Source   ActionType `json:"s,omitempty"`
+	FollowID string     `json:"f,omitempty"`
+	Message  string     `json:"m,omitempty"`
 }
 
 // Format format TransferAction to string

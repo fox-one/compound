@@ -33,7 +33,7 @@ const (
 	ErrInvalidPrice ErrorCode = 100108
 	// ErrBorrowNotAllowed borrow not allowed
 	ErrBorrowNotAllowed ErrorCode = 100109
-	// ErrBorrowNotAllowed pledge not allowed
+	// ErrPledgeNotAllowed pledge not allowed
 	ErrPledgeNotAllowed ErrorCode = 100110
 )
 
