@@ -86,7 +86,6 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 
 	return w.db.Tx(func(tx *db.DB) error {
 		supply.Collaterals = supply.Collaterals.Sub(unpledgedAmount).Truncate(16)
-
 		if e = w.supplyStore.Update(ctx, tx, supply); e != nil {
 			log.Errorln(e)
 			return e

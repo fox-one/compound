@@ -10,9 +10,10 @@ import (
 
 func (w *Payee) handleRefundEvent(ctx context.Context, output *core.Output, userID, followID string, errCode core.ErrorCode, msg string) error {
 	transferAction := core.TransferAction{
-		Code:    int(errCode),
-		Source:  core.ActionTypeRefundTransfer,
-		Message: msg,
+		Code:     int(errCode),
+		Source:   core.ActionTypeRefundTransfer,
+		FollowID: followID,
+		Message:  msg,
 	}
 	memoStr, e := transferAction.Format()
 	if e != nil {

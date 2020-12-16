@@ -137,7 +137,8 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 			seizedAmount = repayValue.Div(seizedPrice)
 		}
 
-		seizedCTokens := seizedAmount.Div(supplyExchangeRate)
+		seizedAmount = seizedAmount.Truncate(8)
+		seizedCTokens := seizedAmount.Div(supplyExchangeRate).Truncate(16)
 		//update supply
 		supply.Collaterals = supply.Collaterals.Sub(seizedCTokens).Truncate(16)
 		if e = w.supplyStore.Update(ctx, tx, supply); e != nil {
@@ -154,9 +155,9 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 		}
 
 		// update borrow account and borrow market
-		reallyRepayAmount := repayValue.Div(borrowPrice)
-		redundantAmount := userPayAmount.Sub(reallyRepayAmount)
-		newBorrowBalance := borrowBalance.Sub(reallyRepayAmount).Truncate(8)
+		reallyRepayAmount := repayValue.Div(borrowPrice).Truncate(16)
+		redundantAmount := userPayAmount.Sub(reallyRepayAmount).Truncate(16)
+		newBorrowBalance := borrowBalance.Sub(reallyRepayAmount).Truncate(16)
 		newIndex := borrowMarket.BorrowIndex
 		if newBorrowBalance.LessThanOrEqual(decimal.Zero) {
 			newBorrowBalance = decimal.Zero
