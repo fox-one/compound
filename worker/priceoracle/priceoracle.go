@@ -53,6 +53,10 @@ func (w *Worker) Run(ctx context.Context) error {
 func (w *Worker) onWork(ctx context.Context) error {
 	log := logger.FromContext(ctx).WithField("worker", "priceoracle")
 
+	// delete expired price
+	t := time.Now().AddDate(0, 0, -7)
+	w.PriceStore.DeleteByTime(t)
+
 	markets, err := w.MarketStore.All(ctx)
 	if err != nil {
 		log.Errorln("fetch all markets error:", err)

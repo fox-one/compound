@@ -19,7 +19,7 @@ type Price struct {
 	Content     types.JSONText  `sql:"type:varchar(1024)" json:"content,omitempty"`
 	Version     int64           `sql:"default:0" json:"version,omitempty"`
 	PassedAt    sql.NullTime    `json:"passed_at,omitempty"`
-	CreatedAt   time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at,omitempty"`
+	CreatedAt   time.Time       `sql:"default:CURRENT_TIMESTAMP;index:idx_prices_created_at" json:"created_at,omitempty"`
 	UpdatedAt   time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at,omitempty"`
 }
 
@@ -35,6 +35,7 @@ type IPriceStore interface {
 	Create(ctx context.Context, tx *db.DB, price *Price) error
 	FindByAssetBlock(ctx context.Context, assetID string, blockNumber int64) (*Price, bool, error)
 	Update(ctx context.Context, tx *db.DB, price *Price) error
+	DeleteByTime(t time.Time) error
 }
 
 // IPriceOracleService pracle price service interface

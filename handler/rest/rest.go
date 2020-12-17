@@ -15,6 +15,7 @@ func Handle(
 	marketStore core.IMarketStore,
 	supplyStore core.ISupplyStore,
 	borrowStore core.IBorrowStore,
+	transactionStore core.TransactionStore,
 	blockService core.IBlockService,
 	priceService core.IPriceOracleService,
 	accountService core.IAccountService,
@@ -33,6 +34,7 @@ func Handle(
 	router.Get("/supplies", suppliesHandler(userStore, marketStore, supplyStore, priceService, blockService))
 	// borrows?address=xxxxx&asset=xxxx
 	router.Get("/borrows", borrowsHandler(userStore, marketStore, borrowStore, priceService, blockService))
+	router.Get("/transactions", transactionsHandler(transactionStore))
 
 	return router
 }

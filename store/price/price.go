@@ -3,6 +3,7 @@ package price
 import (
 	"compound/core"
 	"context"
+	"time"
 
 	"github.com/fox-one/pkg/store/db"
 	"github.com/jinzhu/gorm"
@@ -47,4 +48,8 @@ func (s *priceStore) Update(ctx context.Context, tx *db.DB, price *core.Price) e
 	version := price.Version
 	price.Version++
 	return tx.Update().Model(core.Price{}).Where("asset_id=? and block_number=? and version=?", price.AssetID, price.BlockNumber, version).Updates(price).Error
+}
+
+func (s *priceStore) DeleteByTime(t time.Time) error {
+	return s.db.Update().Where("created_at < ?", t).Delete(core.Price{}).Error
 }
