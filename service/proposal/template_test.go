@@ -1,4 +1,4 @@
-package parliament
+package proposal
 
 import (
 	"compound/core"

@@ -35,7 +35,7 @@ type IPriceStore interface {
 	Create(ctx context.Context, tx *db.DB, price *Price) error
 	FindByAssetBlock(ctx context.Context, assetID string, blockNumber int64) (*Price, bool, error)
 	Update(ctx context.Context, tx *db.DB, price *Price) error
-	DeleteByTime(t time.Time) error
+	DeleteByTime(ctx context.Context, t time.Time) error
 }
 
 // IPriceOracleService pracle price service interface

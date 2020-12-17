@@ -55,7 +55,7 @@ func (w *Worker) onWork(ctx context.Context) error {
 
 	// delete expired price
 	t := time.Now().AddDate(0, 0, -7)
-	w.PriceStore.DeleteByTime(t)
+	w.PriceStore.DeleteByTime(ctx, t)
 
 	markets, err := w.MarketStore.All(ctx)
 	if err != nil {

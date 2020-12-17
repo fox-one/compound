@@ -1,4 +1,4 @@
-package parliament
+package proposal
 
 import (
 	"compound/core"
@@ -18,7 +18,7 @@ func New(
 	marketStore core.IMarketStore,
 	messages core.MessageStore,
 ) core.ProposalService {
-	return &parliament{
+	return &service{
 		system:      system,
 		client:      client,
 		marketStore: marketStore,
@@ -26,14 +26,14 @@ func New(
 	}
 }
 
-type parliament struct {
+type service struct {
 	system      *core.System
 	client      *mixin.Client
 	marketStore core.IMarketStore
 	messages    core.MessageStore
 }
 
-func (p *parliament) ProposalCreated(ctx context.Context, proposal *core.Proposal, by *core.Member) error {
+func (p *service) ProposalCreated(ctx context.Context, proposal *core.Proposal, by *core.Member) error {
 	buttons := generateButtons(ctx, p.marketStore, proposal)
 
 	trace, _ := uuid.FromString(proposal.TraceID)
@@ -64,7 +64,7 @@ func (p *parliament) ProposalCreated(ctx context.Context, proposal *core.Proposa
 	buttonsData, _ := json.Marshal(buttons)
 
 	post := renderProposal(proposal)
-
+	
 	var messages []*core.Message
 	for _, admin := range p.system.Admins {
 		// post
@@ -91,7 +91,7 @@ func (p *parliament) ProposalCreated(ctx context.Context, proposal *core.Proposa
 	return p.messages.Create(ctx, messages)
 }
 
-func (p *parliament) ProposalApproved(ctx context.Context, proposal *core.Proposal, by *core.Member) error {
+func (p *service) ProposalApproved(ctx context.Context, proposal *core.Proposal, by *core.Member) error {
 	var messages []*core.Message
 
 	post := renderApprovedBy(proposal, by)
@@ -112,7 +112,7 @@ func (p *parliament) ProposalApproved(ctx context.Context, proposal *core.Propos
 	return p.messages.Create(ctx, messages)
 }
 
-func (p *parliament) ProposalPassed(ctx context.Context, proposal *core.Proposal) error {
+func (p *service) ProposalPassed(ctx context.Context, proposal *core.Proposal) error {
 	var messages []*core.Message
 
 	post := []byte(passedTpl)
