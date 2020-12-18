@@ -45,9 +45,20 @@ func New(system *core.System, dapp *core.Wallet, marketStore core.IMarketStore, 
 
 // Run run worker
 func (w *Worker) Run(ctx context.Context) error {
-	return w.StartTick(ctx, func(ctx context.Context) error {
-		return w.onWork(ctx)
-	})
+	dur := time.Millisecond
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(dur):
+			if err := w.onWork(ctx); err == nil {
+				dur = 100 * time.Millisecond
+			} else {
+				dur = 300 * time.Millisecond
+			}
+		}
+	}
 }
 
 func (w *Worker) onWork(ctx context.Context) error {
