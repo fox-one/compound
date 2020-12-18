@@ -11,7 +11,7 @@ type Config struct {
 	Genesis     int64       `json:"genesis"`
 	Location    string      `json:"location"`
 	DB          db.Config   `json:"db"`
-	Dapp        Dapp        `json:"main_wallet"`
+	Dapp        Dapp        `json:"dapp"`
 	Group       Group       `json:"group"`
 	PriceOracle PriceOracle `json:"price_oracle"`
 }

@@ -1,6 +1,12 @@
 package cmd
 
 import (
+	"compound/pkg/id"
+	"encoding/json"
+	"fmt"
+
+	"github.com/fox-one/mixin-sdk-go"
+	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
 )
 
@@ -46,54 +52,57 @@ var assetsCmd = &cobra.Command{
 	Aliases: []string{"as"},
 	Short:   "query wallet assets",
 	Run: func(cmd *cobra.Command, args []string) {
-		// mainWallet := provideMainWallet()
-		// assets, e := mainWallet.Client.ReadAssets(cmd.Context())
-		// if e != nil {
-		// 	panic(e)
-		// }
+		mainWallet := provideDapp()
+		assets, e := mainWallet.Client.ReadAssets(cmd.Context())
+		if e != nil {
+			panic(e)
+		}
 
-		// result := make([]*mixin.Asset, 0)
-		// for _, a := range assets {
-		// 	if a.Balance.GreaterThan(decimal.Zero) {
-		// 		result = append(result, a)
-		// 	}
-		// }
+		result := make([]*mixin.Asset, 0)
+		for _, a := range assets {
+			if a.Balance.GreaterThan(decimal.Zero) {
+				result = append(result, a)
+			}
+		}
 
-		// abs, e := json.Marshal(result)
-		// if e != nil {
-		// 	panic(e)
-		// }
+		abs, e := json.Marshal(result)
+		if e != nil {
+			panic(e)
+		}
 
-		// fmt.Println(string(abs))
+		fmt.Println(string(abs))
 	},
 }
 
-// var withdrawCmd = &cobra.Command{
-// 	Use:     "withdraw",
-// 	Aliases: []string{"w"},
-// 	Short:   "query wallet assets",
-// 	Run: func(cmd *cobra.Command, args []string) {
-// 		// mainWallet := provideMainWallet()
-// 		// s, e := mainWallet.Client.Transfer(cmd.Context(), &mixin.TransferInput{
-// 		// 	AssetID:    "4d8c508b-91c5-375b-92b0-ee702ed2dac5",
-// 		// 	OpponentID: "273cf3ab-871c-47ff-b631-0fed0ac613a9",
-// 		// 	Amount:     decimal.NewFromFloat(0.5),
-// 		// 	TraceID:    id.GenTraceID(),
-// 		// 	Memo:       `{"srv":"brw-tran"}`,
-// 		// }, mainWallet.Pin)
+var dappWithdrawCmd = &cobra.Command{
+	Use:     "dwithdraw",
+	Aliases: []string{"dw"},
+	Short:   "query wallet assets",
+	Run: func(cmd *cobra.Command, args []string) {
+		mixin.UseApiHost(mixin.ZeromeshApiHost)
+		dapp := provideDapp()
+		cmd.Println("p:", dapp.Pin)
+		cmd.Println(dapp.Client.ClientID)
+		s, e := dapp.Client.Transfer(cmd.Context(), &mixin.TransferInput{
+			AssetID:    "965e5c6e-434c-3fa9-b780-c50f43cd955c",
+			OpponentID: "8be122b4-596f-4e4f-a307-978bed0ffb75",
+			Amount:     decimal.NewFromFloat(1),
+			TraceID:    id.GenTraceID(),
+			Memo:       "w",
+		}, dapp.Pin)
 
-// 		// if e != nil {
-// 		// 	panic(e)
-// 		// }
+		if e != nil {
+			panic(e)
+		}
 
-// 		// fmt.Println(s)
-// 	},
-// }
+		fmt.Println(s)
+	},
+}
 
 func init() {
 	rootCmd.AddCommand(walletCmd)
 	walletCmd.Flags().StringP("name", "n", "compound", "")
 
 	rootCmd.AddCommand(assetsCmd)
-	rootCmd.AddCommand(withdrawCmd)
+	rootCmd.AddCommand(dappWithdrawCmd)
 }
