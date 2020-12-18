@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
-	"time"
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/property"
@@ -93,20 +92,9 @@ func NewPayee(db *db.DB,
 
 // Run run worker
 func (w *Payee) Run(ctx context.Context) error {
-	dur := time.Millisecond
-
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(dur):
-			if err := w.onWork(ctx); err == nil {
-				dur = 100 * time.Millisecond
-			} else {
-				dur = 300 * time.Millisecond
-			}
-		}
-	}
+	return w.StartTick(ctx, func(ctx context.Context) error {
+		return w.onWork(ctx)
+	})
 }
 
 func (w *Payee) onWork(ctx context.Context) error {

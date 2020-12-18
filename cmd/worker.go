@@ -66,8 +66,9 @@ var workerCmd = &cobra.Command{
 
 		var g errgroup.Group
 		for _, w := range workers {
+			worker := w
 			g.Go(func() error {
-				return w.Run(ctx)
+				return worker.Run(ctx)
 			})
 		}
 
