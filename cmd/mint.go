@@ -1,6 +1,11 @@
 package cmd
 
 import (
+	"compound/pkg/id"
+
+	"github.com/fox-one/mixin-sdk-go"
+	"github.com/fox-one/pkg/qrcode"
+	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
 )
 
@@ -9,36 +14,41 @@ var injectMintTokenCmd = &cobra.Command{
 	Aliases: []string{"imt"},
 	Short:   "inject mint token",
 	Run: func(cmd *cobra.Command, args []string) {
-		// assetID, e := cmd.Flags().GetString("asset")
-		// if e != nil || assetID == "" {
-		// 	panic(e)
-		// }
+		assetID, e := cmd.Flags().GetString("asset")
+		if e != nil || assetID == "" {
+			panic(e)
+		}
 
-		// amount, e := cmd.Flags().GetString("amount")
-		// if e != nil {
-		// 	panic(e)
-		// }
-		// amountNum, e := decimal.NewFromString(amount)
-		// if e != nil || amountNum.LessThanOrEqual(decimal.Zero) {
-		// 	panic("invalid amount")
-		// }
+		amount, e := cmd.Flags().GetString("amount")
+		if e != nil {
+			panic(e)
+		}
+		amountNum, e := decimal.NewFromString(amount)
+		if e != nil || amountNum.LessThanOrEqual(decimal.Zero) {
+			panic("invalid amount")
+		}
 
-		// mainWallet := provideMainWallet()
-		// walletService := provideWalletService(mainWallet)
+		ctx := cmd.Context()
+		system := provideSystem()
+		dapp := provideDapp()
 
-		// action := core.NewAction()
-		// action[core.ActionKeyService] = core.ActionServiceInjectMintToken
-		// memoStr, e := action.Format()
-		// if e != nil {
-		// 	panic(e)
-		// }
+		input := mixin.TransferInput{
+			AssetID: assetID,
+			Amount:  amountNum,
+			TraceID: id.GenTraceID(),
+			Memo:    "mint ctoken",
+		}
+		input.OpponentMultisig.Receivers = system.MemberIDs()
+		input.OpponentMultisig.Threshold = system.Threshold
 
-		// url, e := walletService.PaySchemaURL(amountNum, assetID, mainWallet.Client.ClientID, id.GenTraceID(), memoStr)
-		// if e != nil {
-		// 	panic(e)
-		// }
+		payment, err := dapp.Client.VerifyPayment(ctx, input)
+		if err != nil {
+			panic(err)
+		}
 
-		// fmt.Println(url)
+		url := mixin.URL.Codes(payment.CodeID)
+		cmd.Println(url)
+		qrcode.Fprint(cmd.OutOrStdout(), url)
 	},
 }
 

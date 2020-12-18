@@ -260,4 +260,16 @@ func init() {
 	updateMarketCmd.Flags().String("m", "", "multiplier")
 	updateMarketCmd.Flags().String("jm", "", "jump multiplier")
 	updateMarketCmd.Flags().String("k", "", "kink")
+
+	updateMarketAdvanceCmd.Flags().String("s", "", "market symbol")
+	updateMarketAdvanceCmd.Flags().String("ie", "", "intial exchange rate")
+	updateMarketAdvanceCmd.Flags().String("rf", "", "reserve factor")
+	updateMarketAdvanceCmd.Flags().String("li", "", "liquidation incentive")
+	updateMarketAdvanceCmd.Flags().String("bc", "", "borrow cap")
+	updateMarketAdvanceCmd.Flags().String("cf", "", "collateral factor")
+	updateMarketAdvanceCmd.Flags().String("clf", "", "close factor")
+	updateMarketAdvanceCmd.Flags().String("br", "", "base rate")
+	updateMarketAdvanceCmd.Flags().String("m", "", "multiplier")
+	updateMarketAdvanceCmd.Flags().String("jm", "", "jump multiplier")
+	updateMarketAdvanceCmd.Flags().String("k", "", "kink")
 }
