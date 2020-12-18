@@ -1,6 +1,17 @@
 package cmd
 
 import (
+	"compound/core"
+	"compound/core/proposal"
+	"compound/pkg/id"
+	"compound/pkg/mtg"
+	"encoding/base64"
+	"strings"
+
+	"github.com/fox-one/mixin-sdk-go"
+	"github.com/fox-one/pkg/qrcode"
+	"github.com/fox-one/pkg/uuid"
+	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
 )
 
@@ -9,38 +20,56 @@ var addMarketCmd = &cobra.Command{
 	Aliases: []string{"am"},
 	Short:   "add market",
 	Run: func(cmd *cobra.Command, args []string) {
-		// mainWallet := provideMainWallet()
-		// walletService := provideWalletService(mainWallet)
-		// symbol, e := cmd.Flags().GetString("s")
-		// if e != nil || symbol == "" {
-		// 	panic("invalid symbol")
-		// }
-		// assetID, e := cmd.Flags().GetString("a")
-		// if e != nil || assetID == "" {
-		// 	panic("invalid assetID")
-		// }
-		// ctokenAssetID, e := cmd.Flags().GetString("c")
-		// if e != nil || ctokenAssetID == "" {
-		// 	panic("invalid ctokenAssetID")
-		// }
+		ctx := cmd.Context()
+		system := provideSystem()
+		dapp := provideDapp()
 
-		// amount := decimal.NewFromFloat(0.00000001)
-		// action := core.NewAction()
-		// action[core.ActionKeyService] = core.ActionServiceAddMarket
-		// action[core.ActionKeySymbol] = strings.ToUpper(symbol)
-		// action[core.ActionKeyAssetID] = assetID
-		// action[core.ActionKeyCTokenAssetID] = ctokenAssetID
-		// memoStr, e := action.Format()
-		// if e != nil {
-		// 	panic(e)
-		// }
+		clientID, _ := uuid.FromString(system.ClientID)
+		traceID, _ := uuid.FromString(id.GenTraceID())
 
-		// url, e := walletService.PaySchemaURL(amount, cfg.App.GasAssetID, mainWallet.Client.ClientID, id.GenTraceID(), memoStr)
-		// if e != nil {
-		// 	panic(e)
-		// }
+		symbol, e := cmd.Flags().GetString("s")
+		if e != nil || symbol == "" {
+			panic("invalid symbol")
+		}
+		assetID, e := cmd.Flags().GetString("a")
+		if e != nil || assetID == "" {
+			panic("invalid assetID")
+		}
+		ctokenAssetID, e := cmd.Flags().GetString("c")
+		if e != nil || ctokenAssetID == "" {
+			panic("invalid ctokenAssetID")
+		}
 
-		// fmt.Println(url)
+		addMarketReq := proposal.AddMarketReq{
+			Symbol:        strings.ToUpper(symbol),
+			AssetID:       assetID,
+			CTokenAssetID: ctokenAssetID,
+		}
+		memo, err := mtg.Encode(clientID, traceID, int(core.ActionTypeProposalAddMarket), addMarketReq)
+		if err != nil {
+			panic(err)
+		}
+
+		sign := mtg.Sign(memo, system.SignKey)
+		memo = mtg.Pack(memo, sign)
+
+		input := mixin.TransferInput{
+			AssetID: system.VoteAsset,
+			Amount:  system.VoteAmount,
+			TraceID: traceID.String(),
+			Memo:    base64.StdEncoding.EncodeToString(memo),
+		}
+		input.OpponentMultisig.Receivers = system.MemberIDs()
+		input.OpponentMultisig.Threshold = system.Threshold
+
+		payment, err := dapp.Client.VerifyPayment(ctx, input)
+		if err != nil {
+			panic(err)
+		}
+
+		url := mixin.URL.Codes(payment.CodeID)
+		cmd.Println(url)
+		qrcode.Fprint(cmd.OutOrStdout(), url)
 	},
 }
 
@@ -49,89 +78,117 @@ var updateMarketCmd = &cobra.Command{
 	Aliases: []string{"um"},
 	Short:   "update market",
 	Run: func(cmd *cobra.Command, args []string) {
-		// mainWallet := provideMainWallet()
-		// walletService := provideWalletService(mainWallet)
+		ctx := cmd.Context()
+		system := provideSystem()
+		dapp := provideDapp()
 
-		// action := core.NewAction()
-		// action[core.ActionKeyService] = core.ActionServiceUpdateMarket
-		// symbol, e := cmd.Flags().GetString("s")
-		// if e != nil || symbol == "" {
-		// 	panic("invalid symbol")
-		// }
-		// action[core.ActionKeySymbol] = strings.ToUpper(symbol)
+		clientID, _ := uuid.FromString(system.ClientID)
+		traceID, _ := uuid.FromString(id.GenTraceID())
 
-		// flag, e := cmd.Flags().GetString("ie")
-		// if e != nil {
-		// 	panic("invalid flag")
-		// }
-		// action[core.ActionKeyInitExchangeRate] = flag
+		updateMarketReq := proposal.UpdateMarketReq{}
 
-		// flag, e = cmd.Flags().GetString("rf")
-		// if e != nil {
-		// 	panic("invalid flag")
-		// }
-		// action[core.ActionKeyReserveFactor] = flag
+		symbol, e := cmd.Flags().GetString("s")
+		if e != nil || symbol == "" {
+			panic("invalid symbol")
+		}
+		updateMarketReq.Symbol = strings.ToUpper(symbol)
 
-		// flag, e = cmd.Flags().GetString("li")
-		// if e != nil {
-		// 	panic("invalid flag")
-		// }
-		// action[core.ActionKeyLiquidationIncentive] = flag
+		flag, e := cmd.Flags().GetString("ie")
+		if e != nil {
+			panic("invalid flag")
+		}
+		ie, _ := decimal.NewFromString(flag)
+		updateMarketReq.InitExchange = ie
 
-		// flag, e = cmd.Flags().GetString("bc")
-		// if e != nil {
-		// 	panic("invalid flag")
-		// }
-		// action[core.ActionKeyBorrowCap] = flag
+		flag, e = cmd.Flags().GetString("rf")
+		if e != nil {
+			panic("invalid flag")
+		}
+		rf, _ := decimal.NewFromString(flag)
+		updateMarketReq.ReserveFactor = rf
 
-		// flag, e = cmd.Flags().GetString("cf")
-		// if e != nil {
-		// 	panic("invalid flag")
-		// }
-		// action[core.ActionKeyCollateralFactor] = flag
+		flag, e = cmd.Flags().GetString("li")
+		if e != nil {
+			panic("invalid flag")
+		}
+		li, _ := decimal.NewFromString(flag)
+		updateMarketReq.LiquidationIncentive = li
 
-		// flag, e = cmd.Flags().GetString("clf")
-		// if e != nil {
-		// 	panic("invalid flag")
-		// }
-		// action[core.ActionKeyCloseFactor] = flag
+		flag, e = cmd.Flags().GetString("bc")
+		if e != nil {
+			panic("invalid flag")
+		}
+		bc, _ := decimal.NewFromString(flag)
+		updateMarketReq.BorrowCap = bc
 
-		// flag, e = cmd.Flags().GetString("br")
-		// if e != nil {
-		// 	panic("invalid flag")
-		// }
-		// action[core.ActionKeyBaseRate] = flag
+		flag, e = cmd.Flags().GetString("cf")
+		if e != nil {
+			panic("invalid flag")
+		}
+		cf, _ := decimal.NewFromString(flag)
+		updateMarketReq.CollateralFactor = cf
 
-		// flag, e = cmd.Flags().GetString("m")
-		// if e != nil {
-		// 	panic("invalid flag")
-		// }
-		// action[core.ActionKeyMultiPlier] = flag
+		flag, e = cmd.Flags().GetString("clf")
+		if e != nil {
+			panic("invalid flag")
+		}
+		clf, _ := decimal.NewFromString(flag)
+		updateMarketReq.CloseFactor = clf
 
-		// flag, e = cmd.Flags().GetString("jm")
-		// if e != nil {
-		// 	panic("invalid flag")
-		// }
+		flag, e = cmd.Flags().GetString("br")
+		if e != nil {
+			panic("invalid flag")
+		}
+		br, _ := decimal.NewFromString(flag)
+		updateMarketReq.BaseRate = br
 
-		// action[core.ActionKeyJumpMultiPlier] = flag
+		flag, e = cmd.Flags().GetString("m")
+		if e != nil {
+			panic("invalid flag")
+		}
+		m, _ := decimal.NewFromString(flag)
+		updateMarketReq.Multiplier = m
 
-		// flag, e = cmd.Flags().GetString("k")
-		// if e != nil {
-		// 	panic("invalid flag")
-		// }
-		// action[core.ActionKeyKink] = flag
+		flag, e = cmd.Flags().GetString("jm")
+		if e != nil {
+			panic("invalid flag")
+		}
 
-		// memoStr, e := action.Format()
-		// if e != nil {
-		// 	panic(e)
-		// }
+		jm, _ := decimal.NewFromString(flag)
+		updateMarketReq.JumpMultiplier = jm
 
-		// url, e := walletService.PaySchemaURL(decimal.NewFromFloat(0.00000001), cfg.App.GasAssetID, mainWallet.Client.ClientID, id.GenTraceID(), memoStr)
-		// if e != nil {
-		// 	panic(e)
-		// }
+		flag, e = cmd.Flags().GetString("k")
+		if e != nil {
+			panic("invalid flag")
+		}
+		k, _ := decimal.NewFromString(flag)
+		updateMarketReq.Kink = k
 
-		// fmt.Println(url)
+		memo, err := mtg.Encode(clientID, traceID, int(core.ActionTypeProposalUpdateMarket), updateMarketReq)
+		if err != nil {
+			panic(err)
+		}
+
+		sign := mtg.Sign(memo, system.SignKey)
+		memo = mtg.Pack(memo, sign)
+
+		input := mixin.TransferInput{
+			AssetID: system.VoteAsset,
+			Amount:  system.VoteAmount,
+			TraceID: traceID.String(),
+			Memo:    base64.StdEncoding.EncodeToString(memo),
+		}
+		input.OpponentMultisig.Receivers = system.MemberIDs()
+		input.OpponentMultisig.Threshold = system.Threshold
+
+		payment, err := dapp.Client.VerifyPayment(ctx, input)
+		if err != nil {
+			panic(err)
+		}
+
+		url := mixin.URL.Codes(payment.CodeID)
+		cmd.Println(url)
+		qrcode.Fprint(cmd.OutOrStdout(), url)
 	},
 }
 

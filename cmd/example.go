@@ -1,10 +1,10 @@
 package cmd
 
 import (
+	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/sync/errgroup"
 )
 
 var exampleCmd = &cobra.Command{
@@ -13,25 +13,25 @@ var exampleCmd = &cobra.Command{
 	Short:   "",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := cmd.Context()
-		var g errgroup.Group
+
+		wg := sync.WaitGroup{}
 		for i := 0; i < 5; i++ {
-			i := i
-			g.Go(func() error {
+			wg.Add(1)
+			go func(n int) error {
+				defer wg.Done()
 				dur := time.Second
 				for {
 					select {
 					case <-ctx.Done():
 						cmd.Println(ctx.Err())
 					case <-time.After(dur):
-						cmd.Println(i, ":====>", time.Now())
+						cmd.Println(n, ":====>", time.Now())
 					}
 				}
-			})
+			}(i)
 		}
 
-		if err := g.Wait(); err != nil {
-			cmd.Println(err)
-		}
+		wg.Wait()
 	},
 }
 
