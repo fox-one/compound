@@ -40,20 +40,40 @@ func (w *Payee) handleUpdateMarketEvent(ctx context.Context, p *core.Proposal, r
 		market.LiquidationIncentive = req.LiquidationIncentive
 	}
 
-	if req.BorrowCap.GreaterThanOrEqual(decimal.Zero) {
-		market.BorrowCap = req.BorrowCap
-	}
-
 	if req.CollateralFactor.GreaterThanOrEqual(decimal.Zero) && req.CollateralFactor.LessThanOrEqual(compound.CollateralFactorMax) {
 		market.CollateralFactor = req.CollateralFactor
 	}
 
-	if req.CloseFactor.GreaterThanOrEqual(compound.CloseFactorMin) && req.CloseFactor.LessThanOrEqual(compound.CloseFactorMax) {
-		market.CloseFactor = req.CloseFactor
-	}
-
 	if req.BaseRate.GreaterThan(decimal.Zero) && req.BaseRate.LessThan(decimal.NewFromInt(1)) {
 		market.BaseRate = req.BaseRate
+	}
+
+	if e = w.marketStore.Update(ctx, w.db, market); e != nil {
+		log.Errorln(e)
+		return e
+	}
+
+	return nil
+}
+
+func (w *Payee) handleUpdateMarketAdvanceEvent(ctx context.Context, p *core.Proposal, req proposal.UpdateMarketAdvanceReq, t time.Time) error {
+	log := logger.FromContext(ctx).WithField("worker", "update-market-advance")
+
+	market, isRecordNotFound, e := w.marketStore.FindBySymbol(ctx, strings.ToUpper(req.Symbol))
+	if e != nil {
+		if isRecordNotFound {
+			return nil
+		}
+
+		return e
+	}
+
+	if req.BorrowCap.GreaterThanOrEqual(decimal.Zero) {
+		market.BorrowCap = req.BorrowCap
+	}
+
+	if req.CloseFactor.GreaterThanOrEqual(compound.CloseFactorMin) && req.CloseFactor.LessThanOrEqual(compound.CloseFactorMax) {
+		market.CloseFactor = req.CloseFactor
 	}
 
 	if req.Multiplier.GreaterThan(decimal.Zero) && req.Multiplier.LessThan(decimal.NewFromInt(1)) {

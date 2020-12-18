@@ -92,6 +92,13 @@ func (w *Payee) handleCreateProposalEvent(ctx context.Context, output *core.Outp
 			return nil
 		}
 		p.Content, _ = json.Marshal(content)
+	case core.ActionTypeProposalUpdateMarketAdvance:
+		var content proposal.UpdateMarketAdvanceReq
+		if _, err := mtg.Scan(body, &content); err != nil {
+			log.WithError(err).Errorln("decode proposal UpdateMarketAdvance content error")
+			return nil
+		}
+		p.Content, _ = json.Marshal(content)
 	case core.ActionTypeProposalWithdrawReserves:
 		var content proposal.WithdrawReq
 		if _, err := mtg.Scan(body, &content); err != nil {

@@ -114,13 +114,6 @@ var updateMarketCmd = &cobra.Command{
 		li, _ := decimal.NewFromString(flag)
 		updateMarketReq.LiquidationIncentive = li
 
-		flag, e = cmd.Flags().GetString("bc")
-		if e != nil {
-			panic("invalid flag")
-		}
-		bc, _ := decimal.NewFromString(flag)
-		updateMarketReq.BorrowCap = bc
-
 		flag, e = cmd.Flags().GetString("cf")
 		if e != nil {
 			panic("invalid flag")
@@ -128,19 +121,74 @@ var updateMarketCmd = &cobra.Command{
 		cf, _ := decimal.NewFromString(flag)
 		updateMarketReq.CollateralFactor = cf
 
-		flag, e = cmd.Flags().GetString("clf")
-		if e != nil {
-			panic("invalid flag")
-		}
-		clf, _ := decimal.NewFromString(flag)
-		updateMarketReq.CloseFactor = clf
-
 		flag, e = cmd.Flags().GetString("br")
 		if e != nil {
 			panic("invalid flag")
 		}
 		br, _ := decimal.NewFromString(flag)
 		updateMarketReq.BaseRate = br
+
+		memo, err := mtg.Encode(clientID, traceID, int(core.ActionTypeProposalUpdateMarket), updateMarketReq)
+		if err != nil {
+			panic(err)
+		}
+
+		sign := mtg.Sign(memo, system.SignKey)
+		memo = mtg.Pack(memo, sign)
+
+		input := mixin.TransferInput{
+			AssetID: system.VoteAsset,
+			Amount:  system.VoteAmount,
+			TraceID: traceID.String(),
+			Memo:    base64.StdEncoding.EncodeToString(memo),
+		}
+		input.OpponentMultisig.Receivers = system.MemberIDs()
+		input.OpponentMultisig.Threshold = system.Threshold
+
+		payment, err := dapp.Client.VerifyPayment(ctx, input)
+		if err != nil {
+			panic(err)
+		}
+
+		url := mixin.URL.Codes(payment.CodeID)
+		cmd.Println(url)
+		qrcode.Fprint(cmd.OutOrStdout(), url)
+	},
+}
+
+var updateMarketAdvanceCmd = &cobra.Command{
+	Use:     "update-market-advance",
+	Aliases: []string{"uma"},
+	Short:   "update market advance",
+	Run: func(cmd *cobra.Command, args []string) {
+		ctx := cmd.Context()
+		system := provideSystem()
+		dapp := provideDapp()
+
+		clientID, _ := uuid.FromString(system.ClientID)
+		traceID, _ := uuid.FromString(id.GenTraceID())
+
+		updateMarketReq := proposal.UpdateMarketAdvanceReq{}
+
+		symbol, e := cmd.Flags().GetString("s")
+		if e != nil || symbol == "" {
+			panic("invalid symbol")
+		}
+		updateMarketReq.Symbol = strings.ToUpper(symbol)
+
+		flag, e := cmd.Flags().GetString("bc")
+		if e != nil {
+			panic("invalid flag")
+		}
+		bc, _ := decimal.NewFromString(flag)
+		updateMarketReq.BorrowCap = bc
+
+		flag, e = cmd.Flags().GetString("clf")
+		if e != nil {
+			panic("invalid flag")
+		}
+		clf, _ := decimal.NewFromString(flag)
+		updateMarketReq.CloseFactor = clf
 
 		flag, e = cmd.Flags().GetString("m")
 		if e != nil {
@@ -195,6 +243,7 @@ var updateMarketCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(addMarketCmd)
 	rootCmd.AddCommand(updateMarketCmd)
+	rootCmd.AddCommand(updateMarketAdvanceCmd)
 
 	addMarketCmd.Flags().String("s", "", "market symbol")
 	addMarketCmd.Flags().String("a", "", "asset id")

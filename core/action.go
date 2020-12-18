@@ -49,4 +49,6 @@ const (
 	ActionTypeProposalVote
 	// ActionTypeProposalInjectCTokenForMint inject token
 	ActionTypeProposalInjectCTokenForMint
+	// ActionTypeProposalUpdateMarketAdvance update market advance
+	ActionTypeProposalUpdateMarketAdvance
 )
