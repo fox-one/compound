@@ -10,10 +10,10 @@ import (
 	"compound/worker/spentsync"
 	"compound/worker/syncer"
 	"compound/worker/txsender"
+	"sync"
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/spf13/cobra"
-	"golang.org/x/sync/errgroup"
 )
 
 var workerCmd = &cobra.Command{
@@ -64,17 +64,17 @@ var workerCmd = &cobra.Command{
 			spentsync.New(db, walletStore, transactionStore),
 		}
 
-		var g errgroup.Group
+		wg := sync.WaitGroup{}
 		for _, w := range workers {
-			worker := w
-			g.Go(func() error {
-				return worker.Run(ctx)
-			})
+			wg.Add(1)
+
+			go func(worker worker.Worker) {
+				defer wg.Done()
+				worker.Run(ctx)
+			}(w)
 		}
 
-		if err := g.Wait(); err != nil {
-			cmd.PrintErrln("run worker error:", err)
-		}
+		wg.Wait()
 	},
 }
 
