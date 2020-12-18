@@ -136,6 +136,11 @@ func (w *Payee) handlePassedProposal(ctx context.Context, p *core.Proposal, t ti
 		_ = json.Unmarshal(p.Content, &proposalReq)
 		return w.handleUpdateMarketEvent(ctx, p, proposalReq, t)
 
+	case core.ActionTypeProposalUpdateMarketAdvance:
+		var proposalReq proposal.UpdateMarketAdvanceReq
+		_ = json.Unmarshal(p.Content, &proposalReq)
+		return w.handleUpdateMarketAdvanceEvent(ctx, p, proposalReq, t)
+
 	case core.ActionTypeProposalWithdrawReserves:
 		var proposalReq proposal.WithdrawReq
 		_ = json.Unmarshal(p.Content, &proposalReq)

@@ -212,7 +212,7 @@ var updateMarketAdvanceCmd = &cobra.Command{
 		k, _ := decimal.NewFromString(flag)
 		updateMarketReq.Kink = k
 
-		memo, err := mtg.Encode(clientID, traceID, int(core.ActionTypeProposalUpdateMarket), updateMarketReq)
+		memo, err := mtg.Encode(clientID, traceID, int(core.ActionTypeProposalUpdateMarketAdvance), updateMarketReq)
 		if err != nil {
 			panic(err)
 		}

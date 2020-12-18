@@ -32,6 +32,15 @@ func generateButtons(ctx context.Context, marketStore core.IMarketStore, p *core
 			return buttons
 		}
 		buttons = appendAsset(buttons, "Asset", market.AssetID)
+	case core.ActionTypeProposalUpdateMarketAdvance:
+		var action proposal.UpdateMarketAdvanceReq
+		_ = json.Unmarshal(p.Content, &action)
+		symbol := strings.ToUpper(action.Symbol)
+		market, _, e := marketStore.FindBySymbol(ctx, symbol)
+		if e != nil {
+			return buttons
+		}
+		buttons = appendAsset(buttons, "Asset", market.AssetID)
 	case core.ActionTypeProposalWithdrawReserves:
 		var action proposal.WithdrawReq
 		_ = json.Unmarshal(p.Content, &action)
