@@ -80,6 +80,7 @@ func (w *Worker) onWork(ctx context.Context) error {
 					log.Errorln("pull price ticker error:", e)
 					return
 				}
+				log.Infoln("symbol:", ticker.Symbol, ":price:", ticker.Price)
 				if ticker.Price.LessThanOrEqual(decimal.Zero) {
 					log.Errorln("invalid ticker price:", ticker.Symbol, ":", ticker.Price)
 					return
@@ -142,6 +143,7 @@ func (w *Worker) pushPriceOnChain(ctx context.Context, market *core.Market, tick
 
 	memo, e := mtg.Encode(w.System.ClientID, traceID, int(core.ActionTypeProposalProvidePrice), providePriceReq)
 	if e != nil {
+		log.WithError(e).Errorln("mtg.Encode priceoracle memo error")
 		return e
 	}
 	sign := mtg.Sign(memo, w.System.SignKey)
@@ -160,6 +162,7 @@ func (w *Worker) pushPriceOnChain(ctx context.Context, market *core.Market, tick
 	// multisig transfer
 	_, e = w.Dapp.Client.Transaction(ctx, &input, w.Dapp.Pin)
 	if e != nil {
+		log.WithError(e).Errorln("mtg:: Client.Transaction error")
 		return e
 	}
 
