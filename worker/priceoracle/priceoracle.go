@@ -15,6 +15,7 @@ import (
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
+	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
 )
 
@@ -137,11 +138,14 @@ func (w *Worker) pushPriceOnChain(ctx context.Context, market *core.Market, tick
 	traceID := id.UUIDFromString(fmt.Sprintf("price-%s-%s-%d", w.System.ClientID, market.AssetID, blockNum))
 	// transfer
 	providePriceReq := proposal.ProvidePriceReq{
-		AssetID: market.AssetID,
+		Symbol: market.Symbol,
 		Price:   ticker.Price,
 	}
 
-	memo, e := mtg.Encode(w.System.ClientID, traceID, int(core.ActionTypeProposalProvidePrice), providePriceReq)
+	cID, _ := uuid.FromString(w.System.ClientID)
+	tID, _ := uuid.FromString(traceID)
+
+	memo, e := mtg.Encode(cID, tID, int(core.ActionTypeProposalProvidePrice), providePriceReq)
 	if e != nil {
 		log.WithError(e).Errorln("mtg.Encode priceoracle memo error")
 		return e

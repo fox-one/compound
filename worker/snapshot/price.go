@@ -26,9 +26,14 @@ func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *cor
 		return e
 	}
 
+	market, _, e := w.marketStore.FindBySymbol(ctx, data.Symbol)
+	if e != nil {
+		return e
+	}
+
 	return w.db.Tx(func(tx *db.DB) error {
 		priceTickers := make([]*core.PriceTicker, 0)
-		price, isRecordNotFound, e := w.priceStore.FindByAssetBlock(ctx, data.AssetID, blockNum)
+		price, isRecordNotFound, e := w.priceStore.FindByAssetBlock(ctx, market.AssetID, blockNum)
 		if e != nil {
 			if isRecordNotFound {
 				// new one
@@ -43,7 +48,7 @@ func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *cor
 				}
 
 				price = &core.Price{
-					AssetID:     data.AssetID,
+					AssetID:     market.AssetID,
 					BlockNumber: blockNum,
 					Content:     bs,
 				}
@@ -62,7 +67,7 @@ func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *cor
 		}
 
 		// exists
-		price.AssetID = data.AssetID
+		price.AssetID = market.AssetID
 		price.BlockNumber = blockNum
 
 		if e = json.Unmarshal(price.Content, &priceTickers); e != nil {
@@ -121,16 +126,6 @@ func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *cor
 		price.Content = bs
 		if e = w.priceStore.Update(ctx, tx, price); e != nil {
 			log.WithError(e).Errorln("update price err")
-			return e
-		}
-
-		// update market
-		market, isRecordNotFound, e := w.marketStore.Find(ctx, data.AssetID)
-		if isRecordNotFound {
-			return nil
-		}
-
-		if e != nil {
 			return e
 		}
 
