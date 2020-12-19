@@ -9,6 +9,7 @@ import (
 	"compound/core"
 	"compound/pkg/resthttp"
 
+	"github.com/fox-one/pkg/logger"
 	"github.com/shopspring/decimal"
 )
 
@@ -43,6 +44,7 @@ func (s *PriceService) GetCurrentUnderlyingPrice(ctx context.Context, market *co
 // PullPriceTicker pull price ticker
 func (s *PriceService) PullPriceTicker(ctx context.Context, assetID string, t time.Time) (*core.PriceTicker, error) {
 	url := fmt.Sprintf("%s/api/v2/tickers/%s?ts=%d", s.Config.PriceOracle.EndPoint, assetID, t.UTC().Unix())
+	logger.FromContext(ctx).Infoln("pull price:", url)
 	resp, err := resthttp.Request(ctx).Get(url)
 	if err != nil {
 		return nil, err

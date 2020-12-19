@@ -41,6 +41,6 @@ type IPriceStore interface {
 // IPriceOracleService pracle price service interface
 type IPriceOracleService interface {
 	GetCurrentUnderlyingPrice(ctx context.Context, market *Market) (decimal.Decimal, error)
-	PullPriceTicker(ctx context.Context, symbol string, t time.Time) (*PriceTicker, error)
+	PullPriceTicker(ctx context.Context, assetID string, t time.Time) (*PriceTicker, error)
 	PullAllPriceTickers(ctx context.Context, t time.Time) ([]*PriceTicker, error)
 }

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -14,24 +13,15 @@ var exampleCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := cmd.Context()
 
-		wg := sync.WaitGroup{}
-		for i := 0; i < 5; i++ {
-			wg.Add(1)
-			go func(n int) error {
-				defer wg.Done()
-				dur := time.Second
-				for {
-					select {
-					case <-ctx.Done():
-						cmd.Println(ctx.Err())
-					case <-time.After(dur):
-						cmd.Println(n, ":====>", time.Now())
-					}
-				}
-			}(i)
+		blockService := provideBlockService()
+		priceService := providePriceService(blockService)
+
+		ticker, e := priceService.PullPriceTicker(ctx, "43d61dcd-e413-450d-80b8-101d5e903357", time.Time{})
+		if e != nil {
+			panic(e)
 		}
 
-		wg.Wait()
+		cmd.Println(ticker)
 	},
 }
 
