@@ -80,7 +80,7 @@ var withdrawCmd = &cobra.Command{
 }
 
 func init() {
-	proposalCmd.AddCommand(withdrawCmd)
+	rootCmd.AddCommand(withdrawCmd)
 
 	withdrawCmd.Flags().StringP("opponent", "o", "", "opponent id")
 	withdrawCmd.Flags().StringP("asset", "s", "", "asset id")

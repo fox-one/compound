@@ -38,7 +38,7 @@ func (w *WithdrawReq) UnmarshalBinary(data []byte) error {
 	}
 
 	w.Opponent = opponent.String()
-	w.Asset = opponent.String()
+	w.Asset = asset.String()
 	w.Amount = amount
 
 	return nil
