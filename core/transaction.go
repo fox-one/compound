@@ -105,6 +105,7 @@ func BuildTransactionFromOutput(ctx context.Context, userID, followID string, ac
 	}
 
 	return &Transaction{
+		UserID:   userID,
 		Action:   actionType,
 		TraceID:  output.TraceID,
 		FollowID: followID,
@@ -119,10 +120,16 @@ func BuildTransactionFromTransfer(ctx context.Context, transfer *Transfer, snaps
 	var transferAction TransferAction
 	_ = json.Unmarshal([]byte(transfer.Memo), &transferAction)
 
+	userID := ""
+	if len(transfer.Opponents) > 1 {
+		userID = transfer.Opponents[0]
+	}
+
 	return &Transaction{
+		UserID:          userID,
 		Action:          transferAction.Source,
 		TraceID:         transfer.TraceID,
-		FollowID:        "",
+		FollowID:        transferAction.FollowID,
 		Amount:          transfer.Amount,
 		AssetID:         transfer.AssetID,
 		SnapshotTraceID: snapshotTraceID,

@@ -69,6 +69,6 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 			Source:   core.ActionTypeMint,
 			FollowID: followID,
 		}
-		return w.transferOut(ctx, userID, followID, output.TraceID, assetID, ctokens, &transferAction)
+		return w.transferOut(ctx, userID, followID, output.TraceID, market.CTokenAssetID, ctokens, &transferAction)
 	})
 }
