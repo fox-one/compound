@@ -73,8 +73,6 @@ func afterFindOutput(output *core.Output) {
 	var utxo mixin.MultisigUTXO
 	if err := json.Unmarshal(output.Data, &utxo); err == nil {
 		output.UTXO = &utxo
-	} else {
-		panic(err)
 	}
 }
 
