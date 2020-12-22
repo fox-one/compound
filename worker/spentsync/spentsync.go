@@ -5,7 +5,6 @@ import (
 	"compound/worker"
 	"context"
 	"crypto/md5"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -88,12 +87,6 @@ func (w *SpentSync) handleTransfer(ctx context.Context, transfer *core.Transfer)
 	}
 
 	fmt.Println("ID:", output.ID, ":trace:", output.TraceID, "asset", output.AssetID, ":amount:", output.Amount, ":memo:", output.Memo, ":data:", output.Data)
-	opbs, e := json.Marshal(output)
-	if e != nil {
-		log.WithError(e).Errorln("spentsync.parse output err")
-		return err
-	}
-	fmt.Println("output:", string(opbs))
 
 	signedTx := output.UTXO.SignedTx
 	if signedTx == "" {

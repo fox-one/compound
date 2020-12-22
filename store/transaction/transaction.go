@@ -45,7 +45,7 @@ func (s *transactionStore) List(ctx context.Context, offset time.Time, limit int
 		limit = 500
 	}
 
-	if err := s.db.View().Where("created_at >=?", offset).Order("created_at ASC").Limit(limit).Find(&transactions).Error; err != nil {
+	if err := s.db.View().Where("user_id <>? and created_at >=?", "", offset).Order("created_at ASC").Limit(limit).Find(&transactions).Error; err != nil {
 		return nil, err
 	}
 
