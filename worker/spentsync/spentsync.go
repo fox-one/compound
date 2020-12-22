@@ -5,7 +5,9 @@ import (
 	"compound/worker"
 	"context"
 	"crypto/md5"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 
@@ -84,6 +86,13 @@ func (w *SpentSync) handleTransfer(ctx context.Context, transfer *core.Transfer)
 		log.Debugln("utxo is not spent, skip")
 		return nil
 	}
+
+	opbs, e := json.Marshal(output)
+	if e != nil {
+		log.WithError(e).Errorln("spentsync.parse output err")
+		return err
+	}
+	fmt.Println("output:", string(opbs))
 
 	signedTx := output.UTXO.SignedTx
 	if signedTx == "" {
