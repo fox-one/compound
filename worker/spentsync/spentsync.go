@@ -87,6 +87,7 @@ func (w *SpentSync) handleTransfer(ctx context.Context, transfer *core.Transfer)
 		return nil
 	}
 
+	fmt.Println("ID:", output.ID, ":trace:", output.TraceID, "asset", output.AssetID, ":amount:", output.Amount, ":memo:", output.Memo, ":data:", output.Data)
 	opbs, e := json.Marshal(output)
 	if e != nil {
 		log.WithError(e).Errorln("spentsync.parse output err")
