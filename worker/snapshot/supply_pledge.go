@@ -55,6 +55,12 @@ func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, user
 					log.Errorln(e)
 					return e
 				}
+				// add transaction
+				transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypePledge, output, nil)
+				if e = w.transactionStore.Create(ctx, tx, transaction); e != nil {
+					log.WithError(e).Errorln("create transaction error")
+					return e
+				}
 				return nil
 			}
 			log.Errorln(e)
