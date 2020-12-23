@@ -13,6 +13,7 @@ import (
 	"github.com/fox-one/pkg/store/db"
 	uuidutil "github.com/fox-one/pkg/uuid"
 	"github.com/gofrs/uuid"
+	"github.com/jinzhu/gorm"
 	"github.com/shopspring/decimal"
 )
 
@@ -24,25 +25,26 @@ const (
 // Payee payee worker
 type Payee struct {
 	worker.TickWorker
-	db               *db.DB
-	system           *core.System
-	dapp             *core.Wallet
-	propertyStore    property.Store
-	userStore        core.UserStore
-	walletStore      core.WalletStore
-	priceStore       core.IPriceStore
-	marketStore      core.IMarketStore
-	supplyStore      core.ISupplyStore
-	borrowStore      core.IBorrowStore
-	proposalStore    core.ProposalStore
-	transactionStore core.TransactionStore
-	proposalService  core.ProposalService
-	blockService     core.IBlockService
-	priceService     core.IPriceOracleService
-	marketService    core.IMarketService
-	supplyService    core.ISupplyService
-	borrowService    core.IBorrowService
-	accountService   core.IAccountService
+	db                 *db.DB
+	system             *core.System
+	dapp               *core.Wallet
+	propertyStore      property.Store
+	userStore          core.UserStore
+	outputArchiveStore core.OutputArchiveStore
+	walletStore        core.WalletStore
+	priceStore         core.IPriceStore
+	marketStore        core.IMarketStore
+	supplyStore        core.ISupplyStore
+	borrowStore        core.IBorrowStore
+	proposalStore      core.ProposalStore
+	transactionStore   core.TransactionStore
+	proposalService    core.ProposalService
+	blockService       core.IBlockService
+	priceService       core.IPriceOracleService
+	marketService      core.IMarketService
+	supplyService      core.ISupplyService
+	borrowService      core.IBorrowService
+	accountService     core.IAccountService
 }
 
 // NewPayee new payee
@@ -51,6 +53,7 @@ func NewPayee(db *db.DB,
 	dapp *core.Wallet,
 	propertyStore property.Store,
 	userStore core.UserStore,
+	outputArchiveStore core.OutputArchiveStore,
 	walletStore core.WalletStore,
 	priceStore core.IPriceStore,
 	marketStore core.IMarketStore,
@@ -66,25 +69,26 @@ func NewPayee(db *db.DB,
 	borrowService core.IBorrowService,
 	accountService core.IAccountService) *Payee {
 	payee := Payee{
-		db:               db,
-		system:           system,
-		dapp:             dapp,
-		propertyStore:    propertyStore,
-		userStore:        userStore,
-		walletStore:      walletStore,
-		priceStore:       priceStore,
-		marketStore:      marketStore,
-		supplyStore:      supplyStore,
-		borrowStore:      borrowStore,
-		proposalStore:    proposalStore,
-		transactionStore: transactionStore,
-		proposalService:  proposalService,
-		priceService:     priceSrv,
-		blockService:     blockService,
-		marketService:    marketSrv,
-		supplyService:    supplyService,
-		borrowService:    borrowService,
-		accountService:   accountService,
+		db:                 db,
+		system:             system,
+		dapp:               dapp,
+		propertyStore:      propertyStore,
+		userStore:          userStore,
+		outputArchiveStore: outputArchiveStore,
+		walletStore:        walletStore,
+		priceStore:         priceStore,
+		marketStore:        marketStore,
+		supplyStore:        supplyStore,
+		borrowStore:        borrowStore,
+		proposalStore:      proposalStore,
+		transactionStore:   transactionStore,
+		proposalService:    proposalService,
+		priceService:       priceSrv,
+		blockService:       blockService,
+		marketService:      marketSrv,
+		supplyService:      supplyService,
+		borrowService:      borrowService,
+		accountService:     accountService,
 	}
 
 	return &payee
@@ -117,8 +121,24 @@ func (w *Payee) onWork(ctx context.Context) error {
 	}
 
 	for _, u := range outputs {
-		if err := w.handleOutput(ctx, u); err != nil {
-			return err
+		_, err := w.outputArchiveStore.Find(ctx, u.TraceID)
+		if err != nil {
+			if gorm.IsRecordNotFoundError(err) {
+				if err := w.handleOutput(ctx, u); err != nil {
+					return err
+				}
+
+				//archive output
+				archive := core.OutputArchive{
+					ID:      u.ID,
+					TraceID: u.TraceID,
+				}
+				if err := w.outputArchiveStore.Save(ctx, &archive); err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
 		}
 
 		if err := w.propertyStore.Save(ctx, checkpointKey, u.ID); err != nil {

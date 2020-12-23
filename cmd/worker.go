@@ -38,6 +38,7 @@ var workerCmd = &cobra.Command{
 		proposalStore := provideProposalStore(db)
 		userStore := provideUserStore(db)
 		transactionStore := provideTransactionStore(db)
+		outputArchiveStore := provideOutputArchiveStore(db)
 
 		walletService := provideWalletService(dapp.Client, walletservice.Config{
 			Pin:       dapp.Pin,
@@ -58,7 +59,7 @@ var workerCmd = &cobra.Command{
 			cashier.New(walletStore, walletService, system),
 			message.New(messageStore, messageService),
 			priceoracle.New(system, dapp, marketStore, priceStore, blockService, priceService),
-			snapshot.NewPayee(db, system, dapp, propertyStore, userStore, walletStore, priceStore, marketStore, supplyStore, borrowStore, proposalStore, transactionStore, proposalService, priceService, blockService, marketService, supplyService, borrowService, accountService),
+			snapshot.NewPayee(db, system, dapp, propertyStore, userStore, outputArchiveStore, walletStore, priceStore, marketStore, supplyStore, borrowStore, proposalStore, transactionStore, proposalService, priceService, blockService, marketService, supplyService, borrowService, accountService),
 			syncer.New(walletStore, walletService, propertyStore),
 			txsender.New(walletStore),
 			spentsync.New(db, walletStore, transactionStore),

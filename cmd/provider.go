@@ -15,6 +15,7 @@ import (
 	"compound/store/borrow"
 	"compound/store/market"
 	"compound/store/message"
+	"compound/store/outputarchive"
 	"compound/store/price"
 	"compound/store/proposal"
 	"compound/store/supply"
@@ -129,9 +130,9 @@ func provideTransactionStore(db *db.DB) core.TransactionStore {
 	return transaction.New(db)
 }
 
-// func provideTransferStore(db *db.DB) core.ITransferStore {
-// 	return transfer.New(db)
-// }
+func provideOutputArchiveStore(db *db.DB) core.OutputArchiveStore {
+	return outputarchive.New(db)
+}
 
 // ------------------service------------------------------------
 func provideProposalService(client *mixin.Client, system *core.System, marketStore core.IMarketStore, messageStore core.MessageStore) core.ProposalService {

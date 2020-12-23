@@ -67,7 +67,7 @@ func (w *Cashier) onWork(ctx context.Context) error {
 func (w *Cashier) handleTransfer(ctx context.Context, transfer *core.Transfer) error {
 	log := logger.FromContext(ctx)
 
-	const limit = 64
+	const limit = 128
 	outputs, err := w.walletStore.ListUnspent(ctx, transfer.AssetID, limit)
 	if err != nil {
 		log.WithError(err).Errorln("wallets.ListUnspent")

@@ -33,7 +33,7 @@ type Output struct {
 	SpentBy string `sql:"type:char(36);NOT NULL" json:"spent_by,omitempty"`
 
 	// UTXO json Data
-	Data types.JSONText `sql:"type:TEXT" json:"data,omitempty"`
+	Data types.JSONText `sql:"type:MEDIUMTEXT" json:"data,omitempty"`
 
 	// Raw Mixin UTXO
 	UTXO *mixin.MultisigUTXO `sql:"-" json:"-,omitempty"`
@@ -59,7 +59,20 @@ type RawTransaction struct {
 	ID        int64     `sql:"PRIMARY_KEY" json:"id,omitempty"`
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	TraceID   string    `sql:"type:char(36);" json:"trace_id,omitempty"`
-	Data      string    `sql:"type:TEXT" json:"data,omitempty"`
+	Data      string    `sql:"type:MEDIUMTEXT" json:"data,omitempty"`
+}
+
+// OutputArchive output archive
+type OutputArchive struct {
+	ID        int64     `sql:"PRIMARY_KEY" json:"id,omitempty"`
+	TraceID   string    `sql:"type:char(36);unique_index:idx_outputarchives_trace_id" json:"trace_id,omitempty"`
+	CreatedAt time.Time `sql:"default:CURRENT_TIMESTAMP" json:"created_at,omitempty"`
+}
+
+// OutputArchiveStore archive store
+type OutputArchiveStore interface {
+	Save(ctx context.Context, archive *OutputArchive) error
+	Find(ctx context.Context, traceID string) (*OutputArchive, error)
 }
 
 // WalletStore define wallet db operations
