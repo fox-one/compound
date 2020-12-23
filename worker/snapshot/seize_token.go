@@ -14,15 +14,16 @@ import (
 func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
 	log := logger.FromContext(ctx).WithField("worker", "seize_token")
 
+	liquidator := userID
 	var seizedAddress uuid.UUID
 	var seizedAsset uuid.UUID
 	if _, err := mtg.Scan(body, &seizedAddress, &seizedAsset); err != nil {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrInvalidArgument, "")
+		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrInvalidArgument, "")
 	}
 
 	seizedUser, e := w.userStore.FindByAddress(ctx, seizedAddress.String())
 	if e != nil {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrInvalidArgument, "")
+		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrInvalidArgument, "")
 	}
 
 	seizedUserID := seizedUser.UserID
@@ -35,7 +36,7 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 	supplyMarket, isRecordNotFound, e := w.marketStore.Find(ctx, seizedAssetID)
 	if isRecordNotFound {
 		log.Warningln("supply market not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
+		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrMarketNotFound, "")
 	}
 	if e != nil {
 		log.WithError(e).Errorln("find supply market error")
@@ -52,7 +53,7 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 	borrowMarket, isRecordNotFound, e := w.marketStore.Find(ctx, userPayAssetID)
 	if isRecordNotFound {
 		log.Warningln("borrow market not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
+		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrMarketNotFound, "")
 	}
 	if e != nil {
 		log.WithError(e).Errorln("find borrow market error")
@@ -74,7 +75,7 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 	supply, isRecordNotFound, e := w.supplyStore.Find(ctx, seizedUserID, supplyMarket.CTokenAssetID)
 	if isRecordNotFound {
 		log.Warningln("supply not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrSupplyNotFound, "")
+		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrSupplyNotFound, "")
 	}
 
 	if e != nil {
@@ -85,7 +86,7 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 	borrow, isRecordNotFound, e := w.borrowStore.Find(ctx, seizedUserID, borrowMarket.AssetID)
 	if isRecordNotFound {
 		log.Warningln("borrow not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrBorrowNotFound, "")
+		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrBorrowNotFound, "")
 	}
 	if e != nil {
 		log.WithError(e).Errorln("find borrow error")
@@ -115,7 +116,7 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 
 	// refund to liquidator if seize not allowed
 	if !w.accountService.SeizeTokenAllowed(ctx, supply, borrow, output.UpdatedAt) {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrSeizeNotAllowed, "")
+		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrSeizeNotAllowed, "")
 	}
 
 	return w.db.Tx(func(tx *db.DB) error {
@@ -197,7 +198,7 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 		extra := core.NewTransactionExtra()
 		extra.Put(core.TransactionKeyAssetID, seizedAsset)
 		extra.Put(core.TransactionKeyAmount, seizedAmount)
-		transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeSeizeToken, output, &extra)
+		transaction := core.BuildTransactionFromOutput(ctx, liquidator, followID, core.ActionTypeSeizeToken, output, &extra)
 		if e = w.transactionStore.Create(ctx, tx, transaction); e != nil {
 			log.WithError(e).Errorln("create transaction error")
 			return e
@@ -208,7 +209,7 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 			Source:   core.ActionTypeSeizeTokenTransfer,
 			FollowID: followID,
 		}
-		if e = w.transferOut(ctx, userID, followID, output.TraceID, supplyMarket.AssetID, seizedAmount, &transferAction); e != nil {
+		if e = w.transferOut(ctx, liquidator, followID, output.TraceID, supplyMarket.AssetID, seizedAmount, &transferAction); e != nil {
 			return e
 		}
 
@@ -220,7 +221,7 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 				Source:   core.ActionTypeSeizeRefundTransfer,
 				FollowID: followID,
 			}
-			if e = w.transferOut(ctx, userID, followID, output.TraceID, output.AssetID, refundAmount, &refundTransferAction); e != nil {
+			if e = w.transferOut(ctx, liquidator, followID, output.TraceID, output.AssetID, refundAmount, &refundTransferAction); e != nil {
 				return e
 			}
 		}
