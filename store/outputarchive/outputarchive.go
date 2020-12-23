@@ -18,6 +18,17 @@ func New(db *db.DB) core.OutputArchiveStore {
 	}
 }
 
+func init() {
+	db.RegisterMigrate(func(db *db.DB) error {
+		tx := db.Update().Model(core.OutputArchive{})
+		if err := tx.AutoMigrate(core.OutputArchive{}).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
 func (s *store) Save(ctx context.Context, archive *core.OutputArchive) error {
 	return s.db.Update().Where("trace_id=?", archive.TraceID).FirstOrCreate(archive).Error
 }
