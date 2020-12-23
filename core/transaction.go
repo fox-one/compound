@@ -127,6 +127,11 @@ func BuildTransactionFromTransfer(ctx context.Context, transfer *Transfer, snaps
 		userID = transfer.Opponents[0]
 	}
 
+	transactionExtra := NewTransactionExtra()
+	if transferAction.Code > 0 {
+		transactionExtra.Put(TransactionKeyErrorCode, transferAction.Code)
+	}
+
 	return &Transaction{
 		UserID:          userID,
 		Action:          transferAction.Source,
@@ -135,6 +140,7 @@ func BuildTransactionFromTransfer(ctx context.Context, transfer *Transfer, snaps
 		Amount:          transfer.Amount,
 		AssetID:         transfer.AssetID,
 		SnapshotTraceID: snapshotTraceID,
+		Data:            transactionExtra.Format(),
 	}
 }
 

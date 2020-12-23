@@ -21,6 +21,7 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 	}
 
 	assetID := asset.String()
+	log.Infoln("borrow, asset:", assetID, ":amount:", borrowAmount)
 	market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)
 	if isRecordNotFound {
 		log.Warningln("market not found, refund")
