@@ -64,7 +64,10 @@ func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, user
 		}
 
 		// add transaction
-		transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeRedeem, output, nil)
+		extra := core.NewTransactionExtra()
+		extra.Put(core.TransactionKeyAssetID, market.AssetID)
+		extra.Put(core.TransactionKeyAmount, amount)
+		transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeRedeem, output, &extra)
 		if e = w.transactionStore.Create(ctx, tx, transaction); e != nil {
 			log.WithError(e).Errorln("create transaction error")
 			return e

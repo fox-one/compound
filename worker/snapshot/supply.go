@@ -58,7 +58,10 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 		}
 
 		// add transaction
-		transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeSupply, output, nil)
+		extra := core.NewTransactionExtra()
+		extra.Put(core.TransactionKeyCTokenAssetID, market.CTokenAssetID)
+		extra.Put(core.TransactionKeyAmount, ctokens)
+		transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeSupply, output, &extra)
 		if e = w.transactionStore.Create(ctx, tx, transaction); e != nil {
 			log.WithError(e).Errorln("create transaction error")
 			return e
