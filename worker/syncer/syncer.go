@@ -94,18 +94,16 @@ func (w *Syncer) onWork(ctx context.Context) error {
 
 	mixinet.SortOutputs(outputs)
 	if err := w.walletStore.Save(ctx, outputs); err != nil {
-		log.WithError(err).Errorln("wallets.Save------------------------------")
+		log.WithError(err).Errorln("wallets.Save")
 		return err
 	}
 
 	log.Infoln("save output successful")
 
 	if err := w.property.Save(ctx, checkpointKey, offset); err != nil {
-		log.WithError(err).Errorln("property.Save---------------------------------", checkpointKey)
+		log.WithError(err).Errorln("property.Save:", checkpointKey)
 		return err
 	}
-
-	log.Infoln("save property successful")
 
 	return nil
 }
