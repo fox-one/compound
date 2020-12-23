@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"time"
 
@@ -118,7 +119,8 @@ func BuildTransactionFromOutput(ctx context.Context, userID, followID string, ac
 // BuildTransactionFromTransfer transaction from transfer
 func BuildTransactionFromTransfer(ctx context.Context, transfer *Transfer, snapshotTraceID string) *Transaction {
 	var transferAction TransferAction
-	_ = json.Unmarshal([]byte(transfer.Memo), &transferAction)
+	m := decodeTransferMemo(transfer.Memo)
+	_ = json.Unmarshal(m, &transferAction)
 
 	userID := ""
 	if len(transfer.Opponents) > 0 {
@@ -134,4 +136,16 @@ func BuildTransactionFromTransfer(ctx context.Context, transfer *Transfer, snaps
 		AssetID:         transfer.AssetID,
 		SnapshotTraceID: snapshotTraceID,
 	}
+}
+
+func decodeTransferMemo(memo string) []byte {
+	if b, err := base64.StdEncoding.DecodeString(memo); err == nil {
+		return b
+	}
+
+	if b, err := base64.URLEncoding.DecodeString(memo); err == nil {
+		return b
+	}
+
+	return []byte(memo)
 }
