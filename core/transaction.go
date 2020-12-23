@@ -121,7 +121,7 @@ func BuildTransactionFromTransfer(ctx context.Context, transfer *Transfer, snaps
 	_ = json.Unmarshal([]byte(transfer.Memo), &transferAction)
 
 	userID := ""
-	if len(transfer.Opponents) > 1 {
+	if len(transfer.Opponents) > 0 {
 		userID = transfer.Opponents[0]
 	}
 
