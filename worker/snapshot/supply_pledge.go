@@ -15,6 +15,8 @@ func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, user
 	ctokens := output.Amount
 	ctokenAssetID := output.AssetID
 
+	log.Infof("ctokenAssetID:%s, amount:%s", ctokenAssetID, ctokens)
+
 	market, isRecordNotFound, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
 	if isRecordNotFound {
 		log.Warningln("market not found")

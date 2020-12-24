@@ -9,6 +9,7 @@ import (
 )
 
 func (w *Payee) handleRefundEvent(ctx context.Context, output *core.Output, userID, followID string, errCode core.ErrorCode, msg string) error {
+	log := logger.FromContext(ctx).WithField("worker", "refund")
 	transferAction := core.TransferAction{
 		Code:     int(errCode),
 		Source:   core.ActionTypeRefundTransfer,
@@ -19,6 +20,8 @@ func (w *Payee) handleRefundEvent(ctx context.Context, output *core.Output, user
 	if e != nil {
 		return e
 	}
+
+	log.Infof("userID:%s,followID:%s, error_code:%d", userID, followID, errCode)
 
 	transfer := &core.Transfer{
 		TraceID:   uuidutil.Modify(output.TraceID, "compound_refund"),

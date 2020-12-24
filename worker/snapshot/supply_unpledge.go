@@ -22,6 +22,8 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrInvalidArgument, "")
 	}
 
+	log.Infof("ctokenAssetID:%s, amount:%s", ctokenAsset.String(), unpledgedAmount)
+
 	ctokenAssetID := ctokenAsset.String()
 	market, isRecordNotFound, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
 	if isRecordNotFound {

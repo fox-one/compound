@@ -139,7 +139,7 @@ func (w *Worker) pushPriceOnChain(ctx context.Context, market *core.Market, tick
 	// transfer
 	providePriceReq := proposal.ProvidePriceReq{
 		Symbol: market.Symbol,
-		Price:   ticker.Price,
+		Price:  ticker.Price,
 	}
 
 	cID, _ := uuid.FromString(w.System.ClientID)
@@ -163,6 +163,7 @@ func (w *Worker) pushPriceOnChain(ctx context.Context, market *core.Market, tick
 	input.OpponentMultisig.Receivers = w.System.MemberIDs()
 	input.OpponentMultisig.Threshold = w.System.Threshold
 
+	log.Infoln("asset:", input.AssetID, ":amount:", input.Amount)
 	// multisig transfer
 	_, e = w.Dapp.Client.Transaction(ctx, &input, w.Dapp.Pin)
 	if e != nil {

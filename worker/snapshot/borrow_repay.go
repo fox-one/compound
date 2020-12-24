@@ -15,6 +15,7 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 	repayAmount := output.Amount
 	assetID := output.AssetID
 
+	log.Infoln(":asset:", output.AssetID, "amount:", repayAmount)
 	market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)
 	if isRecordNotFound {
 		log.Warningln("market not found")

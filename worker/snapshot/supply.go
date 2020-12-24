@@ -15,6 +15,7 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 	supplyAmount := output.Amount.Abs()
 	assetID := output.AssetID
 
+	
 	market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)
 	if isRecordNotFound {
 		log.Warningln("market not found")

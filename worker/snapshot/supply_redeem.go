@@ -12,6 +12,8 @@ func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, user
 	log := logger.FromContext(ctx).WithField("worker", "supply_redeem")
 	ctokenAssetID := output.AssetID
 
+	log.Infof("ctokenAssetID:%s, amount:%s", ctokenAssetID, output.Amount)
+
 	market, isRecordNotFound, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
 	if isRecordNotFound {
 		log.Warningln("market not found")

@@ -32,6 +32,8 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 	userPayAmount := output.Amount.Abs()
 	userPayAssetID := output.AssetID
 
+	log.Infof("seizedUser:%s, seizedAsset:%s, payAsset:%s, payAmount:%s", seizedUserID, seizedAssetID, userPayAssetID, userPayAmount)
+
 	// to seize
 	supplyMarket, isRecordNotFound, e := w.marketStore.Find(ctx, seizedAssetID)
 	if isRecordNotFound {

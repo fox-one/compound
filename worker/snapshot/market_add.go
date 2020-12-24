@@ -5,9 +5,14 @@ import (
 	"compound/core/proposal"
 	"context"
 	"strings"
+
+	"github.com/fox-one/pkg/logger"
 )
 
 func (w *Payee) handleAddMarketEvent(ctx context.Context, p *core.Proposal, req proposal.AddMarketReq) error {
+	log := logger.FromContext(ctx).WithField("worker", "add-market")
+
+	log.Infof("asset:%s", req.AssetID)
 	_, isRecordNotFound, e := w.marketStore.Find(ctx, req.AssetID)
 	if e == nil {
 		//market exists
