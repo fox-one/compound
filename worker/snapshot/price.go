@@ -31,6 +31,8 @@ func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *cor
 		return e
 	}
 
+	log.Infof("asset:%s,block:%d, output.updated_at:%v", data.Symbol, blockNum, output.UpdatedAt)
+
 	return w.db.Tx(func(tx *db.DB) error {
 		priceTickers := make([]*core.PriceTicker, 0)
 		price, isRecordNotFound, e := w.priceStore.FindByAssetBlock(ctx, market.AssetID, blockNum)
