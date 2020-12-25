@@ -198,6 +198,22 @@ func (s *walletStore) ListPendingTransfers(_ context.Context) ([]*core.Transfer,
 		return nil, err
 	}
 
+	// filter by asset id
+	filter := make(map[string]bool)
+	var idx int
+
+	for _, t := range transfers {
+		if filter[t.AssetID] {
+			continue
+		}
+
+		transfers[idx] = t
+		filter[t.AssetID] = true
+		idx++
+	}
+
+	transfers = transfers[:idx]
+
 	for _, t := range transfers {
 		afterFindTransfer(t)
 	}
