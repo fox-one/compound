@@ -18,6 +18,7 @@
 COMMIT = $(shell git rev-parse --short HEAD)
 VERSION = $(shell git describe --abbrev=0) 
 
+REPOSITORY_PATH = 945908130943.dkr.ecr.ap-northeast-1.amazonaws.com
 ENV = $*
 GO = go
 
@@ -43,11 +44,11 @@ build-%: clean-% sync-%
 	cp ./compound ./compound.${ENV}
 
 docker-build-%: build-%
-	docker build -t 945908130943.dkr.ecr.ap-northeast-1.amazonaws.com/compound-${ENV}:${VERSION} . 
+	docker build -t ${REPOSITORY_PATH}/compound-${ENV}:${VERSION} . 
 
 .PHONY: aws-login
 aws-login:
 	$(shell aws ecr get-login --no-include-email --region ap-northeast-1)
 
 deploy-%: docker-build-%
-	docker push 945908130943.dkr.ecr.ap-northeast-1.amazonaws.com/compound-${ENV}:${VERSION}
+	docker push ${REPOSITORY_PATH}/compound-${ENV}:${VERSION}
