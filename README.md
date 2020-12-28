@@ -73,4 +73,4 @@ make build-%    //如：make build-local
   1. 修改`Dockerfile`, 删除 `ADD config/config.yaml config/config.yaml`
   2. 修改`Dockerfile`，增加配置 `VOLUME [ "/var/data/compound" ]`
   3. 把配置文件放在host目录下 `/var/data/compound`
-  4. 运行时通过config配置自定义配置文件，如：`./compound api --port 80 --config /var/data/compound/config.yaml`
+  4. 运行时通过config配置自定义配置文件，如：`./compound server --port 80 --config /var/data/compound/config.yaml`
