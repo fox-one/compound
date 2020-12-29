@@ -46,7 +46,7 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 	}
 
 	//accrue interest
-	if e = w.marketService.AccrueInterest(ctx, w.db, market, output.UpdatedAt); e != nil {
+	if e = w.marketService.AccrueInterest(ctx, w.db, market, output.CreatedAt); e != nil {
 		log.Errorln(e)
 		return e
 	}
@@ -56,7 +56,7 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrInsufficientCollaterals, "")
 	}
 
-	blockNum, e := w.blockService.GetBlock(ctx, output.UpdatedAt)
+	blockNum, e := w.blockService.GetBlock(ctx, output.CreatedAt)
 	if e != nil {
 		log.Errorln(e)
 		return e

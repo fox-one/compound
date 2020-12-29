@@ -39,7 +39,7 @@ func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, user
 
 	return w.db.Tx(func(tx *db.DB) error {
 		//accrue interest
-		if e = w.marketService.AccrueInterest(ctx, tx, market, output.UpdatedAt); e != nil {
+		if e = w.marketService.AccrueInterest(ctx, tx, market, output.CreatedAt); e != nil {
 			log.Errorln(e)
 			return e
 		}

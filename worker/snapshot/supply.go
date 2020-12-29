@@ -15,7 +15,6 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 	supplyAmount := output.Amount.Abs()
 	assetID := output.AssetID
 
-	
 	market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)
 	if isRecordNotFound {
 		log.Warningln("market not found")
@@ -27,7 +26,7 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 	}
 
 	//accrue interest
-	if e = w.marketService.AccrueInterest(ctx, w.db, market, output.UpdatedAt); e != nil {
+	if e = w.marketService.AccrueInterest(ctx, w.db, market, output.CreatedAt); e != nil {
 		log.Errorln(e)
 		return e
 	}
@@ -53,7 +52,7 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 		}
 
 		//accrue interest
-		if e = w.marketService.AccrueInterest(ctx, tx, market, output.UpdatedAt); e != nil {
+		if e = w.marketService.AccrueInterest(ctx, tx, market, output.CreatedAt); e != nil {
 			log.Errorln(e)
 			return e
 		}

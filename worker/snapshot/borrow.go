@@ -34,11 +34,11 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 	}
 
 	// accrue interest
-	if e = w.marketService.AccrueInterest(ctx, w.db, market, output.UpdatedAt); e != nil {
+	if e = w.marketService.AccrueInterest(ctx, w.db, market, output.CreatedAt); e != nil {
 		return e
 	}
 
-	if !w.borrowService.BorrowAllowed(ctx, borrowAmount, userID, market, output.UpdatedAt) {
+	if !w.borrowService.BorrowAllowed(ctx, borrowAmount, userID, market, output.CreatedAt) {
 		log.Errorln("borrow not allowed")
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrBorrowNotAllowed, "")
 	}
@@ -53,7 +53,7 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 		}
 
 		//update interest
-		if e = w.marketService.AccrueInterest(ctx, tx, market, output.UpdatedAt); e != nil {
+		if e = w.marketService.AccrueInterest(ctx, tx, market, output.CreatedAt); e != nil {
 			log.Errorln(e)
 			return e
 		}

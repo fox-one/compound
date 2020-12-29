@@ -59,7 +59,7 @@ func (w *Payee) handleVoteProposalEvent(ctx context.Context, output *core.Output
 	}
 
 	if passed {
-		return w.handlePassedProposal(ctx, p, output.UpdatedAt)
+		return w.handlePassedProposal(ctx, p, output.CreatedAt)
 	}
 
 	return nil
@@ -74,7 +74,7 @@ func (w *Payee) handleCreateProposalEvent(ctx context.Context, output *core.Outp
 		Amount:    output.Amount,
 		Action:    action,
 		CreatedAt: output.CreatedAt,
-		UpdatedAt: output.UpdatedAt,
+		UpdatedAt: output.CreatedAt,
 	}
 
 	switch p.Action {

@@ -21,7 +21,7 @@ func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *cor
 		return nil
 	}
 
-	blockNum, e := w.blockService.GetBlock(ctx, output.UpdatedAt)
+	blockNum, e := w.blockService.GetBlock(ctx, output.CreatedAt)
 	if e != nil {
 		return e
 	}
@@ -31,7 +31,7 @@ func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *cor
 		return e
 	}
 
-	log.Infof("asset:%s,block:%d, output.updated_at:%v", data.Symbol, blockNum, output.UpdatedAt)
+	log.Infof("asset:%s,block:%d, output.updated_at:%v", data.Symbol, blockNum, output.CreatedAt)
 
 	return w.db.Tx(func(tx *db.DB) error {
 		priceTickers := make([]*core.PriceTicker, 0)
@@ -117,7 +117,7 @@ func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *cor
 		price.Price = sumOfPrice.Div(decimal.NewFromInt(int64(lenOfValidPrices)))
 
 		price.PassedAt = sql.NullTime{
-			Time:  output.UpdatedAt,
+			Time:  output.CreatedAt,
 			Valid: true,
 		}
 		bs, e := json.Marshal(priceTickers)
@@ -132,12 +132,12 @@ func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *cor
 		}
 
 		// accrue interest
-		if e = w.marketService.AccrueInterest(ctx, tx, market, output.UpdatedAt); e != nil {
+		if e = w.marketService.AccrueInterest(ctx, tx, market, output.CreatedAt); e != nil {
 			return e
 		}
 
 		market.Price = price.Price
-		market.PriceUpdatedAt = output.UpdatedAt
+		market.PriceUpdatedAt = output.CreatedAt
 		if e = w.marketStore.Update(ctx, tx, market); e != nil {
 			log.WithError(e).Errorln("update market price err")
 			return e

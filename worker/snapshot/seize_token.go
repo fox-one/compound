@@ -63,13 +63,13 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 	}
 
 	//supply market accrue interest
-	if e = w.marketService.AccrueInterest(ctx, w.db, supplyMarket, output.UpdatedAt); e != nil {
+	if e = w.marketService.AccrueInterest(ctx, w.db, supplyMarket, output.CreatedAt); e != nil {
 		log.Errorln(e)
 		return e
 	}
 
 	//borrow market accrue interest
-	if e = w.marketService.AccrueInterest(ctx, w.db, borrowMarket, output.UpdatedAt); e != nil {
+	if e = w.marketService.AccrueInterest(ctx, w.db, borrowMarket, output.CreatedAt); e != nil {
 		log.Errorln(e)
 		return e
 	}
@@ -117,7 +117,7 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 	}
 
 	// refund to liquidator if seize not allowed
-	if !w.accountService.SeizeTokenAllowed(ctx, supply, borrow, output.UpdatedAt) {
+	if !w.accountService.SeizeTokenAllowed(ctx, supply, borrow, output.CreatedAt) {
 		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrSeizeNotAllowed, "")
 	}
 
@@ -185,13 +185,13 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 		}
 
 		//supply market accrue interest
-		if e = w.marketService.AccrueInterest(ctx, tx, supplyMarket, output.UpdatedAt); e != nil {
+		if e = w.marketService.AccrueInterest(ctx, tx, supplyMarket, output.CreatedAt); e != nil {
 			log.Errorln(e)
 			return e
 		}
 
 		//borrow market accrue interest
-		if e = w.marketService.AccrueInterest(ctx, tx, borrowMarket, output.UpdatedAt); e != nil {
+		if e = w.marketService.AccrueInterest(ctx, tx, borrowMarket, output.CreatedAt); e != nil {
 			log.Errorln(e)
 			return e
 		}

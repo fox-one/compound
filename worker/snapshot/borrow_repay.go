@@ -28,7 +28,7 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 	}
 
 	//update interest
-	if e = w.marketService.AccrueInterest(ctx, w.db, market, output.UpdatedAt); e != nil {
+	if e = w.marketService.AccrueInterest(ctx, w.db, market, output.CreatedAt); e != nil {
 		log.Errorln(e)
 		return e
 	}
@@ -76,7 +76,7 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 		}
 
 		//update interest
-		if e = w.marketService.AccrueInterest(ctx, tx, market, output.UpdatedAt); e != nil {
+		if e = w.marketService.AccrueInterest(ctx, tx, market, output.CreatedAt); e != nil {
 			log.Errorln(e)
 			return e
 		}
