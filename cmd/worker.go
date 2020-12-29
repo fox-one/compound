@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"compound/handler/hc"
 	walletservice "compound/service/wallet"
 	"compound/worker"
 	"compound/worker/cashier"
@@ -10,9 +11,14 @@ import (
 	"compound/worker/spentsync"
 	"compound/worker/syncer"
 	"compound/worker/txsender"
+	"fmt"
+	"net/http"
 	"sync"
 
 	"github.com/fox-one/pkg/logger"
+	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
+	"github.com/rs/cors"
 	"github.com/spf13/cobra"
 )
 
@@ -55,6 +61,23 @@ var workerCmd = &cobra.Command{
 		messageService := provideMessageService(dapp.Client)
 		proposalService := provideProposalService(dapp.Client, system, marketStore, messageStore)
 
+		//hc api
+		{
+			mux := chi.NewMux()
+			mux.Use(middleware.Recoverer)
+			mux.Use(middleware.StripSlashes)
+			mux.Use(cors.AllowAll().Handler)
+			mux.Use(logger.WithRequestID)
+			mux.Use(middleware.Logger)
+
+			mux.Mount("/hc", hc.Handle(rootCmd.Version))
+
+			port, _ := cmd.Flags().GetInt("port")
+			addr := fmt.Sprintf(":%d", port)
+
+			go http.ListenAndServe(addr, mux)
+		}
+
 		workers := []worker.Worker{
 			cashier.New(walletStore, walletService, system),
 			message.New(messageStore, messageService),
@@ -81,4 +104,5 @@ var workerCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(workerCmd)
+	workerCmd.Flags().Int("port", 80, "worker api port")
 }
