@@ -6,7 +6,7 @@ require (
 	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
-	github.com/fox-one/mixin-sdk-go v1.2.3
+	github.com/fox-one/mixin-sdk-go v1.2.5
 	github.com/fox-one/pkg v1.5.4
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/go-chi/chi v4.1.2+incompatible
@@ -32,12 +32,12 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/stretchr/testify v1.6.1
 	github.com/twitchtv/twirp v7.1.0+incompatible
-	github.com/ugorji/go v1.2.1 // indirect
+	github.com/ugorji/go v1.2.2 // indirect
 	github.com/yiplee/structs v1.0.3
-	golang.org/x/crypto v0.0.0-20201217014255-9d1352758620 // indirect
-	golang.org/x/net v0.0.0-20201216054612-986b41b23924 // indirect
+	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect
+	golang.org/x/net v0.0.0-20201224014010-6772e930b67b // indirect
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
-	golang.org/x/sys v0.0.0-20201214210602-f9fddec55a1e // indirect
+	golang.org/x/sys v0.0.0-20201223074533-0d417f636930 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect

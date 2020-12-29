@@ -129,7 +129,7 @@ func (s *walletService) signTransaction(ctx context.Context, outputs []*core.Out
 		return mixin.UTXOStateSpent, "", nil
 	}
 
-	input := &mixin.TransactionInput{Memo: transfer.Memo}
+	input := &mixin.TransactionInput{Memo: transfer.Memo, Hint: transfer.TraceID}
 	state := outputs[0].State
 	signedTx := outputs[0].UTXO.SignedTx
 	sum := decimal.Zero
