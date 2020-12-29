@@ -1,20 +1,3 @@
-
-# .PHONY: build
-# build:
-# 	go build -o price-oracle.local
-
-# .PHONY: build-dev
-# build-dev:
-# 	sh scripts/build.sh dev
-
-# .PHONY: build-prod
-# build-prod:
-# 	sh scripts/build.sh prod
-
-
-# clean:
-# 	rm -rf price-oracle.*
-
 COMMIT = $(shell git rev-parse --short HEAD)
 VERSION = $(shell git describe --abbrev=0) 
 
