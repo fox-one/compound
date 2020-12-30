@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/property"
@@ -238,8 +239,9 @@ func (w *Payee) transferOut(ctx context.Context, userID, followID, outputTraceID
 		return e
 	}
 
+	modifier := fmt.Sprintf("%s.%d", followID, transferAction.Source)
 	transfer := core.Transfer{
-		TraceID:   uuidutil.Modify(outputTraceID, followID),
+		TraceID:   uuidutil.Modify(outputTraceID, modifier),
 		Opponents: []string{userID},
 		Threshold: 1,
 		AssetID:   assetID,

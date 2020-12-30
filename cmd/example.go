@@ -2,8 +2,6 @@ package cmd
 
 import (
 	"compound/core"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -14,14 +12,9 @@ var exampleCmd = &cobra.Command{
 	Aliases: []string{"exam"},
 	Short:   "",
 	Run: func(cmd *cobra.Command, args []string) {
-		var transferAction core.TransferAction
-		m, e := base64.StdEncoding.DecodeString("eyJzIjo1LCJmIjoiYjI4ODVkNDctMzkzZS00MmM2LTg2YWQtYjI2MDgzZDJiYmYzIn0=")
-		e = json.Unmarshal(m, &transferAction)
-		if e != nil {
-			panic(e)
-		}
+		modifier := fmt.Sprintf("%s.%d", "e15a8248-cd64-4e28-b10d-4907236e9fca", core.ActionTypeBorrow)
 
-		fmt.Println(transferAction)
+		fmt.Println(modifier)
 	},
 }
 
