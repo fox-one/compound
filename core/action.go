@@ -6,7 +6,8 @@ package core
 type ActionType int
 
 const (
-	_ ActionType = iota
+	// ActionTypeDefault default
+	ActionTypeDefault ActionType = iota
 	// ActionTypeSupply supply
 	ActionTypeSupply
 	// ActionTypeBorrow borrow
@@ -51,4 +52,6 @@ const (
 	ActionTypeProposalInjectCTokenForMint
 	// ActionTypeProposalUpdateMarketAdvance update market advance
 	ActionTypeProposalUpdateMarketAdvance
+	// ActionTypeProposalTransfer proposal transfer
+	ActionTypeProposalTransfer
 )

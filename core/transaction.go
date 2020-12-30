@@ -132,9 +132,14 @@ func BuildTransactionFromTransfer(ctx context.Context, transfer *Transfer, snaps
 		transactionExtra.Put(TransactionKeyErrorCode, transferAction.Code)
 	}
 
+	action := transferAction.Source
+	if action == ActionTypeDefault {
+		action = ActionTypeProposalTransfer
+	}
+
 	return &Transaction{
 		UserID:          userID,
-		Action:          transferAction.Source,
+		Action:          action,
 		TraceID:         transfer.TraceID,
 		FollowID:        transferAction.FollowID,
 		Amount:          transfer.Amount,
