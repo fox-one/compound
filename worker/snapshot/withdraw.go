@@ -9,16 +9,7 @@ import (
 )
 
 func (w *Payee) handleWithdrawEvent(ctx context.Context, p *core.Proposal, req proposal.WithdrawReq) error {
-	log := logger.FromContext(ctx)
-
-	_, isRecordNotFound, e := w.marketStore.Find(ctx, req.Asset)
-	if e != nil {
-		if isRecordNotFound {
-			log.WithError(e).Errorln("no market found:", req.Asset)
-			return nil
-		}
-		return e
-	}
+	log := logger.FromContext(ctx).WithField("worker", "withdraw")
 
 	amount := req.Amount.Truncate(8)
 
