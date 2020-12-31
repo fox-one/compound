@@ -50,7 +50,7 @@ type Market struct {
 	PriceUpdatedAt     time.Time       `json:"price_updated_at"`
 	BorrowIndex        decimal.Decimal `sql:"type:decimal(28,16)" json:"borrow_index"`
 	Version            int64           `sql:"default:0" json:"version"`
-	Status             MarketStatus    `sql:"size:20;default:1" json:"status"`
+	Status             MarketStatus    `sql:"default:1" json:"status"`
 	CreatedAt          time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt          time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`
 }
