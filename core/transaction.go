@@ -50,6 +50,8 @@ const (
 	TransactionKeyCTokens = "ctokens"
 	// TransactionKeyCTokenAssetID ctoken asset id
 	TransactionKeyCTokenAssetID = "ctoken_asset_id"
+	// TransactionKeyRefund refund
+	TransactionKeyRefund = "refund"
 )
 
 // TransactionExtraData extra data

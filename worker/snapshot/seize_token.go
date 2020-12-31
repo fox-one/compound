@@ -200,6 +200,13 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 		extra := core.NewTransactionExtra()
 		extra.Put(core.TransactionKeyAssetID, seizedAsset)
 		extra.Put(core.TransactionKeyAmount, seizedAmount)
+		extra.Put(core.TransactionKeyPrice, seizedPrice)
+		if redundantAmount.GreaterThan(decimal.Zero) {
+			extra.Put(core.TransactionKeyRefund, redundantAmount.Truncate(8))
+		} else {
+			extra.Put(core.TransactionKeyRefund, decimal.Zero)
+		}
+
 		transaction := core.BuildTransactionFromOutput(ctx, liquidator, followID, core.ActionTypeSeizeToken, output, &extra)
 		if e = w.transactionStore.Create(ctx, tx, transaction); e != nil {
 			log.WithError(e).Errorln("create transaction error")
