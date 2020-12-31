@@ -50,24 +50,21 @@ type Market struct {
 	PriceUpdatedAt     time.Time       `json:"price_updated_at"`
 	BorrowIndex        decimal.Decimal `sql:"type:decimal(28,16)" json:"borrow_index"`
 	Version            int64           `sql:"default:0" json:"version"`
-	Status             MarketStatus    `sql:"size:20;default:open" json:"status"`
+	Status             MarketStatus    `sql:"size:20;default:1" json:"status"`
 	CreatedAt          time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt          time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`
 }
 
 // MarketStatus market status
-type MarketStatus string
+type MarketStatus int
 
 const (
+	_ MarketStatus = iota
 	// MarketStatusOpen open
-	MarketStatusOpen MarketStatus = "open"
+	MarketStatusOpen
 	// MarketStatusClose close
-	MarketStatusClose MarketStatus = "close"
+	MarketStatusClose
 )
-
-func (s MarketStatus) String() string {
-	return string(s)
-}
 
 // IsValid is valid status
 func (s MarketStatus) IsValid() bool {

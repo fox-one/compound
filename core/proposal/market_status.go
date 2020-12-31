@@ -4,7 +4,6 @@ import (
 	"compound/core"
 	"compound/pkg/mtg"
 	"errors"
-	"strings"
 
 	"github.com/gofrs/uuid"
 )
@@ -22,21 +21,19 @@ func (w MarketStatusReq) MarshalBinary() (data []byte, err error) {
 		return nil, err
 	}
 
-	status := w.Status.String()
-
-	return mtg.Encode(asset, status)
+	return mtg.Encode(asset, w.Status)
 }
 
 // UnmarshalBinary unmarshal bytes to withdraw
 func (w *MarketStatusReq) UnmarshalBinary(data []byte) error {
 	var asset uuid.UUID
-	var status string
+	var status int
 
 	if _, err := mtg.Scan(data, &asset, &status); err != nil {
 		return err
 	}
 
-	s := core.MarketStatus(strings.ToLower(status))
+	s := core.MarketStatus(status)
 	if !s.IsValid() {
 		return errors.New("invalid market status")
 	}
