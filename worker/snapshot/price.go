@@ -132,9 +132,9 @@ func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *cor
 		}
 
 		// accrue interest
-		// if e = w.marketService.AccrueInterest(ctx, tx, market, output.CreatedAt); e != nil {
-		// 	return e
-		// }
+		if e = w.marketService.AccrueInterest(ctx, tx, market, output.CreatedAt); e != nil {
+			return e
+		}
 
 		market.Price = price.Price
 		market.PriceUpdatedAt = output.CreatedAt
