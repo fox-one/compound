@@ -10,40 +10,40 @@ import (
 )
 
 func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
-	log := logger.FromContext(ctx).WithField("worker", "borrow_repay")
-
-	repayAmount := output.Amount
-	assetID := output.AssetID
-
-	log.Infoln(":asset:", output.AssetID, "amount:", repayAmount)
-	market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)
-	if isRecordNotFound {
-		log.Warningln("market not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
-	}
-
-	if e != nil {
-		log.WithError(e).Errorln("find market error")
-		return e
-	}
-
-	//update interest
-	if e = w.marketService.AccrueInterest(ctx, w.db, market, output.CreatedAt); e != nil {
-		log.Errorln(e)
-		return e
-	}
-
-	borrow, isRecordNotFound, e := w.borrowStore.Find(ctx, userID, market.AssetID)
-	if isRecordNotFound {
-		log.Warningln("borrow not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrBorrowNotFound, "")
-	}
-	if e != nil {
-		log.Errorln(e)
-		return e
-	}
-
 	return w.db.Tx(func(tx *db.DB) error {
+		log := logger.FromContext(ctx).WithField("worker", "borrow_repay")
+
+		repayAmount := output.Amount
+		assetID := output.AssetID
+
+		log.Infoln(":asset:", output.AssetID, "amount:", repayAmount)
+		market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)
+		if isRecordNotFound {
+			log.Warningln("market not found")
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
+		}
+
+		if e != nil {
+			log.WithError(e).Errorln("find market error")
+			return e
+		}
+
+		//update interest
+		if e = w.marketService.AccrueInterest(ctx, tx, market, output.CreatedAt); e != nil {
+			log.Errorln(e)
+			return e
+		}
+
+		borrow, isRecordNotFound, e := w.borrowStore.Find(ctx, userID, market.AssetID)
+		if isRecordNotFound {
+			log.Warningln("borrow not found")
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrBorrowNotFound, "")
+		}
+		if e != nil {
+			log.Errorln(e)
+			return e
+		}
+
 		//update borrow info
 		borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, market)
 		if e != nil {

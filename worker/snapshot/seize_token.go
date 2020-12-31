@@ -12,116 +12,116 @@ import (
 )
 
 func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
-	log := logger.FromContext(ctx).WithField("worker", "seize_token")
-
-	liquidator := userID
-	var seizedAddress uuid.UUID
-	var seizedAsset uuid.UUID
-	if _, err := mtg.Scan(body, &seizedAddress, &seizedAsset); err != nil {
-		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrInvalidArgument, "")
-	}
-
-	seizedUser, e := w.userStore.FindByAddress(ctx, seizedAddress.String())
-	if e != nil {
-		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrInvalidArgument, "")
-	}
-
-	seizedUserID := seizedUser.UserID
-	seizedAssetID := seizedAsset.String()
-
-	userPayAmount := output.Amount.Abs()
-	userPayAssetID := output.AssetID
-
-	log.Infof("seizedUser:%s, seizedAsset:%s, payAsset:%s, payAmount:%s", seizedUserID, seizedAssetID, userPayAssetID, userPayAmount)
-
-	// to seize
-	supplyMarket, isRecordNotFound, e := w.marketStore.Find(ctx, seizedAssetID)
-	if isRecordNotFound {
-		log.Warningln("supply market not found")
-		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrMarketNotFound, "")
-	}
-	if e != nil {
-		log.WithError(e).Errorln("find supply market error")
-		return e
-	}
-
-	supplyExchangeRate, e := w.marketService.CurExchangeRate(ctx, supplyMarket)
-	if e != nil {
-		log.Errorln(e)
-		return e
-	}
-
-	// to repay
-	borrowMarket, isRecordNotFound, e := w.marketStore.Find(ctx, userPayAssetID)
-	if isRecordNotFound {
-		log.Warningln("borrow market not found")
-		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrMarketNotFound, "")
-	}
-	if e != nil {
-		log.WithError(e).Errorln("find borrow market error")
-		return e
-	}
-
-	//supply market accrue interest
-	if e = w.marketService.AccrueInterest(ctx, w.db, supplyMarket, output.CreatedAt); e != nil {
-		log.Errorln(e)
-		return e
-	}
-
-	//borrow market accrue interest
-	if e = w.marketService.AccrueInterest(ctx, w.db, borrowMarket, output.CreatedAt); e != nil {
-		log.Errorln(e)
-		return e
-	}
-
-	supply, isRecordNotFound, e := w.supplyStore.Find(ctx, seizedUserID, supplyMarket.CTokenAssetID)
-	if isRecordNotFound {
-		log.Warningln("supply not found")
-		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrSupplyNotFound, "")
-	}
-
-	if e != nil {
-		log.WithError(e).Errorln("find supply error")
-		return e
-	}
-
-	borrow, isRecordNotFound, e := w.borrowStore.Find(ctx, seizedUserID, borrowMarket.AssetID)
-	if isRecordNotFound {
-		log.Warningln("borrow not found")
-		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrBorrowNotFound, "")
-	}
-	if e != nil {
-		log.WithError(e).Errorln("find borrow error")
-		return e
-	}
-
-	borrowPrice, e := w.priceService.GetCurrentUnderlyingPrice(ctx, borrowMarket)
-	if e != nil {
-		log.Errorln(e)
-		return e
-	}
-
-	if borrowPrice.LessThanOrEqual(decimal.Zero) {
-		log.Errorln(e)
-		return e
-	}
-
-	supplyPrice, e := w.priceService.GetCurrentUnderlyingPrice(ctx, supplyMarket)
-	if e != nil {
-		log.Errorln(e)
-		return e
-	}
-	if supplyPrice.LessThanOrEqual(decimal.Zero) {
-		log.Errorln(e)
-		return e
-	}
-
-	// refund to liquidator if seize not allowed
-	if !w.accountService.SeizeTokenAllowed(ctx, supply, borrow, output.CreatedAt) {
-		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrSeizeNotAllowed, "")
-	}
-
 	return w.db.Tx(func(tx *db.DB) error {
+		log := logger.FromContext(ctx).WithField("worker", "seize_token")
+
+		liquidator := userID
+		var seizedAddress uuid.UUID
+		var seizedAsset uuid.UUID
+		if _, err := mtg.Scan(body, &seizedAddress, &seizedAsset); err != nil {
+			return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrInvalidArgument, "")
+		}
+
+		seizedUser, e := w.userStore.FindByAddress(ctx, seizedAddress.String())
+		if e != nil {
+			return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrInvalidArgument, "")
+		}
+
+		seizedUserID := seizedUser.UserID
+		seizedAssetID := seizedAsset.String()
+
+		userPayAmount := output.Amount.Abs()
+		userPayAssetID := output.AssetID
+
+		log.Infof("seizedUser:%s, seizedAsset:%s, payAsset:%s, payAmount:%s", seizedUserID, seizedAssetID, userPayAssetID, userPayAmount)
+
+		// to seize
+		supplyMarket, isRecordNotFound, e := w.marketStore.Find(ctx, seizedAssetID)
+		if isRecordNotFound {
+			log.Warningln("supply market not found")
+			return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrMarketNotFound, "")
+		}
+		if e != nil {
+			log.WithError(e).Errorln("find supply market error")
+			return e
+		}
+
+		supplyExchangeRate, e := w.marketService.CurExchangeRate(ctx, supplyMarket)
+		if e != nil {
+			log.Errorln(e)
+			return e
+		}
+
+		// to repay
+		borrowMarket, isRecordNotFound, e := w.marketStore.Find(ctx, userPayAssetID)
+		if isRecordNotFound {
+			log.Warningln("borrow market not found")
+			return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrMarketNotFound, "")
+		}
+		if e != nil {
+			log.WithError(e).Errorln("find borrow market error")
+			return e
+		}
+
+		//supply market accrue interest
+		if e = w.marketService.AccrueInterest(ctx, tx, supplyMarket, output.CreatedAt); e != nil {
+			log.Errorln(e)
+			return e
+		}
+
+		//borrow market accrue interest
+		if e = w.marketService.AccrueInterest(ctx, tx, borrowMarket, output.CreatedAt); e != nil {
+			log.Errorln(e)
+			return e
+		}
+
+		supply, isRecordNotFound, e := w.supplyStore.Find(ctx, seizedUserID, supplyMarket.CTokenAssetID)
+		if isRecordNotFound {
+			log.Warningln("supply not found")
+			return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrSupplyNotFound, "")
+		}
+
+		if e != nil {
+			log.WithError(e).Errorln("find supply error")
+			return e
+		}
+
+		borrow, isRecordNotFound, e := w.borrowStore.Find(ctx, seizedUserID, borrowMarket.AssetID)
+		if isRecordNotFound {
+			log.Warningln("borrow not found")
+			return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrBorrowNotFound, "")
+		}
+		if e != nil {
+			log.WithError(e).Errorln("find borrow error")
+			return e
+		}
+
+		borrowPrice, e := w.priceService.GetCurrentUnderlyingPrice(ctx, borrowMarket)
+		if e != nil {
+			log.Errorln(e)
+			return e
+		}
+
+		if borrowPrice.LessThanOrEqual(decimal.Zero) {
+			log.Errorln(e)
+			return e
+		}
+
+		supplyPrice, e := w.priceService.GetCurrentUnderlyingPrice(ctx, supplyMarket)
+		if e != nil {
+			log.Errorln(e)
+			return e
+		}
+		if supplyPrice.LessThanOrEqual(decimal.Zero) {
+			log.Errorln(e)
+			return e
+		}
+
+		// refund to liquidator if seize not allowed
+		if !w.accountService.SeizeTokenAllowed(ctx, supply, borrow, output.CreatedAt) {
+			return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrSeizeNotAllowed, "")
+		}
+
 		borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, borrowMarket)
 		if e != nil {
 			log.Errorln(e)

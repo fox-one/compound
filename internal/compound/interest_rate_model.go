@@ -1,8 +1,6 @@
 package compound
 
 import (
-	"errors"
-
 	"github.com/shopspring/decimal"
 )
 
@@ -21,11 +19,8 @@ var (
 	LiquidationIncentiveMin = decimal.NewFromFloat(0.01)
 	// LiquidationIncentiveMax must be no greater than this value
 	LiquidationIncentiveMax = decimal.NewFromFloat(0.9)
-)
-
-var (
-	// ErrUnsupported unsupported error
-	ErrUnsupported = errors.New("unsupported")
+	// MaxPricision max pricision
+	MaxPricision int32 = 16
 )
 
 // UtilizationRate utilization rate
@@ -35,7 +30,7 @@ func UtilizationRate(cash, borrows, reserves decimal.Decimal) decimal.Decimal {
 		return decimal.Zero
 	}
 
-	return borrows.Div(cash.Add(borrows).Sub(reserves))
+	return borrows.Div(cash.Add(borrows).Sub(reserves)).Truncate(MaxPricision)
 }
 
 // GetExchangeRate exchange rate
@@ -44,19 +39,19 @@ func GetExchangeRate(totalCash, totalBorrows, totalReserves, tokenSupply, initia
 		return initialExchangeRate
 	}
 
-	return totalCash.Add(totalBorrows).Sub(totalReserves).Div(tokenSupply)
+	return totalCash.Add(totalBorrows).Sub(totalReserves).Div(tokenSupply).Truncate(MaxPricision)
 }
 
 // GetBorrowRatePerBlock borrowRate per block
 func GetBorrowRatePerBlock(utilizationRate, baseRate, multiplier, jumpMultiplier, kink decimal.Decimal) decimal.Decimal {
 	if kink.Equal(decimal.Zero) ||
 		utilizationRate.LessThanOrEqual(kink) {
-		return utilizationRate.Mul(GetMultiplierPerBlock(multiplier)).Add(GetBaseRatePerBlock(baseRate))
+		return utilizationRate.Mul(GetMultiplierPerBlock(multiplier)).Add(GetBaseRatePerBlock(baseRate)).Truncate(MaxPricision)
 	}
 
 	normalRate := kink.Mul(GetMultiplierPerBlock(multiplier)).Add(GetBaseRatePerBlock(baseRate))
 	excessUtilRate := utilizationRate.Sub(kink)
-	return excessUtilRate.Mul(GetJumpMultiplierPerBlock(jumpMultiplier)).Add(normalRate)
+	return excessUtilRate.Mul(GetJumpMultiplierPerBlock(jumpMultiplier)).Add(normalRate).Truncate(MaxPricision)
 }
 
 // GetSupplyRatePerBlock supply rate per block
@@ -64,20 +59,20 @@ func GetSupplyRatePerBlock(utilizationRate, baseRate, multiplier, jumpMultiplier
 	borrowRate := GetBorrowRatePerBlock(utilizationRate, baseRate, multiplier, jumpMultiplier, kink)
 	oneMinusReserveFactor := decimal.NewFromInt(1).Sub(reserveFactor)
 	rateToPool := borrowRate.Mul(oneMinusReserveFactor)
-	return utilizationRate.Mul(rateToPool)
+	return utilizationRate.Mul(rateToPool).Truncate(MaxPricision)
 }
 
 // GetBaseRatePerBlock base rate per block
 func GetBaseRatePerBlock(baseRate decimal.Decimal) decimal.Decimal {
-	return baseRate.Div(BlocksPerYear)
+	return baseRate.Div(BlocksPerYear).Truncate(MaxPricision)
 }
 
 // GetMultiplierPerBlock multiplier per block
 func GetMultiplierPerBlock(multiplier decimal.Decimal) decimal.Decimal {
-	return multiplier.Div(BlocksPerYear)
+	return multiplier.Div(BlocksPerYear).Truncate(MaxPricision)
 }
 
 // GetJumpMultiplierPerBlock jump multiplier per block
 func GetJumpMultiplierPerBlock(jumpMultiplier decimal.Decimal) decimal.Decimal {
-	return jumpMultiplier.Div(BlocksPerYear)
+	return jumpMultiplier.Div(BlocksPerYear).Truncate(MaxPricision)
 }

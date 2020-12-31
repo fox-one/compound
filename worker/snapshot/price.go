@@ -15,25 +15,25 @@ import (
 )
 
 func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *core.Output, member *core.Member, traceID string, body []byte) error {
-	log := logger.FromContext(ctx).WithField("worker", "handleProposalProvidePriceEvent")
-	var data proposal.ProvidePriceReq
-	if _, e := mtg.Scan(body, &data); e != nil {
-		return nil
-	}
-
-	blockNum, e := w.blockService.GetBlock(ctx, output.CreatedAt)
-	if e != nil {
-		return e
-	}
-
-	market, _, e := w.marketStore.FindBySymbol(ctx, data.Symbol)
-	if e != nil {
-		return e
-	}
-
-	log.Infof("asset:%s,block:%d, output.updated_at:%v", data.Symbol, blockNum, output.CreatedAt)
-
 	return w.db.Tx(func(tx *db.DB) error {
+		log := logger.FromContext(ctx).WithField("worker", "handleProposalProvidePriceEvent")
+		var data proposal.ProvidePriceReq
+		if _, e := mtg.Scan(body, &data); e != nil {
+			return nil
+		}
+
+		blockNum, e := w.blockService.GetBlock(ctx, output.CreatedAt)
+		if e != nil {
+			return e
+		}
+
+		market, _, e := w.marketStore.FindBySymbol(ctx, data.Symbol)
+		if e != nil {
+			return e
+		}
+
+		log.Infof("asset:%s,block:%d, output.updated_at:%v", data.Symbol, blockNum, output.CreatedAt)
+
 		priceTickers := make([]*core.PriceTicker, 0)
 		price, isRecordNotFound, e := w.priceStore.FindByAssetBlock(ctx, market.AssetID, blockNum)
 		if e != nil {

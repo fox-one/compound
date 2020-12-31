@@ -10,39 +10,39 @@ import (
 )
 
 func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
-	log := logger.FromContext(ctx).WithField("worker", "supply")
-
-	supplyAmount := output.Amount.Abs()
-	assetID := output.AssetID
-
-	market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)
-	if isRecordNotFound {
-		log.Warningln("market not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
-	}
-	if e != nil {
-		log.WithError(e).Errorln("find market error")
-		return e
-	}
-
-	//accrue interest
-	if e = w.marketService.AccrueInterest(ctx, w.db, market, output.CreatedAt); e != nil {
-		log.Errorln(e)
-		return e
-	}
-
-	exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
-	if e != nil {
-		log.Errorln(e)
-		return e
-	}
-
-	ctokens := supplyAmount.Div(exchangeRate).Truncate(8)
-	if ctokens.LessThan(decimal.NewFromFloat(0.00000001)) {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrInvalidAmount, "")
-	}
-
 	return w.db.Tx(func(tx *db.DB) error {
+		log := logger.FromContext(ctx).WithField("worker", "supply")
+
+		supplyAmount := output.Amount.Abs()
+		assetID := output.AssetID
+
+		market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)
+		if isRecordNotFound {
+			log.Warningln("market not found")
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
+		}
+		if e != nil {
+			log.WithError(e).Errorln("find market error")
+			return e
+		}
+
+		//accrue interest
+		if e = w.marketService.AccrueInterest(ctx, tx, market, output.CreatedAt); e != nil {
+			log.Errorln(e)
+			return e
+		}
+
+		exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
+		if e != nil {
+			log.Errorln(e)
+			return e
+		}
+
+		ctokens := supplyAmount.Div(exchangeRate).Truncate(8)
+		if ctokens.LessThan(decimal.NewFromFloat(0.00000001)) {
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrInvalidAmount, "")
+		}
+
 		//update maket
 		market.CTokens = market.CTokens.Add(ctokens).Truncate(16)
 		market.TotalCash = market.TotalCash.Add(supplyAmount).Truncate(16)

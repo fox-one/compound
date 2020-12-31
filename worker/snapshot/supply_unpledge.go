@@ -13,80 +13,80 @@ import (
 )
 
 func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
-	log := logger.FromContext(ctx).WithField("worker", "unpledge")
-
-	var ctokenAsset uuid.UUID
-	var unpledgedAmount decimal.Decimal
-
-	if _, err := mtg.Scan(body, &ctokenAsset, &unpledgedAmount); err != nil {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrInvalidArgument, "")
-	}
-
-	log.Infof("ctokenAssetID:%s, amount:%s", ctokenAsset.String(), unpledgedAmount)
-
-	ctokenAssetID := ctokenAsset.String()
-	market, isRecordNotFound, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
-	if isRecordNotFound {
-		log.Warningln("market not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
-	}
-	if e != nil {
-		log.WithError(e).Errorln("find market error")
-		return e
-	}
-
-	supply, isRecordNotFound, e := w.supplyStore.Find(ctx, userID, market.CTokenAssetID)
-	if isRecordNotFound {
-		log.Warningln("supply not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrSupplyNotFound, "")
-	}
-	if e != nil {
-		log.WithError(e).Errorln("find supply error")
-		return e
-	}
-
-	//accrue interest
-	if e = w.marketService.AccrueInterest(ctx, w.db, market, output.CreatedAt); e != nil {
-		log.Errorln(e)
-		return e
-	}
-
-	if unpledgedAmount.GreaterThan(supply.Collaterals) {
-		log.Errorln(errors.New("insufficient collaterals"))
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrInsufficientCollaterals, "")
-	}
-
-	blockNum, e := w.blockService.GetBlock(ctx, output.CreatedAt)
-	if e != nil {
-		log.Errorln(e)
-		return e
-	}
-
-	// check liqudity
-	liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, userID, blockNum)
-	if e != nil {
-		log.Errorln(e)
-		return e
-	}
-
-	price, e := w.priceService.GetCurrentUnderlyingPrice(ctx, market)
-	if e != nil {
-		log.Errorln(e)
-		return e
-	}
-
-	exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
-	if e != nil {
-		log.Errorln(e)
-		return e
-	}
-	unpledgedTokenLiquidity := unpledgedAmount.Mul(exchangeRate).Mul(market.CollateralFactor).Mul(price)
-	if unpledgedTokenLiquidity.GreaterThan(liquidity) {
-		log.Errorln(errors.New("insufficient liquidity"))
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrInsufficientLiquidity, "")
-	}
-
 	return w.db.Tx(func(tx *db.DB) error {
+		log := logger.FromContext(ctx).WithField("worker", "unpledge")
+
+		var ctokenAsset uuid.UUID
+		var unpledgedAmount decimal.Decimal
+
+		if _, err := mtg.Scan(body, &ctokenAsset, &unpledgedAmount); err != nil {
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrInvalidArgument, "")
+		}
+
+		log.Infof("ctokenAssetID:%s, amount:%s", ctokenAsset.String(), unpledgedAmount)
+
+		ctokenAssetID := ctokenAsset.String()
+		market, isRecordNotFound, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
+		if isRecordNotFound {
+			log.Warningln("market not found")
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
+		}
+		if e != nil {
+			log.WithError(e).Errorln("find market error")
+			return e
+		}
+
+		supply, isRecordNotFound, e := w.supplyStore.Find(ctx, userID, market.CTokenAssetID)
+		if isRecordNotFound {
+			log.Warningln("supply not found")
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrSupplyNotFound, "")
+		}
+		if e != nil {
+			log.WithError(e).Errorln("find supply error")
+			return e
+		}
+
+		//accrue interest
+		if e = w.marketService.AccrueInterest(ctx, tx, market, output.CreatedAt); e != nil {
+			log.Errorln(e)
+			return e
+		}
+
+		if unpledgedAmount.GreaterThan(supply.Collaterals) {
+			log.Errorln(errors.New("insufficient collaterals"))
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrInsufficientCollaterals, "")
+		}
+
+		blockNum, e := w.blockService.GetBlock(ctx, output.CreatedAt)
+		if e != nil {
+			log.Errorln(e)
+			return e
+		}
+
+		// check liqudity
+		liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, userID, blockNum)
+		if e != nil {
+			log.Errorln(e)
+			return e
+		}
+
+		price, e := w.priceService.GetCurrentUnderlyingPrice(ctx, market)
+		if e != nil {
+			log.Errorln(e)
+			return e
+		}
+
+		exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
+		if e != nil {
+			log.Errorln(e)
+			return e
+		}
+		unpledgedTokenLiquidity := unpledgedAmount.Mul(exchangeRate).Mul(market.CollateralFactor).Mul(price)
+		if unpledgedTokenLiquidity.GreaterThan(liquidity) {
+			log.Errorln(errors.New("insufficient liquidity"))
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrInsufficientLiquidity, "")
+		}
+
 		supply.Collaterals = supply.Collaterals.Sub(unpledgedAmount).Truncate(16)
 		if e = w.supplyStore.Update(ctx, tx, supply); e != nil {
 			log.Errorln(e)

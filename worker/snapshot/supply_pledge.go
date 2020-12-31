@@ -11,33 +11,33 @@ import (
 )
 
 func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
-	log := logger.FromContext(ctx).WithField("worker", "pledge")
-	ctokens := output.Amount
-	ctokenAssetID := output.AssetID
-
-	log.Infof("ctokenAssetID:%s, amount:%s", ctokenAssetID, ctokens)
-
-	market, isRecordNotFound, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
-	if isRecordNotFound {
-		log.Warningln("market not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
-	}
-	if e != nil {
-		log.WithError(e).Errorln("find market error")
-		return e
-	}
-
-	if ctokens.GreaterThan(market.CTokens) {
-		log.Errorln(errors.New("ctoken overflow"))
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrPledgeNotAllowed, "")
-	}
-
-	if market.CollateralFactor.LessThanOrEqual(decimal.Zero) {
-		log.Errorln(errors.New("pledge disallowed"))
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrPledgeNotAllowed, "")
-	}
-
 	return w.db.Tx(func(tx *db.DB) error {
+		log := logger.FromContext(ctx).WithField("worker", "pledge")
+		ctokens := output.Amount
+		ctokenAssetID := output.AssetID
+
+		log.Infof("ctokenAssetID:%s, amount:%s", ctokenAssetID, ctokens)
+
+		market, isRecordNotFound, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
+		if isRecordNotFound {
+			log.Warningln("market not found")
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
+		}
+		if e != nil {
+			log.WithError(e).Errorln("find market error")
+			return e
+		}
+
+		if ctokens.GreaterThan(market.CTokens) {
+			log.Errorln(errors.New("ctoken overflow"))
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrPledgeNotAllowed, "")
+		}
+
+		if market.CollateralFactor.LessThanOrEqual(decimal.Zero) {
+			log.Errorln(errors.New("pledge disallowed"))
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrPledgeNotAllowed, "")
+		}
+
 		//accrue interest
 		if e = w.marketService.AccrueInterest(ctx, tx, market, output.CreatedAt); e != nil {
 			log.Errorln(e)

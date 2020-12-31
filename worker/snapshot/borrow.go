@@ -12,48 +12,42 @@ import (
 )
 
 func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
-	log := logger.FromContext(ctx).WithField("worker", "borrow")
-
-	var asset uuid.UUID
-	var borrowAmount decimal.Decimal
-	if _, err := mtg.Scan(body, &asset, &borrowAmount); err != nil {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrInvalidArgument, "")
-	}
-
-	assetID := asset.String()
-	log.Infoln("borrow, asset:", assetID, ":amount:", borrowAmount)
-	market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)
-	if isRecordNotFound {
-		log.Warningln("market not found, refund")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
-	}
-
-	if e != nil {
-		log.Errorln("query market error:", e)
-		return e
-	}
-
-	// accrue interest
-	if e = w.marketService.AccrueInterest(ctx, w.db, market, output.CreatedAt); e != nil {
-		return e
-	}
-
-	if !w.borrowService.BorrowAllowed(ctx, borrowAmount, userID, market, output.CreatedAt) {
-		log.Errorln("borrow not allowed")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrBorrowNotAllowed, "")
-	}
-
 	return w.db.Tx(func(tx *db.DB) error {
+		log := logger.FromContext(ctx).WithField("worker", "borrow")
+
+		var asset uuid.UUID
+		var borrowAmount decimal.Decimal
+		if _, err := mtg.Scan(body, &asset, &borrowAmount); err != nil {
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrInvalidArgument, "")
+		}
+
+		assetID := asset.String()
+		log.Infoln("borrow, asset:", assetID, ":amount:", borrowAmount)
+		market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)
+		if isRecordNotFound {
+			log.Warningln("market not found, refund")
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
+		}
+
+		if e != nil {
+			log.Errorln("query market error:", e)
+			return e
+		}
+
+		// accrue interest
+		if e = w.marketService.AccrueInterest(ctx, tx, market, output.CreatedAt); e != nil {
+			return e
+		}
+
+		if !w.borrowService.BorrowAllowed(ctx, borrowAmount, userID, market, output.CreatedAt) {
+			log.Errorln("borrow not allowed")
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrBorrowNotAllowed, "")
+		}
+
 		market.TotalCash = market.TotalCash.Sub(borrowAmount).Truncate(16)
 		market.TotalBorrows = market.TotalBorrows.Add(borrowAmount).Truncate(16)
 		// update market
 		if e = w.marketStore.Update(ctx, tx, market); e != nil {
-			log.Errorln(e)
-			return e
-		}
-
-		//update interest
-		if e = w.marketService.AccrueInterest(ctx, tx, market, output.CreatedAt); e != nil {
 			log.Errorln(e)
 			return e
 		}
@@ -91,6 +85,12 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 				log.Errorln(e)
 				return e
 			}
+		}
+
+		//update interest
+		if e = w.marketService.AccrueInterest(ctx, tx, market, output.CreatedAt); e != nil {
+			log.Errorln(e)
+			return e
 		}
 
 		//transaction

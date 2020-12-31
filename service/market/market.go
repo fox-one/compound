@@ -83,7 +83,7 @@ func (s *service) CurBorrowRate(ctx context.Context, market *core.Market) (decim
 		return decimal.Zero, e
 	}
 
-	return borrowRatePerBlock.Mul(compound.BlocksPerYear), nil
+	return borrowRatePerBlock.Mul(compound.BlocksPerYear).Truncate(compound.MaxPricision), nil
 }
 
 // 借款块利率, 同一个block里保持一致
@@ -105,7 +105,7 @@ func (s *service) CurSupplyRate(ctx context.Context, market *core.Market) (decim
 		return decimal.Zero, e
 	}
 
-	return supplyRatePerBlock.Mul(compound.BlocksPerYear), nil
+	return supplyRatePerBlock.Mul(compound.BlocksPerYear).Truncate(compound.MaxPricision), nil
 }
 
 // 存款块利率, 同一个block里保持一致
