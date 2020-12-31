@@ -8,6 +8,7 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
+	_ = x[ActionTypeDefault-0]
 	_ = x[ActionTypeSupply-1]
 	_ = x[ActionTypeBorrow-2]
 	_ = x[ActionTypeRedeem-3]
@@ -30,16 +31,18 @@ func _() {
 	_ = x[ActionTypeProposalVote-20]
 	_ = x[ActionTypeProposalInjectCTokenForMint-21]
 	_ = x[ActionTypeProposalUpdateMarketAdvance-22]
+	_ = x[ActionTypeProposalTransfer-23]
+	_ = x[ActionTypeProposalCloseMarket-24]
+	_ = x[ActionTypeProposalOpenMarket-25]
 }
 
-const _ActionType_name = "SupplyBorrowRedeemRepayMintPledgeUnpledgeSeizeTokenRedeemTransferUnpledgeTransferBorrowTransferSeizeTokenTransferRefundTransferRepayRefundTransferSeizeRefundTransferProposalAddMarketProposalUpdateMarketProposalWithdrawReservesProposalProvidePriceProposalVoteProposalInjectCTokenForMintProposalUpdateMarketAdvance"
+const _ActionType_name = "DefaultSupplyBorrowRedeemRepayMintPledgeUnpledgeSeizeTokenRedeemTransferUnpledgeTransferBorrowTransferSeizeTokenTransferRefundTransferRepayRefundTransferSeizeRefundTransferProposalAddMarketProposalUpdateMarketProposalWithdrawReservesProposalProvidePriceProposalVoteProposalInjectCTokenForMintProposalUpdateMarketAdvanceProposalTransferProposalCloseMarketProposalOpenMarket"
 
-var _ActionType_index = [...]uint16{0, 6, 12, 18, 23, 27, 33, 41, 51, 65, 81, 95, 113, 127, 146, 165, 182, 202, 226, 246, 258, 285, 312}
+var _ActionType_index = [...]uint16{0, 7, 13, 19, 25, 30, 34, 40, 48, 58, 72, 88, 102, 120, 134, 153, 172, 189, 209, 233, 253, 265, 292, 319, 335, 354, 372}
 
 func (i ActionType) String() string {
-	i -= 1
 	if i < 0 || i >= ActionType(len(_ActionType_index)-1) {
-		return "ActionType(" + strconv.FormatInt(int64(i+1), 10) + ")"
+		return "ActionType(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
 	return _ActionType_name[_ActionType_index[i]:_ActionType_index[i+1]]
 }

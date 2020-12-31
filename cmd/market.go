@@ -240,10 +240,112 @@ var updateMarketAdvanceCmd = &cobra.Command{
 	},
 }
 
+var closeMarketCmd = &cobra.Command{
+	Use:     "close-market",
+	Aliases: []string{"cm"},
+	Short:   "close market",
+	Run: func(cmd *cobra.Command, args []string) {
+		ctx := cmd.Context()
+		system := provideSystem()
+		dapp := provideDapp()
+
+		clientID, _ := uuid.FromString(system.ClientID)
+		traceID, _ := uuid.FromString(id.GenTraceID())
+
+		closeMarketReq := proposal.MarketStatusReq{
+			Status: core.MarketStatusClose,
+		}
+
+		asset, e := cmd.Flags().GetString("asset")
+		if e != nil || asset == "" {
+			panic("invalid asset")
+		}
+		closeMarketReq.AssetID = asset
+
+		memo, err := mtg.Encode(clientID, traceID, int(core.ActionTypeProposalCloseMarket), closeMarketReq)
+		if err != nil {
+			panic(err)
+		}
+
+		sign := mtg.Sign(memo, system.SignKey)
+		memo = mtg.Pack(memo, sign)
+
+		input := mixin.TransferInput{
+			AssetID: system.VoteAsset,
+			Amount:  system.VoteAmount,
+			TraceID: traceID.String(),
+			Memo:    base64.StdEncoding.EncodeToString(memo),
+		}
+		input.OpponentMultisig.Receivers = system.MemberIDs()
+		input.OpponentMultisig.Threshold = system.Threshold
+
+		payment, err := dapp.Client.VerifyPayment(ctx, input)
+		if err != nil {
+			panic(err)
+		}
+
+		url := mixin.URL.Codes(payment.CodeID)
+		cmd.Println(url)
+		qrcode.Fprint(cmd.OutOrStdout(), url)
+	},
+}
+
+var openMarketCmd = &cobra.Command{
+	Use:     "open-market",
+	Aliases: []string{"om"},
+	Short:   "open market",
+	Run: func(cmd *cobra.Command, args []string) {
+		ctx := cmd.Context()
+		system := provideSystem()
+		dapp := provideDapp()
+
+		clientID, _ := uuid.FromString(system.ClientID)
+		traceID, _ := uuid.FromString(id.GenTraceID())
+
+		openMarketReq := proposal.MarketStatusReq{
+			Status: core.MarketStatusOpen,
+		}
+
+		asset, e := cmd.Flags().GetString("asset")
+		if e != nil || asset == "" {
+			panic("invalid asset")
+		}
+		openMarketReq.AssetID = asset
+
+		memo, err := mtg.Encode(clientID, traceID, int(core.ActionTypeProposalOpenMarket), openMarketReq)
+		if err != nil {
+			panic(err)
+		}
+
+		sign := mtg.Sign(memo, system.SignKey)
+		memo = mtg.Pack(memo, sign)
+
+		input := mixin.TransferInput{
+			AssetID: system.VoteAsset,
+			Amount:  system.VoteAmount,
+			TraceID: traceID.String(),
+			Memo:    base64.StdEncoding.EncodeToString(memo),
+		}
+		input.OpponentMultisig.Receivers = system.MemberIDs()
+		input.OpponentMultisig.Threshold = system.Threshold
+
+		payment, err := dapp.Client.VerifyPayment(ctx, input)
+		if err != nil {
+			panic(err)
+		}
+
+		url := mixin.URL.Codes(payment.CodeID)
+		cmd.Println(url)
+		qrcode.Fprint(cmd.OutOrStdout(), url)
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(addMarketCmd)
 	rootCmd.AddCommand(updateMarketCmd)
 	rootCmd.AddCommand(updateMarketAdvanceCmd)
+	rootCmd.AddCommand(closeMarketCmd)
+	rootCmd.AddCommand(openMarketCmd)
 
 	addMarketCmd.Flags().String("s", "", "market symbol")
 	addMarketCmd.Flags().String("a", "", "asset id")
@@ -272,4 +374,8 @@ func init() {
 	updateMarketAdvanceCmd.Flags().String("m", "", "multiplier")
 	updateMarketAdvanceCmd.Flags().String("jm", "", "jump multiplier")
 	updateMarketAdvanceCmd.Flags().String("k", "", "kink")
+
+	closeMarketCmd.Flags().String("asset", "", "asset id")
+
+	openMarketCmd.Flags().String("asset", "", "asset id")
 }

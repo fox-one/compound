@@ -24,6 +24,7 @@ func (w *Payee) handleAddMarketEvent(ctx context.Context, p *core.Proposal, req 
 			Symbol:        strings.ToUpper(req.Symbol),
 			AssetID:       req.AssetID,
 			CTokenAssetID: req.CTokenAssetID,
+			Status:        core.MarketStatusOpen,
 		}
 
 		if e = w.marketStore.Save(ctx, w.db, &market); e != nil {

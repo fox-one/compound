@@ -35,6 +35,8 @@ const (
 	ErrBorrowNotAllowed ErrorCode = 100109
 	// ErrPledgeNotAllowed pledge not allowed
 	ErrPledgeNotAllowed ErrorCode = 100110
+	// ErrMarketClosed market closed
+	ErrMarketClosed ErrorCode = 100111
 )
 
 func (e ErrorCode) String() string {

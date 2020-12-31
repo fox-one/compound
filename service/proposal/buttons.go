@@ -46,6 +46,14 @@ func generateButtons(ctx context.Context, marketStore core.IMarketStore, p *core
 		_ = json.Unmarshal(p.Content, &action)
 		buttons = appendAsset(buttons, "Asset", action.Asset)
 		buttons = appendUser(buttons, "Opponent", action.Opponent)
+	case core.ActionTypeProposalCloseMarket:
+		var action proposal.MarketStatusReq
+		_ = json.Unmarshal(p.Content, &action)
+		buttons = appendAsset(buttons, "Asset", action.AssetID)
+	case core.ActionTypeProposalOpenMarket:
+		var action proposal.MarketStatusReq
+		_ = json.Unmarshal(p.Content, &action)
+		buttons = appendAsset(buttons, "Asset", action.AssetID)
 	}
 
 	return buttons

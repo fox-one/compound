@@ -28,6 +28,10 @@ func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, user
 			return e
 		}
 
+		if w.marketService.IsMarketClosed(ctx, market) {
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketClosed, "")
+		}
+
 		if ctokens.GreaterThan(market.CTokens) {
 			log.Errorln(errors.New("ctoken overflow"))
 			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrPledgeNotAllowed, "")

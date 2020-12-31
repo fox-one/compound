@@ -106,6 +106,20 @@ func (w *Payee) handleCreateProposalEvent(ctx context.Context, output *core.Outp
 			return nil
 		}
 		p.Content, _ = json.Marshal(content)
+	case core.ActionTypeProposalCloseMarket:
+		var content proposal.MarketStatusReq
+		if _, err := mtg.Scan(body, &content); err != nil {
+			log.WithError(err).Errorln("decode proposal closeMarket cotnent error")
+			return nil
+		}
+		p.Content, _ = json.Marshal(content)
+	case core.ActionTypeProposalOpenMarket:
+		var content proposal.MarketStatusReq
+		if _, err := mtg.Scan(body, &content); err != nil {
+			log.WithError(err).Errorln("decode proposal openMarket cotnent error")
+			return nil
+		}
+		p.Content, _ = json.Marshal(content)
 	default:
 		log.Warningln("invalid proposal:", p.Action)
 		return nil
@@ -145,6 +159,14 @@ func (w *Payee) handlePassedProposal(ctx context.Context, p *core.Proposal, t ti
 		var proposalReq proposal.WithdrawReq
 		_ = json.Unmarshal(p.Content, &proposalReq)
 		return w.handleWithdrawEvent(ctx, p, proposalReq)
+	case core.ActionTypeProposalCloseMarket:
+		var req proposal.MarketStatusReq
+		_ = json.Unmarshal(p.Content, &req)
+		return w.handleCloseMarketEvent(ctx, p, req, t)
+	case core.ActionTypeProposalOpenMarket:
+		var req proposal.MarketStatusReq
+		_ = json.Unmarshal(p.Content, &req)
+		return w.handleOpenMarketEvent(ctx, p, req, t)
 	}
 
 	return nil

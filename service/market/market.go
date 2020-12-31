@@ -190,3 +190,24 @@ func (s *service) AccrueInterest(ctx context.Context, tx *db.DB, market *core.Ma
 
 	return s.marketStore.Update(ctx, tx, market)
 }
+
+func (s *service) IsMarketClosed(ctx context.Context, market *core.Market) bool {
+	return market.Status == core.MarketStatusClose
+}
+
+func (s *service) HasClosedMarkets(ctx context.Context) bool {
+	markets, e := s.marketStore.All(ctx)
+	if e != nil {
+		return false
+	}
+
+	has := false
+	for _, m := range markets {
+		if m.Status == core.MarketStatusClose {
+			has = true
+			break
+		}
+	}
+
+	return has
+}

@@ -26,6 +26,10 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 			return e
 		}
 
+		if w.marketService.IsMarketClosed(ctx, market) {
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketClosed, "")
+		}
+
 		//accrue interest
 		if e = w.marketService.AccrueInterest(ctx, tx, market, output.CreatedAt); e != nil {
 			log.Errorln(e)

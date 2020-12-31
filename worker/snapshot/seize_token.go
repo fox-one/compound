@@ -22,6 +22,10 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 			return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrInvalidArgument, "")
 		}
 
+		if w.marketService.HasClosedMarkets(ctx) {
+			return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrMarketClosed, "")
+		}
+
 		seizedUser, e := w.userStore.FindByAddress(ctx, seizedAddress.String())
 		if e != nil {
 			return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrInvalidArgument, "")

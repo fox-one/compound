@@ -27,7 +27,9 @@ func (w *Payee) handleUpdateMarketEvent(ctx context.Context, p *core.Proposal, r
 		}
 
 		if market.InitExchangeRate.GreaterThan(decimal.Zero) {
-			w.marketService.AccrueInterest(ctx, tx, market, t)
+			if e = w.marketService.AccrueInterest(ctx, tx, market, t); e != nil {
+				return e
+			}
 		}
 
 		if req.InitExchange.GreaterThan(decimal.Zero) {
@@ -72,7 +74,9 @@ func (w *Payee) handleUpdateMarketAdvanceEvent(ctx context.Context, p *core.Prop
 			return e
 		}
 
-		w.marketService.AccrueInterest(ctx, tx, market, t)
+		if e = w.marketService.AccrueInterest(ctx, tx, market, t); e != nil {
+			return e
+		}
 
 		if req.BorrowCap.GreaterThanOrEqual(decimal.Zero) {
 			market.BorrowCap = req.BorrowCap

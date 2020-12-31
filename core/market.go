@@ -50,8 +50,29 @@ type Market struct {
 	PriceUpdatedAt     time.Time       `json:"price_updated_at"`
 	BorrowIndex        decimal.Decimal `sql:"type:decimal(28,16)" json:"borrow_index"`
 	Version            int64           `sql:"default:0" json:"version"`
+	Status             MarketStatus    `sql:"size:20;default:open" json:"status"`
 	CreatedAt          time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt          time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`
+}
+
+// MarketStatus market status
+type MarketStatus string
+
+const (
+	// MarketStatusOpen open
+	MarketStatusOpen MarketStatus = "open"
+	// MarketStatusClose close
+	MarketStatusClose MarketStatus = "close"
+)
+
+func (s MarketStatus) String() string {
+	return string(s)
+}
+
+// IsValid is valid status
+func (s MarketStatus) IsValid() bool {
+	return s == MarketStatusClose ||
+		s == MarketStatusOpen
 }
 
 // IMarketStore asset store interface
@@ -76,4 +97,6 @@ type IMarketService interface {
 	CurTotalBorrows(ctx context.Context, market *Market) (decimal.Decimal, error)
 	CurTotalReserves(ctx context.Context, market *Market) (decimal.Decimal, error)
 	AccrueInterest(ctx context.Context, db *db.DB, market *Market, time time.Time) error
+	IsMarketClosed(ctx context.Context, market *Market) bool
+	HasClosedMarkets(ctx context.Context) bool
 }

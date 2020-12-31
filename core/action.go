@@ -54,4 +54,8 @@ const (
 	ActionTypeProposalUpdateMarketAdvance
 	// ActionTypeProposalTransfer proposal transfer
 	ActionTypeProposalTransfer
+	// ActionTypeProposalCloseMarket proposal close market
+	ActionTypeProposalCloseMarket
+	// ActionTypeProposalOpenMarket proposal open market
+	ActionTypeProposalOpenMarket
 )

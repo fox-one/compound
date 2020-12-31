@@ -36,6 +36,10 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 			return e
 		}
 
+		if w.marketService.IsMarketClosed(ctx, market) {
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketClosed, "")
+		}
+
 		supply, isRecordNotFound, e := w.supplyStore.Find(ctx, userID, market.CTokenAssetID)
 		if isRecordNotFound {
 			log.Warningln("supply not found")
