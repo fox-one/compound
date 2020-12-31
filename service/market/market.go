@@ -130,7 +130,7 @@ func (s *service) CurTotalReserves(ctx context.Context, market *core.Market) (de
 	return market.Reserves, nil
 }
 
-func (s *service) AccrueInterest(ctx context.Context, db *db.DB, market *core.Market, time time.Time) error {
+func (s *service) AccrueInterest(ctx context.Context, tx *db.DB, market *core.Market, time time.Time) error {
 	blockNumberPrior := market.BlockNumber
 
 	blockNum, e := s.blockSrv.GetBlock(ctx, time)
@@ -188,5 +188,5 @@ func (s *service) AccrueInterest(ctx context.Context, db *db.DB, market *core.Ma
 	market.SupplyRatePerBlock = supplyRate.Truncate(16)
 	market.BorrowRatePerBlock = borrowRate.Truncate(16)
 
-	return s.marketStore.Update(ctx, db, market)
+	return s.marketStore.Update(ctx, tx, market)
 }
