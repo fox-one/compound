@@ -30,6 +30,8 @@ var workerCmd = &cobra.Command{
 		log := logger.FromContext(ctx)
 		ctx = logger.WithContext(ctx, log)
 
+		migrateDB()
+		
 		db := provideDatabase()
 		dapp := provideDapp()
 		system := provideSystem()

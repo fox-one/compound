@@ -26,7 +26,7 @@ var rootCmd = cobra.Command{
 
 func init() {
 	cobra.OnInitialize(func() {
-		onInitialize(initConfig, initLog, migrateDB)
+		onInitialize(initConfig, initLog)
 	})
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file. default is ./config/config.yaml")
@@ -84,7 +84,7 @@ func migrateDB() {
 
 	if err := db.Migrate(database); err != nil {
 		logrus.Errorln("migrate db error:", err)
-		return
+		panic(err)
 	}
 }
 
