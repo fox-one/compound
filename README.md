@@ -77,4 +77,106 @@ make build-%    //如：make build-local
 
 * health check 接口
    1. api:   `/hc`
-   2. worker: `/hc` 
+   2. worker: `/hc`
+
+
+## 管理员工具
+
+### Keys
+> 生成Ed25519公私钥对
+
+cmd:
+
+```
+./compound keys
+```
+
+### inject-ctoken
+> 往多签钱包注入ctoken
+
+cmd:
+
+```
+./compound inject-ctoken --asset xxxxx --amount 10000
+or
+./compound ic --asset xxxxx --amount 10000
+```
+
+### withdraw
+> 发起从多签钱包提现的投票请求
+
+cmd:
+
+```
+./compound withdraw --opponent xxxx --asset xxxxxxx --amount 10000
+```
+
+### add-market
+> 添加借贷市场
+
+cmd:
+
+```
+//-s  symbol
+//-a asset_id
+//-c ctoken_asset_id
+./compound add-market --s BTC --a xxxxxx --c yyyyyy
+or
+./compound am -s BTC -a xxxxx -c yyyyyyy
+```
+
+### update-market
+> 更新market参数
+
+cmd:
+
+```
+//-s symbol
+//-ie init_exchange
+//-rf reserve_factor
+//-li liquidation_incentive
+//-cf collateral_factor
+//-br base_rate
+./compound update-market --s BTC --ie 1 --rf 0.1 --li 0.05 --cf 0.75 --br 0.025
+or
+./compound um --s BTC --ie 1 --rf 0.1 --li 0.05 --cf 0.75 --br 0.025
+```
+
+### update-market-advance
+> 更新market参数
+
+cmd:
+
+```
+//-s symbol
+//-bc borrow_cap
+//-clf close_factor
+//-m multiplier
+//-jm jump_multiplier
+//-k kink
+./compound update-market-advance --s BTC --bc 0 --clf 0.5 --m 0.3 --jm 0.5 --k 0.7
+or
+./compound uma --s BTC --bc 0 --clf 0.5 --m 0.3 --jm 0.5 --k 0.7
+```
+
+### close-market
+> 关闭market
+
+cmd:
+
+```
+./compound close-market --asset xxxxxxxx
+or
+./compound cm --asset xxxxxx
+```
+
+### open-market
+> open market
+
+cmd:
+
+```
+./compound open-market --asset xxxxx
+or
+./compound om --asset xxxxxxx
+```

@@ -10,9 +10,9 @@ import (
 )
 
 var injectMintTokenCmd = &cobra.Command{
-	Use:     "inject-mint-token",
-	Aliases: []string{"imt"},
-	Short:   "inject mint token",
+	Use:     "inject-ctoken",
+	Aliases: []string{"ic"},
+	Short:   "inject ctoken for mint",
 	Run: func(cmd *cobra.Command, args []string) {
 		assetID, e := cmd.Flags().GetString("asset")
 		if e != nil || assetID == "" {
