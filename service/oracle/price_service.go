@@ -38,7 +38,9 @@ func (s *PriceService) GetCurrentUnderlyingPrice(ctx context.Context, market *co
 
 // PullPriceTicker pull price ticker
 func (s *PriceService) PullPriceTicker(ctx context.Context, assetID string, t time.Time) (*core.PriceTicker, error) {
-	url := fmt.Sprintf("%s/api/v2/tickers/%s?ts=%d", s.Config.PriceOracle.EndPoint, assetID, t.UTC().Unix())
+	to := t
+	from := t.Add(-1 * time.Hour)
+	url := fmt.Sprintf("%s/api/v2/tickers/%s/avg?from=%d&to=%d", s.Config.PriceOracle.EndPoint, assetID, from.UTC().Unix(), to.UTC().Unix())
 	logger.FromContext(ctx).Infoln("pull price:", url)
 	resp, err := resthttp.Request(ctx).Get(url)
 	if err != nil {

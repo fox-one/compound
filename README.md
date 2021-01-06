@@ -180,3 +180,25 @@ cmd:
 or
 ./compound om --asset xxxxxxx
 ```
+
+## 附
+
+### Price oracle(价格预言机)
+
+> compound 的price oracle通过以下机制来保证compound market价格的稳定：
+
+* 每个compound节点都像链上提供价格
+* compound通过m/n多签的方式，保证n个节点至少m个节点提供的价格有效才算该market的当前block的价格有效，算法如下：
+  1. 把所有节点提供的价格按价格升序排序
+  2. 相邻价格比较，差值>=5%的价格无效
+  3. 剩余价格满足m/n则此次价格有效
+  4. 把m个价格算均值a，a就是market当前blockNum的价格
+* 每个节点是通过price oracle服务获取指定market 1小时内的价格均值作为当前节点提供的价格写上主链
+* 当出现价格被恶意攻击时，由于是用1小时内的价格均值作为market的价格，所以恶意的价格对market的影响有限，同时管理人员可以同时决策是否有必要`close-market`，并在价格恢复后`open-market`
+
+### market 熔断
+> 某个market价格异常情况下，关闭市场
+
+* 当某个market的价格被恶意攻击时，管理人员有权执行`close-market`命令，申请闭市投票，投票通过则market关闭
+* 已关闭的market不可借贷，其他market不影响正常借贷
+* 但是当存在至少一个market关闭的情况下，将禁止所有market的清算行为，因为清算会影响到用户所有账户的流动性
