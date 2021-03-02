@@ -46,6 +46,7 @@ type Payee struct {
 	supplyService      core.ISupplyService
 	borrowService      core.IBorrowService
 	accountService     core.IAccountService
+	allowListService   core.IAllowListService
 }
 
 // NewPayee new payee
@@ -68,7 +69,8 @@ func NewPayee(db *db.DB,
 	marketSrv core.IMarketService,
 	supplyService core.ISupplyService,
 	borrowService core.IBorrowService,
-	accountService core.IAccountService) *Payee {
+	accountService core.IAccountService,
+	allowListService core.IAllowListService) *Payee {
 	payee := Payee{
 		db:                 db,
 		system:             system,
@@ -90,6 +92,7 @@ func NewPayee(db *db.DB,
 		supplyService:      supplyService,
 		borrowService:      borrowService,
 		accountService:     accountService,
+		allowListService:   allowListService,
 	}
 
 	return &payee

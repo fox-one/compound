@@ -8,6 +8,7 @@ import (
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/store/db"
 	"github.com/gofrs/uuid"
+	"github.com/jinzhu/gorm"
 	"github.com/shopspring/decimal"
 )
 
@@ -22,13 +23,33 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 			return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrInvalidArgument, "")
 		}
 
+		// check market close status
 		if w.marketService.HasClosedMarkets(ctx) {
 			return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrMarketClosed, "")
 		}
 
 		seizedUser, e := w.userStore.FindByAddress(ctx, seizedAddress.String())
 		if e != nil {
-			return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrInvalidArgument, "")
+			if gorm.IsRecordNotFoundError(e) {
+				return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrInvalidArgument, "")
+			}
+			return e
+		}
+
+		// check allowlist
+		needAllowListCheck, e := w.allowListService.IsScopeInAllowList(ctx, core.OSLiquidation)
+		if e != nil {
+			return e
+		}
+		if needAllowListCheck {
+			userAllowed, e := w.allowListService.CheckAllowList(ctx, seizedUser.UserID, core.OSLiquidation)
+			if e != nil {
+				return e
+			}
+			if !userAllowed {
+				// not allowed, refund
+				return w.handleRefundEvent(ctx, output, liquidator, followID, core.ErrOperationForbidden, "")
+			}
 		}
 
 		seizedUserID := seizedUser.UserID

@@ -30,8 +30,6 @@ var workerCmd = &cobra.Command{
 		log := logger.FromContext(ctx)
 		ctx = logger.WithContext(ctx, log)
 
-		migrateDB()
-		
 		db := provideDatabase()
 		dapp := provideDapp()
 		system := provideSystem()
@@ -47,6 +45,9 @@ var workerCmd = &cobra.Command{
 		userStore := provideUserStore(db)
 		transactionStore := provideTransactionStore(db)
 		outputArchiveStore := provideOutputArchiveStore(db)
+		allowListStore := provideAllowListStore(db)
+
+		migrateDB()
 
 		walletService := provideWalletService(dapp.Client, walletservice.Config{
 			Pin:       dapp.Pin,
@@ -62,6 +63,7 @@ var workerCmd = &cobra.Command{
 		borrowService := provideBorrowService(blockService, priceService, accountService)
 		messageService := provideMessageService(dapp.Client)
 		proposalService := provideProposalService(dapp.Client, system, marketStore, messageStore)
+		allowListService := provideAllowListService(propertyStore, allowListStore)
 
 		//hc api
 		{
@@ -84,7 +86,7 @@ var workerCmd = &cobra.Command{
 			cashier.New(walletStore, walletService, system),
 			message.New(messageStore, messageService),
 			priceoracle.New(system, dapp, marketStore, priceStore, blockService, priceService),
-			snapshot.NewPayee(db, system, dapp, propertyStore, userStore, outputArchiveStore, walletStore, priceStore, marketStore, supplyStore, borrowStore, proposalStore, transactionStore, proposalService, priceService, blockService, marketService, supplyService, borrowService, accountService),
+			snapshot.NewPayee(db, system, dapp, propertyStore, userStore, outputArchiveStore, walletStore, priceStore, marketStore, supplyStore, borrowStore, proposalStore, transactionStore, proposalService, priceService, blockService, marketService, supplyService, borrowService, accountService, allowListService),
 			syncer.New(walletStore, walletService, propertyStore),
 			txsender.New(walletStore),
 			spentsync.New(db, walletStore, transactionStore),

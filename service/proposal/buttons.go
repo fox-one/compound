@@ -54,6 +54,10 @@ func generateButtons(ctx context.Context, marketStore core.IMarketStore, p *core
 		var action proposal.MarketStatusReq
 		_ = json.Unmarshal(p.Content, &action)
 		buttons = appendAsset(buttons, "Asset", action.AssetID)
+	case core.ActionTypeProposalAddScope:
+	case core.ActionTypeProposalRemoveScope:
+	case core.ActionTypeProposalAddAllowList:
+	case core.ActionTypeProposalRemoveAllowList:
 	}
 
 	return buttons

@@ -27,7 +27,11 @@ func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *cor
 			return e
 		}
 
-		market, _, e := w.marketStore.FindBySymbol(ctx, data.Symbol)
+		market, isRecordNotFound, e := w.marketStore.FindBySymbol(ctx, data.Symbol)
+		if isRecordNotFound {
+			return nil
+		}
+
 		if e != nil {
 			return e
 		}

@@ -6,6 +6,7 @@ require (
 	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
+	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/fox-one/mixin-sdk-go v1.2.5
 	github.com/fox-one/pkg v1.5.4
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
@@ -22,6 +23,7 @@ require (
 	github.com/mitchellh/mapstructure v1.4.0 // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c
 	github.com/pelletier/go-toml v1.8.1 // indirect
+	github.com/qinix/gods v1.12.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rs/cors v1.7.0
 	github.com/shopspring/decimal v1.2.0

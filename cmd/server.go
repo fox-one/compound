@@ -22,8 +22,6 @@ var serverCmd = &cobra.Command{
 		log := logger.FromContext(ctx)
 		ctx = logger.WithContext(ctx, log)
 
-		migrateDB()
-
 		db := provideDatabase()
 
 		userStore := provideUserStore(db)
@@ -31,6 +29,8 @@ var serverCmd = &cobra.Command{
 		supplyStore := provideSupplyStore(db)
 		borrowStore := provideBorrowStore(db)
 		transactionStore := provideTransactionStore(db)
+
+		migrateDB()
 
 		blockService := provideBlockService()
 		priceService := providePriceService(blockService)

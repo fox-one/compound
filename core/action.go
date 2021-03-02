@@ -58,4 +58,12 @@ const (
 	ActionTypeProposalCloseMarket
 	// ActionTypeProposalOpenMarket proposal open market
 	ActionTypeProposalOpenMarket
+	// ActionTypeProposalAddScope proposal add allowlist scope
+	ActionTypeProposalAddScope
+	// ActionTypeProposalRemoveScope proposal remove allowlist scope
+	ActionTypeProposalRemoveScope
+	// ActionTypeProposalAddAllowList proposal add to allowlist
+	ActionTypeProposalAddAllowList
+	// ActionTypeProposalRemoveAllowList proposal remove from allowlist
+	ActionTypeProposalRemoveAllowList
 )

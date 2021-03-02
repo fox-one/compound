@@ -8,6 +8,7 @@ import (
 	borrowservice "compound/service/borrow"
 	marketservice "compound/service/market"
 	messageservice "compound/service/message"
+	operationservice "compound/service/operation"
 	oracle "compound/service/oracle"
 	proposalservice "compound/service/proposal"
 	supplyservice "compound/service/supply"
@@ -15,6 +16,7 @@ import (
 	"compound/store/borrow"
 	"compound/store/market"
 	"compound/store/message"
+	"compound/store/operation"
 	"compound/store/outputarchive"
 	"compound/store/price"
 	"compound/store/proposal"
@@ -134,6 +136,10 @@ func provideOutputArchiveStore(db *db.DB) core.OutputArchiveStore {
 	return outputarchive.New(db)
 }
 
+func provideAllowListStore(db *db.DB) core.IAllowListStore {
+	return operation.NewAllowListStore(db)
+}
+
 // ------------------service------------------------------------
 func provideProposalService(client *mixin.Client, system *core.System, marketStore core.IMarketStore, messageStore core.MessageStore) core.ProposalService {
 	return proposalservice.New(system, client, marketStore, messageStore)
@@ -184,4 +190,11 @@ func provideAccountService(
 	marketSrv core.IMarketService) core.IAccountService {
 
 	return accountservice.New(marketStore, supplyStore, borrowStore, priceSrv, blockSrv, marketSrv)
+}
+
+func provideAllowListService(
+	propertyStore property.Store,
+	allowListStore core.IAllowListStore,
+) core.IAllowListService {
+	return operationservice.New(propertyStore, allowListStore)
 }

@@ -109,14 +109,28 @@ func (w *Payee) handleCreateProposalEvent(ctx context.Context, output *core.Outp
 	case core.ActionTypeProposalCloseMarket:
 		var content proposal.MarketStatusReq
 		if _, err := mtg.Scan(body, &content); err != nil {
-			log.WithError(err).Errorln("decode proposal closeMarket cotnent error")
+			log.WithError(err).Errorln("decode proposal closeMarket content error")
 			return nil
 		}
 		p.Content, _ = json.Marshal(content)
 	case core.ActionTypeProposalOpenMarket:
 		var content proposal.MarketStatusReq
 		if _, err := mtg.Scan(body, &content); err != nil {
-			log.WithError(err).Errorln("decode proposal openMarket cotnent error")
+			log.WithError(err).Errorln("decode proposal openMarket content error")
+			return nil
+		}
+		p.Content, _ = json.Marshal(content)
+	case core.ActionTypeProposalAddScope, core.ActionTypeProposalRemoveScope:
+		var content proposal.ScopeReq
+		if _, err := mtg.Scan(body, &content); err != nil {
+			log.WithError(err).Errorln("decode proposal scopereq content error")
+			return nil
+		}
+		p.Content, _ = json.Marshal(content)
+	case core.ActionTypeProposalAddAllowList, core.ActionTypeProposalRemoveAllowList:
+		var content proposal.AllowListReq
+		if _, err := mtg.Scan(body, &content); err != nil {
+			log.WithError(err).Errorln("decode proposal allowlist content error")
 			return nil
 		}
 		p.Content, _ = json.Marshal(content)
@@ -167,6 +181,22 @@ func (w *Payee) handlePassedProposal(ctx context.Context, p *core.Proposal, t ti
 		var req proposal.MarketStatusReq
 		_ = json.Unmarshal(p.Content, &req)
 		return w.handleOpenMarketEvent(ctx, p, req, t)
+	case core.ActionTypeProposalAddScope:
+		var req proposal.ScopeReq
+		_ = json.Unmarshal(p.Content, &req)
+		return w.handleAddScopeEvent(ctx, p, req, t)
+	case core.ActionTypeProposalRemoveScope:
+		var req proposal.ScopeReq
+		_ = json.Unmarshal(p.Content, &req)
+		return w.handleRemoveScopeEvent(ctx, p, req, t)
+	case core.ActionTypeProposalAddAllowList:
+		var req proposal.AllowListReq
+		_ = json.Unmarshal(p.Content, &req)
+		return w.handleAddAllowListEvent(ctx, p, req, t)
+	case core.ActionTypeProposalRemoveAllowList:
+		var req proposal.AllowListReq
+		_ = json.Unmarshal(p.Content, &req)
+		return w.handleRemoveAllowListEvent(ctx, p, req, t)
 	}
 
 	return nil
