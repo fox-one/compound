@@ -30,6 +30,8 @@ var workerCmd = &cobra.Command{
 		log := logger.FromContext(ctx)
 		ctx = logger.WithContext(ctx, log)
 
+		migrateDB()
+
 		db := provideDatabase()
 		dapp := provideDapp()
 		system := provideSystem()
@@ -46,8 +48,6 @@ var workerCmd = &cobra.Command{
 		transactionStore := provideTransactionStore(db)
 		outputArchiveStore := provideOutputArchiveStore(db)
 		allowListStore := provideAllowListStore(db)
-
-		migrateDB()
 
 		walletService := provideWalletService(dapp.Client, walletservice.Config{
 			Pin:       dapp.Pin,
