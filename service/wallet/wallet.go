@@ -170,6 +170,7 @@ func convertUTXO(raw *mixin.MultisigUTXO) *core.Output {
 	return &core.Output{
 		CreatedAt: raw.CreatedAt,
 		UpdatedAt: raw.UpdatedAt,
+		UserID:    raw.UserID,
 		TraceID:   raw.UTXOID,
 		AssetID:   raw.AssetID,
 		Amount:    raw.Amount,
