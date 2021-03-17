@@ -12,7 +12,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
+func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
 	return w.db.Tx(func(tx *db.DB) error {
 		log := logger.FromContext(ctx).WithField("worker", "seize_token")
 
@@ -232,7 +232,7 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 			extra.Put(core.TransactionKeyRefund, decimal.Zero)
 		}
 
-		transaction := core.BuildTransactionFromOutput(ctx, liquidator, followID, core.ActionTypeSeizeToken, output, &extra)
+		transaction := core.BuildTransactionFromOutput(ctx, liquidator, followID, core.ActionTypeLiquidate, output, &extra)
 		if e = w.transactionStore.Create(ctx, tx, transaction); e != nil {
 			log.WithError(e).Errorln("create transaction error")
 			return e
@@ -240,7 +240,7 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 
 		// transfer
 		transferAction := core.TransferAction{
-			Source:   core.ActionTypeSeizeTokenTransfer,
+			Source:   core.ActionTypeLiquidateTransfer,
 			FollowID: followID,
 		}
 		if e = w.transferOut(ctx, liquidator, followID, output.TraceID, supplyMarket.AssetID, seizedAmount, &transferAction); e != nil {
@@ -252,7 +252,7 @@ func (w *Payee) handleSeizeTokenEvent(ctx context.Context, output *core.Output, 
 			refundAmount := redundantAmount.Truncate(8)
 
 			refundTransferAction := core.TransferAction{
-				Source:   core.ActionTypeSeizeRefundTransfer,
+				Source:   core.ActionTypeLiquidateRefundTransfer,
 				FollowID: followID,
 			}
 			if e = w.transferOut(ctx, liquidator, followID, output.TraceID, output.AssetID, refundAmount, &refundTransferAction); e != nil {

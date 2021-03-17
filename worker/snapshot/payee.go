@@ -228,8 +228,8 @@ func (w *Payee) handleUserAction(ctx context.Context, output *core.Output, actio
 		return w.handlePledgeEvent(ctx, output, userID, followID, body)
 	case core.ActionTypeUnpledge:
 		return w.handleUnpledgeEvent(ctx, output, userID, followID, body)
-	case core.ActionTypeSeizeToken:
-		return w.handleSeizeTokenEvent(ctx, output, userID, followID, body)
+	case core.ActionTypeLiquidate:
+		return w.handleLiquidationEvent(ctx, output, userID, followID, body)
 	default:
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrUnknown, "")
 	}

@@ -22,22 +22,22 @@ const (
 	ActionTypePledge
 	// ActionTypeUnpledge unpledge
 	ActionTypeUnpledge
-	// ActionTypeSeizeToken seize token
-	ActionTypeSeizeToken
+	// ActionTypeLiquidate seize token
+	ActionTypeLiquidate
 	// ActionTypeRedeemTransfer redeem transfer
 	ActionTypeRedeemTransfer
 	// ActionTypeUnpledgeTransfer unpledge transfer
 	ActionTypeUnpledgeTransfer
 	// ActionTypeBorrowTransfer borrow transfer
 	ActionTypeBorrowTransfer
-	// ActionTypeSeizeTokenTransfer seize token transfer
-	ActionTypeSeizeTokenTransfer
+	// ActionTypeLiquidateTransfer seize token transfer
+	ActionTypeLiquidateTransfer
 	// ActionTypeRefundTransfer refund
 	ActionTypeRefundTransfer
 	// ActionTypeRepayRefundTransfer repay refund
 	ActionTypeRepayRefundTransfer
-	// ActionTypeSeizeRefundTransfer seize refund
-	ActionTypeSeizeRefundTransfer
+	// ActionTypeLiquidateRefundTransfer seize refund
+	ActionTypeLiquidateRefundTransfer
 	// ActionTypeProposalAddMarket add market
 	ActionTypeProposalAddMarket
 	// ActionTypeProposalUpdateMarket update market
