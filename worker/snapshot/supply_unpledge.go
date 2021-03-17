@@ -20,7 +20,7 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 		var unpledgedAmount decimal.Decimal
 
 		if _, err := mtg.Scan(body, &ctokenAsset, &unpledgedAmount); err != nil {
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrInvalidArgument, "")
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeUnpledge, core.ErrInvalidArgument, "")
 		}
 
 		log.Infof("ctokenAssetID:%s, amount:%s", ctokenAsset.String(), unpledgedAmount)
@@ -29,7 +29,7 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 		market, isRecordNotFound, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
 		if isRecordNotFound {
 			log.Warningln("market not found")
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketNotFound, "")
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeUnpledge, core.ErrMarketNotFound, "")
 		}
 		if e != nil {
 			log.WithError(e).Errorln("find market error")
@@ -37,13 +37,13 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 		}
 
 		if w.marketService.IsMarketClosed(ctx, market) {
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrMarketClosed, "")
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeUnpledge, core.ErrMarketClosed, "")
 		}
 
 		supply, isRecordNotFound, e := w.supplyStore.Find(ctx, userID, market.CTokenAssetID)
 		if isRecordNotFound {
 			log.Warningln("supply not found")
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrSupplyNotFound, "")
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeUnpledge, core.ErrSupplyNotFound, "")
 		}
 		if e != nil {
 			log.WithError(e).Errorln("find supply error")
@@ -58,7 +58,7 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 
 		if unpledgedAmount.GreaterThan(supply.Collaterals) {
 			log.Errorln(errors.New("insufficient collaterals"))
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrInsufficientCollaterals, "")
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeUnpledge, core.ErrInsufficientCollaterals, "")
 		}
 
 		blockNum, e := w.blockService.GetBlock(ctx, output.CreatedAt)
@@ -88,7 +88,7 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 		unpledgedTokenLiquidity := unpledgedAmount.Mul(exchangeRate).Mul(market.CollateralFactor).Mul(price)
 		if unpledgedTokenLiquidity.GreaterThan(liquidity) {
 			log.Errorln(errors.New("insufficient liquidity"))
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ErrInsufficientLiquidity, "")
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeUnpledge, core.ErrInsufficientLiquidity, "")
 		}
 
 		supply.Collaterals = supply.Collaterals.Sub(unpledgedAmount).Truncate(16)

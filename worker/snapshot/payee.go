@@ -231,7 +231,7 @@ func (w *Payee) handleUserAction(ctx context.Context, output *core.Output, actio
 	case core.ActionTypeLiquidate:
 		return w.handleLiquidationEvent(ctx, output, userID, followID, body)
 	default:
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ErrUnknown, "")
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRefundTransfer, core.ErrUnknown, "")
 	}
 
 }

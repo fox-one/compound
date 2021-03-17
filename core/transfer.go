@@ -8,6 +8,7 @@ import (
 // TransferAction  transfer action
 type TransferAction struct {
 	Code     int        `json:"c,omitempty"`
+	Origin   ActionType `json:"o,omitempty"`
 	Source   ActionType `json:"s,omitempty"`
 	FollowID string     `json:"f,omitempty"`
 	Message  string     `json:"m,omitempty"`

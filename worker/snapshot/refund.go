@@ -8,10 +8,11 @@ import (
 	uuidutil "github.com/fox-one/pkg/uuid"
 )
 
-func (w *Payee) handleRefundEvent(ctx context.Context, output *core.Output, userID, followID string, errCode core.ErrorCode, msg string) error {
+func (w *Payee) handleRefundEvent(ctx context.Context, output *core.Output, userID, followID string, origin core.ActionType, errCode core.ErrorCode, msg string) error {
 	log := logger.FromContext(ctx).WithField("worker", "refund")
 	transferAction := core.TransferAction{
 		Code:     int(errCode),
+		Origin:   origin,
 		Source:   core.ActionTypeRefundTransfer,
 		FollowID: followID,
 		Message:  msg,

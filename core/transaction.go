@@ -52,6 +52,8 @@ const (
 	TransactionKeyCTokenAssetID = "ctoken_asset_id"
 	// TransactionKeyRefund refund
 	TransactionKeyRefund = "refund"
+	// TransactionKeyOrigin origin
+	TransactionKeyOrigin = "origin"
 )
 
 // TransactionExtraData extra data
@@ -130,6 +132,7 @@ func BuildTransactionFromTransfer(ctx context.Context, transfer *Transfer, snaps
 	}
 
 	transactionExtra := NewTransactionExtra()
+	transactionExtra.Put(TransactionKeyOrigin, transferAction.Origin)
 	if transferAction.Code > 0 {
 		transactionExtra.Put(TransactionKeyErrorCode, transferAction.Code)
 	}
