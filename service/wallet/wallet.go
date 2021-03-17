@@ -167,10 +167,11 @@ func convertUTXO(raw *mixin.MultisigUTXO) *core.Output {
 		panic(err)
 	}
 
+	// TODO should replaced with real user id
 	return &core.Output{
 		CreatedAt: raw.CreatedAt,
 		UpdatedAt: raw.UpdatedAt,
-		UserID:    raw.UserID,
+		UserID:    "",
 		TraceID:   raw.UTXOID,
 		AssetID:   raw.AssetID,
 		Amount:    raw.Amount,

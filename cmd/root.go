@@ -79,6 +79,7 @@ func initLog() {
 }
 
 func migrateDB() {
+	logrus.Infoln("start migrate db")
 	database := provideDatabase()
 	defer database.Close()
 
