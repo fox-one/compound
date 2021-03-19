@@ -25,7 +25,7 @@ type Output struct {
 	Version   int64           `sql:"NOT NULL" json:"version,omitempty"`
 	TraceID   string          `sql:"type:char(36)" json:"trace_id,omitempty"`
 	AssetID   string          `sql:"type:char(36)" json:"asset_id,omitempty"`
-	UserID    string          `sql:"size:36" json:"user_id,omitempty"`
+	Sender    string          `sql:"size:36" json:"sender,omitempty"`
 	Amount    decimal.Decimal `sql:"type:decimal(64,8)" json:"amount,omitempty"`
 	Memo      string          `sql:"size:200" json:"memo,omitempty"`
 	State     string          `sql:"size:24" json:"state,omitempty"`

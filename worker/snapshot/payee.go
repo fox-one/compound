@@ -172,25 +172,30 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 		return nil
 	}
 
-	var userID uuid.UUID
+	var reserveUserID uuid.UUID
 	// transaction trace id, different from output trace id
 	var followID uuid.UUID
-	body, err = mtg.Scan(body, &userID, &followID)
+	body, err = mtg.Scan(body, &reserveUserID, &followID)
 	if err != nil {
 		log.WithError(err).Errorln("scan userID and followID error")
 		return nil
 	}
 
+	userID := output.Sender
+	if userID == "" {
+		userID = reserveUserID.String()
+	}
+
 	//upsert user
 	user := core.User{
-		UserID:  userID.String(),
-		Address: core.BuildUserAddress(userID.String()),
+		UserID:  userID,
+		Address: core.BuildUserAddress(userID),
 	}
 	if err = w.userStore.Save(ctx, &user); err != nil {
 		return err
 	}
 
-	return w.handleUserAction(ctx, output, actionType, userID.String(), followID.String(), body)
+	return w.handleUserAction(ctx, output, actionType, userID, followID.String(), body)
 }
 
 func (w *Payee) handleProposalAction(ctx context.Context, output *core.Output, member *core.Member, body []byte) error {
