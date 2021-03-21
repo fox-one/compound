@@ -31,6 +31,7 @@ var addAllowListCmd = &cobra.Command{
 	Use:     "add",
 	Aliases: []string{"ad"},
 	Short:   "add to allowlist",
+	Long:    "enable user doing something of the specified scope, such as liquidation",
 	Run: func(cmd *cobra.Command, args []string) {
 		buildProposalTransfer(cmd, func(ctx context.Context, clientID, traceID uuid.UUID) ([]byte, error) {
 			userID, err := cmd.Flags().GetString("user")
@@ -77,6 +78,7 @@ var removeAllowListCmd = &cobra.Command{
 	Use:     "remove",
 	Aliases: []string{"rm"},
 	Short:   "remove from allowlist",
+	Long:    "disable user doing something of the specified scope, such as liquidation",
 	Run: func(cmd *cobra.Command, args []string) {
 		buildProposalTransfer(cmd, func(ctx context.Context, clientID, traceID uuid.UUID) ([]byte, error) {
 			userID, err := cmd.Flags().GetString("user")

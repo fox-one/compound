@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// maintain command
 var keysCmd = &cobra.Command{
 	Use:   "keys",
 	Short: "generate ed25519 key pairs",

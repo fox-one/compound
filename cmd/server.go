@@ -10,17 +10,16 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/rs/cors"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
+// command for restful api server running
 var serverCmd = &cobra.Command{
 	Use:   "server",
 	Short: "run compound api server",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := cmd.Context()
 		log := logger.FromContext(ctx)
-		ctx = logger.WithContext(ctx, log)
 
 		migrateDB()
 
@@ -47,7 +46,7 @@ var serverCmd = &cobra.Command{
 		mux.Use(middleware.NewCompressor(5).Handler)
 
 		{
-			//hc
+			//hc for health check
 			mux.Mount("/hc", hc.Handle(rootCmd.Version))
 		}
 
@@ -64,10 +63,10 @@ var serverCmd = &cobra.Command{
 			Handler: mux,
 		}
 
-		logrus.Infoln("serve at", addr)
+		log.Infoln("serve at", addr)
 		err := server.ListenAndServe()
 		if err != http.ErrServerClosed {
-			logrus.WithError(err).Fatal("server aborted")
+			log.WithError(err).Fatal("server aborted")
 		}
 	},
 }

@@ -33,14 +33,17 @@ import (
 	propertystore "github.com/fox-one/pkg/store/property"
 )
 
+// provide db instance
 func provideDatabase() *db.DB {
 	return db.MustOpen(cfg.DB)
 }
 
+// provide config instance
 func provideConfig() *core.Config {
 	return &cfg
 }
 
+// provide mixin dapp
 func provideDapp() *core.Wallet {
 	c, err := mixin.NewFromKeystore(&cfg.Dapp.Keystore)
 	if err != nil {
@@ -52,6 +55,7 @@ func provideDapp() *core.Wallet {
 	}
 }
 
+// provide system config info
 func provideSystem() *core.System {
 	members := make([]*core.Member, 0, len(cfg.Group.Members))
 	for _, m := range cfg.Group.Members {

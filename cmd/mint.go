@@ -9,10 +9,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// governing command for market
 var injectMintTokenCmd = &cobra.Command{
 	Use:     "inject-ctoken",
 	Aliases: []string{"ic"},
-	Short:   "inject ctoken for mint",
+	Short:   "inject ctoken for market minting",
+	Long:    "inject ctokens into the market before trading. asset for asset_id, amount for ctoken_amount",
 	Run: func(cmd *cobra.Command, args []string) {
 		assetID, e := cmd.Flags().GetString("asset")
 		if e != nil || assetID == "" {

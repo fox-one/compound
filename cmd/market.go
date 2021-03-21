@@ -15,10 +15,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// governing command for market
 var addMarketCmd = &cobra.Command{
 	Use:     "add-market",
 	Aliases: []string{"am"},
-	Short:   "add market",
+	Short:   "Create a market",
+	Long:    "s for symbol, a for asset_id, c for ctoken_asset_id",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := cmd.Context()
 		system := provideSystem()
@@ -73,10 +75,12 @@ var addMarketCmd = &cobra.Command{
 	},
 }
 
+// governing command for market
 var updateMarketCmd = &cobra.Command{
 	Use:     "update-market",
 	Aliases: []string{"um"},
-	Short:   "update market",
+	Short:   "update market parameters",
+	Long:    "s for symbol, ie for init_exchange, rf for reserve_factor, li for liquidation_incentive, cf for collateral_factor, br for base_rate",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := cmd.Context()
 		system := provideSystem()
@@ -156,10 +160,12 @@ var updateMarketCmd = &cobra.Command{
 	},
 }
 
+// governing command for market
 var updateMarketAdvanceCmd = &cobra.Command{
 	Use:     "update-market-advance",
 	Aliases: []string{"uma"},
-	Short:   "update market advance",
+	Short:   "update market advance parameters",
+	Long:    "s for symbol, bc for borrow_cap, clf for close_factor, m for multiplier, jm for jump_multiplier, k for kink",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := cmd.Context()
 		system := provideSystem()
@@ -240,10 +246,12 @@ var updateMarketAdvanceCmd = &cobra.Command{
 	},
 }
 
+// governing command for market
 var closeMarketCmd = &cobra.Command{
 	Use:     "close-market",
 	Aliases: []string{"cm"},
 	Short:   "close market",
+	Long:    "close the market when it is under attack. if the market closed, tradings are disabled. asset for asset_id",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := cmd.Context()
 		system := provideSystem()
@@ -290,10 +298,12 @@ var closeMarketCmd = &cobra.Command{
 	},
 }
 
+// governing command for market
 var openMarketCmd = &cobra.Command{
 	Use:     "open-market",
 	Aliases: []string{"om"},
 	Short:   "open market",
+	Long:    "open the market when the attacking disapeared. asset for asset_id",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := cmd.Context()
 		system := provideSystem()

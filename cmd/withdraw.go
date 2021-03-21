@@ -14,10 +14,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+//
 var withdrawCmd = &cobra.Command{
 	Use:     "withdraw",
 	Aliases: []string{"ww"},
-	Short:   "Create a proposal to withdraw from mtg wallet",
+	Short:   "Create a proposal for withdrawing from the mtg wallet",
+	Long:    "opponent for receiver, asset for asset id, amount for withdrawing amount",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := cmd.Context()
 		system := provideSystem()

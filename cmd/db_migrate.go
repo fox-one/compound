@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// command for migrating database
 var migrateCmd = &cobra.Command{
 	Use:     "migrate",
 	Aliases: []string{"setdb"},

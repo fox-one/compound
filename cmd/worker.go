@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// command for background worker
 var workerCmd = &cobra.Command{
 	Use:   "worker",
 	Short: "compound job worker",

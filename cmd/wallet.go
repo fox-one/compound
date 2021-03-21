@@ -9,11 +9,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-//获取dapp资产情况
+//
 var assetsCmd = &cobra.Command{
 	Use:     "assets",
 	Aliases: []string{"as"},
-	Short:   "query wallet assets",
+	Short:   "query dapp wallet assets",
 	Run: func(cmd *cobra.Command, args []string) {
 		mainWallet := provideDapp()
 		assets, e := mainWallet.Client.ReadAssets(cmd.Context())
