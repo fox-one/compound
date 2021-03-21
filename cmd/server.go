@@ -22,7 +22,7 @@ var serverCmd = &cobra.Command{
 		log := logger.FromContext(ctx)
 		ctx = logger.WithContext(ctx, log)
 
-		migrateDB()
+		// migrateDB()
 
 		db := provideDatabase()
 		userStore := provideUserStore(db)

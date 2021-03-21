@@ -51,7 +51,7 @@ func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, user
 		supply, isRecordNotFound, e := w.supplyStore.Find(ctx, userID, ctokenAssetID)
 		if e != nil {
 			if isRecordNotFound {
-				//new
+				//not exists, new
 				supply = &core.Supply{
 					UserID:        userID,
 					CTokenAssetID: ctokenAssetID,
@@ -72,7 +72,7 @@ func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, user
 			log.Errorln(e)
 			return e
 		}
-		//update supply
+		//exists, update supply
 		supply.Collaterals = supply.Collaterals.Add(ctokens).Truncate(16)
 		e = w.supplyStore.Update(ctx, tx, supply)
 		if e != nil {
