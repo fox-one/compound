@@ -18,7 +18,7 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 		var asset uuid.UUID
 		var borrowAmount decimal.Decimal
 		if _, err := mtg.Scan(body, &asset, &borrowAmount); err != nil {
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeBorrow, core.ErrInvalidArgument, "")
+			return w.handleRefundEvent(ctx, tx, output, userID, followID, core.ActionTypeBorrow, core.ErrInvalidArgument, "")
 		}
 
 		assetID := asset.String()
@@ -26,7 +26,7 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 		market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)
 		if isRecordNotFound {
 			log.Warningln("market not found, refund")
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeBorrow, core.ErrMarketNotFound, "")
+			return w.handleRefundEvent(ctx, tx, output, userID, followID, core.ActionTypeBorrow, core.ErrMarketNotFound, "")
 		}
 
 		if e != nil {
@@ -35,7 +35,7 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 		}
 
 		if w.marketService.IsMarketClosed(ctx, market) {
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeBorrow, core.ErrMarketClosed, "")
+			return w.handleRefundEvent(ctx, tx, output, userID, followID, core.ActionTypeBorrow, core.ErrMarketClosed, "")
 		}
 
 		// accrue interest
@@ -45,7 +45,7 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 
 		if !w.borrowService.BorrowAllowed(ctx, borrowAmount, userID, market, output.CreatedAt) {
 			log.Errorln("borrow not allowed")
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeBorrow, core.ErrBorrowNotAllowed, "")
+			return w.handleRefundEvent(ctx, tx, output, userID, followID, core.ActionTypeBorrow, core.ErrBorrowNotAllowed, "")
 		}
 
 		market.TotalCash = market.TotalCash.Sub(borrowAmount).Truncate(16)
@@ -112,6 +112,6 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 			Source:   core.ActionTypeBorrowTransfer,
 			FollowID: followID,
 		}
-		return w.transferOut(ctx, userID, followID, output.TraceID, assetID, borrowAmount, &transferAction)
+		return w.transferOut(ctx, tx, userID, followID, output.TraceID, assetID, borrowAmount, &transferAction)
 	})
 }

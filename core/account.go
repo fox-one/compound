@@ -7,7 +7,8 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// Account 借贷账户
+// Account user account model
+// includes liquidity, supplies and borrows
 type Account struct {
 	UserID    string          `json:"user_id"`
 	Liquidity decimal.Decimal `json:"liquidity"`
@@ -17,7 +18,7 @@ type Account struct {
 
 // IAccountService account service interface
 type IAccountService interface {
-	// calculate account liquidity by real time
+	// calculate account liquidity
 	CalculateAccountLiquidity(ctx context.Context, userID string, blockNum int64) (decimal.Decimal, error)
 	MaxSeize(ctx context.Context, supply *Supply, borrow *Borrow) (decimal.Decimal, error)
 	SeizeTokenAllowed(ctx context.Context, supply *Supply, borrow *Borrow, time time.Time) bool

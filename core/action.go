@@ -8,62 +8,62 @@ type ActionType int
 const (
 	// ActionTypeDefault default
 	ActionTypeDefault ActionType = iota
-	// ActionTypeSupply supply
+	// ActionTypeSupply supply action
 	ActionTypeSupply
-	// ActionTypeBorrow borrow
+	// ActionTypeBorrow borrow action
 	ActionTypeBorrow
-	// ActionTypeRedeem redeem
+	// ActionTypeRedeem redeem action
 	ActionTypeRedeem
-	// ActionTypeRepay repay
+	// ActionTypeRepay repay action
 	ActionTypeRepay
-	// ActionTypeMint mint
+	// ActionTypeMint mint ctoken action
 	ActionTypeMint
-	// ActionTypePledge pledge
+	// ActionTypePledge pledge action
 	ActionTypePledge
-	// ActionTypeUnpledge unpledge
+	// ActionTypeUnpledge unpledge action
 	ActionTypeUnpledge
-	// ActionTypeLiquidate seize token
+	// ActionTypeLiquidate liquidation action
 	ActionTypeLiquidate
-	// ActionTypeRedeemTransfer redeem transfer
+	// ActionTypeRedeemTransfer redeem transfer action
 	ActionTypeRedeemTransfer
-	// ActionTypeUnpledgeTransfer unpledge transfer
+	// ActionTypeUnpledgeTransfer unpledge transfer action
 	ActionTypeUnpledgeTransfer
-	// ActionTypeBorrowTransfer borrow transfer
+	// ActionTypeBorrowTransfer borrow transfer action
 	ActionTypeBorrowTransfer
-	// ActionTypeLiquidateTransfer seize token transfer
+	// ActionTypeLiquidateTransfer liquidation transfer action
 	ActionTypeLiquidateTransfer
-	// ActionTypeRefundTransfer refund
+	// ActionTypeRefundTransfer refund action
 	ActionTypeRefundTransfer
-	// ActionTypeRepayRefundTransfer repay refund
+	// ActionTypeRepayRefundTransfer repay refund action
 	ActionTypeRepayRefundTransfer
-	// ActionTypeLiquidateRefundTransfer seize refund
+	// ActionTypeLiquidateRefundTransfer seize refund action
 	ActionTypeLiquidateRefundTransfer
-	// ActionTypeProposalAddMarket add market
+	// ActionTypeProposalAddMarket add market proposal action
 	ActionTypeProposalAddMarket
-	// ActionTypeProposalUpdateMarket update market
+	// ActionTypeProposalUpdateMarket update market proposal action
 	ActionTypeProposalUpdateMarket
-	// ActionTypeProposalWithdrawReserves withdraw
+	// ActionTypeProposalWithdrawReserves withdraw reserves proposal action
 	ActionTypeProposalWithdrawReserves
-	// ActionTypeProposalProvidePrice price
+	// ActionTypeProposalProvidePrice provide price action
 	ActionTypeProposalProvidePrice
-	// ActionTypeProposalVote vote
+	// ActionTypeProposalVote vote action
 	ActionTypeProposalVote
-	// ActionTypeProposalInjectCTokenForMint inject token
+	// ActionTypeProposalInjectCTokenForMint inject token action
 	ActionTypeProposalInjectCTokenForMint
-	// ActionTypeProposalUpdateMarketAdvance update market advance
+	// ActionTypeProposalUpdateMarketAdvance update market advance parameters action
 	ActionTypeProposalUpdateMarketAdvance
-	// ActionTypeProposalTransfer proposal transfer
+	// ActionTypeProposalTransfer proposal transfer action
 	ActionTypeProposalTransfer
-	// ActionTypeProposalCloseMarket proposal close market
+	// ActionTypeProposalCloseMarket proposal close market action
 	ActionTypeProposalCloseMarket
-	// ActionTypeProposalOpenMarket proposal open market
+	// ActionTypeProposalOpenMarket proposal open market action
 	ActionTypeProposalOpenMarket
-	// ActionTypeProposalAddScope proposal add allowlist scope
+	// ActionTypeProposalAddScope proposal add allowlist scope action
 	ActionTypeProposalAddScope
-	// ActionTypeProposalRemoveScope proposal remove allowlist scope
+	// ActionTypeProposalRemoveScope proposal remove allowlist scope action
 	ActionTypeProposalRemoveScope
-	// ActionTypeProposalAddAllowList proposal add to allowlist
+	// ActionTypeProposalAddAllowList proposal add to allowlist action
 	ActionTypeProposalAddAllowList
-	// ActionTypeProposalRemoveAllowList proposal remove from allowlist
+	// ActionTypeProposalRemoveAllowList proposal remove from allowlist action
 	ActionTypeProposalRemoveAllowList
 )

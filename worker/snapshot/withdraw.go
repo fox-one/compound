@@ -6,6 +6,7 @@ import (
 	"context"
 
 	"github.com/fox-one/pkg/logger"
+	"github.com/fox-one/pkg/store/db"
 )
 
 func (w *Payee) handleWithdrawEvent(ctx context.Context, p *core.Proposal, req proposal.WithdrawReq) error {
@@ -21,10 +22,12 @@ func (w *Payee) handleWithdrawEvent(ctx context.Context, p *core.Proposal, req p
 		Opponents: []string{req.Opponent},
 	}
 
-	if err := w.walletStore.CreateTransfers(ctx, []*core.Transfer{transfer}); err != nil {
-		log.WithError(err).Errorln("wallets.CreateTransfers")
-		return err
-	}
+	return w.db.Tx(func(tx *db.DB) error {
+		if err := w.walletStore.CreateTransfers(ctx, w.db, []*core.Transfer{transfer}); err != nil {
+			log.WithError(err).Errorln("wallets.CreateTransfers")
+			return err
+		}
 
-	return nil
+		return nil
+	})
 }

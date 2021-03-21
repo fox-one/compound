@@ -52,7 +52,7 @@ func (w *Payee) handleUpdateMarketEvent(ctx context.Context, p *core.Proposal, r
 			market.BaseRate = req.BaseRate
 		}
 
-		if e = w.marketStore.Update(ctx, w.db, market); e != nil {
+		if e = w.marketStore.Update(ctx, tx, market); e != nil {
 			log.Errorln(e)
 			return e
 		}
@@ -98,7 +98,7 @@ func (w *Payee) handleUpdateMarketAdvanceEvent(ctx context.Context, p *core.Prop
 			market.Kink = req.Kink
 		}
 
-		if e = w.marketStore.Update(ctx, w.db, market); e != nil {
+		if e = w.marketStore.Update(ctx, tx, market); e != nil {
 			log.Errorln(e)
 			return e
 		}

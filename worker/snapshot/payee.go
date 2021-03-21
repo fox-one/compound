@@ -236,12 +236,12 @@ func (w *Payee) handleUserAction(ctx context.Context, output *core.Output, actio
 	case core.ActionTypeLiquidate:
 		return w.handleLiquidationEvent(ctx, output, userID, followID, body)
 	default:
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRefundTransfer, core.ErrUnknown, "")
+		return w.handleRefundEvent(ctx, w.db, output, userID, followID, core.ActionTypeRefundTransfer, core.ErrUnknown, "")
 	}
 
 }
 
-func (w *Payee) transferOut(ctx context.Context, userID, followID, outputTraceID, assetID string, amount decimal.Decimal, transferAction *core.TransferAction) error {
+func (w *Payee) transferOut(ctx context.Context, tx *db.DB, userID, followID, outputTraceID, assetID string, amount decimal.Decimal, transferAction *core.TransferAction) error {
 	memoStr, e := transferAction.Format()
 	if e != nil {
 		return e
@@ -257,7 +257,7 @@ func (w *Payee) transferOut(ctx context.Context, userID, followID, outputTraceID
 		Memo:      memoStr,
 	}
 
-	if err := w.walletStore.CreateTransfers(ctx, []*core.Transfer{&transfer}); err != nil {
+	if err := w.walletStore.CreateTransfers(ctx, tx, []*core.Transfer{&transfer}); err != nil {
 		logger.FromContext(ctx).WithError(err).Errorln("wallets.CreateTransfers")
 		return err
 	}

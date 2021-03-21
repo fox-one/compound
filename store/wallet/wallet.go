@@ -161,20 +161,18 @@ func afterFindTransfer(transfer *core.Transfer) {
 	}
 }
 
-func (s *walletStore) CreateTransfers(_ context.Context, transfers []*core.Transfer) error {
+func (s *walletStore) CreateTransfers(_ context.Context, tx *db.DB, transfers []*core.Transfer) error {
 	sort.Slice(transfers, func(i, j int) bool {
 		return transfers[i].TraceID < transfers[j].TraceID
 	})
 
-	return s.db.Tx(func(tx *db.DB) error {
-		for _, transfer := range transfers {
-			if err := tx.Update().Where("trace_id = ?", transfer.TraceID).FirstOrCreate(transfer).Error; err != nil {
-				return err
-			}
+	for _, transfer := range transfers {
+		if err := tx.Update().Where("trace_id = ?", transfer.TraceID).FirstOrCreate(transfer).Error; err != nil {
+			return err
 		}
+	}
 
-		return nil
-	})
+	return nil
 }
 
 func updateTransfer(db *db.DB, transfer *core.Transfer) error {

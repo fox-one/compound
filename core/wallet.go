@@ -86,7 +86,7 @@ type WalletStore interface {
 	ListUnspent(ctx context.Context, assetID string, limit int) ([]*Output, error)
 	ListSpentBy(ctx context.Context, assetID string, spentBy string) ([]*Output, error)
 	// Transfers
-	CreateTransfers(ctx context.Context, transfers []*Transfer) error
+	CreateTransfers(ctx context.Context, tx *db.DB, transfers []*Transfer) error
 	UpdateTransfer(ctx context.Context, tx *db.DB, transfer *Transfer) error
 	ListPendingTransfers(ctx context.Context) ([]*Transfer, error)
 	ListNotPassedTransfers(ctx context.Context) ([]*Transfer, error)

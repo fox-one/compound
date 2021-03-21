@@ -6,7 +6,7 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-// AllowListReq allow list req for add and remove
+// AllowListReq allow list req
 type AllowListReq struct {
 	UserID string `json:"user_id,omitempty"`
 	Scope  string `json:"scope,omitempty"`

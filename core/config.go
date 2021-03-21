@@ -16,7 +16,7 @@ type Config struct {
 	PriceOracle PriceOracle `json:"price_oracle"`
 }
 
-// IsAdmin check if the user is admin
+// IsAdmin check if the user is admin or not
 func (c *Config) IsAdmin(userID string) bool {
 	if len(c.Group.Admins) <= 0 {
 		return false

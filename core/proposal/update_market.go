@@ -40,7 +40,7 @@ func (w *UpdateMarketReq) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-// UpdateMarketAdvanceReq advance req
+// UpdateMarketAdvanceReq req of market advance parameters
 type UpdateMarketAdvanceReq struct {
 	Symbol         string          `json:"symbol,omitempty"`
 	BorrowCap      decimal.Decimal `json:"borrow_cap,omitempty"`

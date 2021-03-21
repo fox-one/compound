@@ -18,7 +18,7 @@ func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, user
 		market, isRecordNotFound, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
 		if isRecordNotFound {
 			log.Warningln("market not found")
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrMarketNotFound, "")
+			return w.handleRefundEvent(ctx, tx, output, userID, followID, core.ActionTypeRedeem, core.ErrMarketNotFound, "")
 		}
 
 		if e != nil {
@@ -27,7 +27,7 @@ func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, user
 		}
 
 		if w.marketService.IsMarketClosed(ctx, market) {
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrMarketClosed, "")
+			return w.handleRefundEvent(ctx, tx, output, userID, followID, core.ActionTypeRedeem, core.ErrMarketClosed, "")
 		}
 
 		//accrue interest
@@ -38,13 +38,13 @@ func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, user
 
 		redeemTokens := output.Amount
 		if redeemTokens.GreaterThan(market.CTokens) {
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrRedeemNotAllowed, "")
+			return w.handleRefundEvent(ctx, tx, output, userID, followID, core.ActionTypeRedeem, core.ErrRedeemNotAllowed, "")
 		}
 
 		// check redeem allowed
 		allowed := w.supplyService.RedeemAllowed(ctx, redeemTokens, market)
 		if !allowed {
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrRedeemNotAllowed, "")
+			return w.handleRefundEvent(ctx, tx, output, userID, followID, core.ActionTypeRedeem, core.ErrRedeemNotAllowed, "")
 		}
 
 		// transfer asset to user
@@ -84,6 +84,6 @@ func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, user
 			Source:   core.ActionTypeRedeemTransfer,
 			FollowID: followID,
 		}
-		return w.transferOut(ctx, userID, followID, output.TraceID, market.AssetID, amount, &transferAction)
+		return w.transferOut(ctx, tx, userID, followID, output.TraceID, market.AssetID, amount, &transferAction)
 	})
 }

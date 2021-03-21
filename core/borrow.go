@@ -9,7 +9,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// Borrow borrow info
+// Borrow user borrow model
 type Borrow struct {
 	ID            uint64          `sql:"PRIMARY_KEY;AUTO_INCREMENT" json:"id"`
 	UserID        string          `sql:"size:36;unique_index:borrow_idx" json:"-"`
@@ -29,6 +29,7 @@ var (
 )
 
 // Balance caculate borrow balance
+// balance = borrow.principal * market.borrow_index / borrow.interest_index
 func (b *Borrow) Balance(ctx context.Context, market *Market) (decimal.Decimal, error) {
 	if market.BorrowIndex.LessThanOrEqual(decimal.Zero) {
 		market.BorrowIndex = market.BorrowRatePerBlock

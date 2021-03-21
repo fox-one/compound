@@ -19,7 +19,7 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 		market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)
 		if isRecordNotFound {
 			log.Warningln("market not found")
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeSupply, core.ErrMarketNotFound, "")
+			return w.handleRefundEvent(ctx, tx, output, userID, followID, core.ActionTypeSupply, core.ErrMarketNotFound, "")
 		}
 		if e != nil {
 			log.WithError(e).Errorln("find market error")
@@ -27,7 +27,7 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 		}
 
 		if w.marketService.IsMarketClosed(ctx, market) {
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeSupply, core.ErrMarketClosed, "")
+			return w.handleRefundEvent(ctx, tx, output, userID, followID, core.ActionTypeSupply, core.ErrMarketClosed, "")
 		}
 
 		//accrue interest
@@ -44,7 +44,7 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 
 		ctokens := supplyAmount.Div(exchangeRate).Truncate(8)
 		if ctokens.LessThan(decimal.NewFromFloat(0.00000001)) {
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeSupply, core.ErrInvalidAmount, "")
+			return w.handleRefundEvent(ctx, tx, output, userID, followID, core.ActionTypeSupply, core.ErrInvalidAmount, "")
 		}
 
 		//update maket
@@ -76,6 +76,6 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 			Source:   core.ActionTypeMint,
 			FollowID: followID,
 		}
-		return w.transferOut(ctx, userID, followID, output.TraceID, market.CTokenAssetID, ctokens, &transferAction)
+		return w.transferOut(ctx, tx, userID, followID, output.TraceID, market.CTokenAssetID, ctokens, &transferAction)
 	})
 }

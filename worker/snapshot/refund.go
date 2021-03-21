@@ -5,10 +5,11 @@ import (
 	"context"
 
 	"github.com/fox-one/pkg/logger"
+	"github.com/fox-one/pkg/store/db"
 	uuidutil "github.com/fox-one/pkg/uuid"
 )
 
-func (w *Payee) handleRefundEvent(ctx context.Context, output *core.Output, userID, followID string, origin core.ActionType, errCode core.ErrorCode, msg string) error {
+func (w *Payee) handleRefundEvent(ctx context.Context, tx *db.DB, output *core.Output, userID, followID string, origin core.ActionType, errCode core.ErrorCode, msg string) error {
 	log := logger.FromContext(ctx).WithField("worker", "refund")
 	transferAction := core.TransferAction{
 		Code:     int(errCode),
@@ -33,7 +34,7 @@ func (w *Payee) handleRefundEvent(ctx context.Context, output *core.Output, user
 		Memo:      memoStr,
 	}
 
-	if err := w.walletStore.CreateTransfers(ctx, []*core.Transfer{transfer}); err != nil {
+	if err := w.walletStore.CreateTransfers(ctx, tx, []*core.Transfer{transfer}); err != nil {
 		logger.FromContext(ctx).WithError(err).Errorln("walletStore.CreateTransfers")
 		return err
 	}
