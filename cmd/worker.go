@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"compound/handler/hc"
 	walletservice "compound/service/wallet"
 	"compound/worker"
 
@@ -12,14 +11,10 @@ import (
 	// "compound/worker/spentsync"
 	"compound/worker/syncer"
 	// "compound/worker/txsender"
-	"fmt"
-	"net/http"
+
 	"sync"
 
 	"github.com/fox-one/pkg/logger"
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
-	"github.com/rs/cors"
 	"github.com/spf13/cobra"
 )
 
@@ -69,21 +64,21 @@ var workerCmd = &cobra.Command{
 		// allowListService := provideAllowListService(propertyStore, allowListStore)
 
 		//hc api
-		{
-			mux := chi.NewMux()
-			mux.Use(middleware.Recoverer)
-			mux.Use(middleware.StripSlashes)
-			mux.Use(cors.AllowAll().Handler)
-			mux.Use(logger.WithRequestID)
-			mux.Use(middleware.Logger)
+		// {
+		// 	mux := chi.NewMux()
+		// 	mux.Use(middleware.Recoverer)
+		// 	mux.Use(middleware.StripSlashes)
+		// 	mux.Use(cors.AllowAll().Handler)
+		// 	mux.Use(logger.WithRequestID)
+		// 	mux.Use(middleware.Logger)
 
-			mux.Mount("/hc", hc.Handle(rootCmd.Version))
+		// 	mux.Mount("/hc", hc.Handle(rootCmd.Version))
 
-			port, _ := cmd.Flags().GetInt("port")
-			addr := fmt.Sprintf(":%d", port)
+		// 	port, _ := cmd.Flags().GetInt("port")
+		// 	addr := fmt.Sprintf(":%d", port)
 
-			go http.ListenAndServe(addr, mux)
-		}
+		// 	go http.ListenAndServe(addr, mux)
+		// }
 
 		workers := []worker.Worker{
 			// cashier.New(walletStore, walletService, system),
@@ -101,7 +96,8 @@ var workerCmd = &cobra.Command{
 
 			go func(worker worker.Worker) {
 				defer wg.Done()
-				worker.Run(ctx)
+				err := worker.Run(ctx)
+				log.Errorln("worker run error:", err)
 			}(w)
 		}
 
