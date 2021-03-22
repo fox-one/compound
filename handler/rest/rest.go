@@ -9,7 +9,7 @@ import (
 	"github.com/twitchtv/twirp"
 )
 
-// Handle handle rest request
+// Handle handle rest api request
 func Handle(
 	userStore core.UserStore,
 	marketStore core.IMarketStore,

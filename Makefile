@@ -1,7 +1,7 @@
 COMMIT = $(shell git rev-parse --short HEAD)
 VERSION = $(shell git describe --abbrev=0) 
 
-REPOSITORY_PATH = 945908130943.dkr.ecr.ap-northeast-1.amazonaws.com
+REPOSITORY_PATH = $(shell cat .config.ini)
 ENV = $*
 GO = go
 
@@ -27,6 +27,7 @@ build-%: clean-% sync-%
 	cp ./compound ./compound.${ENV}
 
 docker-build-%: build-%
+	@echo "repository path -> ${REPOSITORY_PATH}"
 	docker build -t ${REPOSITORY_PATH}/compound-${ENV}:${VERSION} . 
 
 .PHONY: aws-login
@@ -35,3 +36,5 @@ aws-login:
 
 deploy-%: docker-build-%
 	docker push ${REPOSITORY_PATH}/compound-${ENV}:${VERSION}
+ttt:
+	@echo "repository path:${REPOSITORY_PATH}"

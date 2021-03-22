@@ -11,6 +11,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// response all market infos
 func allMarketsHandler(marketStr core.IMarketStore, supplyStr core.ISupplyStore, borrowStr core.IBorrowStore, marketSrv core.IMarketService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

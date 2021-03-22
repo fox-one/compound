@@ -8,6 +8,7 @@ import (
 	"net/http"
 )
 
+// response borrows by address and asset
 func borrowsHandler(userStr core.UserStore, marketStr core.IMarketStore, borrowStr core.IBorrowStore, priceSrv core.IPriceOracleService, blockSrv core.IBlockService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

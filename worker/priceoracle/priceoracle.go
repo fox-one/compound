@@ -19,7 +19,8 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-//Worker block worker
+//Worker price oracle worker
+// request the price of the asset and put a price proposal on chain
 type Worker struct {
 	worker.TickWorker
 	System             *core.System
@@ -75,7 +76,7 @@ func (w *Worker) onWork(ctx context.Context) error {
 		go func(market *core.Market) {
 			defer wg.Done()
 			if !w.isPriceProvided(ctx, market) {
-				// do real work
+				// pull price ticker from outside
 				ticker, e := w.PriceOracleService.PullPriceTicker(ctx, market.AssetID, time.Now())
 				if e != nil {
 					log.Errorln("pull price ticker error:", e)

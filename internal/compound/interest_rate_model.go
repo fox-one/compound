@@ -24,6 +24,7 @@ var (
 )
 
 // UtilizationRate utilization rate
+// utilization_rate = market.total_borrows/(market.total_cash + market.borrows - market.reserves)
 func UtilizationRate(cash, borrows, reserves decimal.Decimal) decimal.Decimal {
 	total := cash.Add(borrows).Sub(reserves)
 	if total.LessThanOrEqual(decimal.Zero) {
@@ -34,6 +35,7 @@ func UtilizationRate(cash, borrows, reserves decimal.Decimal) decimal.Decimal {
 }
 
 // GetExchangeRate exchange rate
+// exchange_rate = (market.total_cash + market.total_borrows - market.reserves) / market.tocken_supply
 func GetExchangeRate(totalCash, totalBorrows, totalReserves, tokenSupply, initialExchangeRate decimal.Decimal) decimal.Decimal {
 	if tokenSupply.Equal(decimal.Zero) {
 		return initialExchangeRate
@@ -43,6 +45,7 @@ func GetExchangeRate(totalCash, totalBorrows, totalReserves, tokenSupply, initia
 }
 
 // GetBorrowRatePerBlock borrowRate per block
+// if kink ==0 || borrow_rate_per_block 
 func GetBorrowRatePerBlock(utilizationRate, baseRate, multiplier, jumpMultiplier, kink decimal.Decimal) decimal.Decimal {
 	if kink.Equal(decimal.Zero) ||
 		utilizationRate.LessThanOrEqual(kink) {

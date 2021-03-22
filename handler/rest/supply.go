@@ -8,6 +8,7 @@ import (
 	"net/http"
 )
 
+// response supplies by address and asset
 func suppliesHandler(userStr core.UserStore, marketStr core.IMarketStore, supplyStr core.ISupplyStore, priceSrv core.IPriceOracleService, blockSrv core.IBlockService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

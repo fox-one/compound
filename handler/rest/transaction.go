@@ -10,6 +10,7 @@ import (
 	"github.com/fox-one/pkg/logger"
 )
 
+// response user transactions
 func transactionsHandler(transactionStr core.TransactionStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// response liquidity by address
 func liquidityHandler(userStr core.UserStore, blockSrv core.IBlockService, accountSrv core.IAccountService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
