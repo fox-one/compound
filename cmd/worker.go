@@ -33,6 +33,8 @@ var workerCmd = &cobra.Command{
 		migrateDB()
 
 		db := provideDatabase()
+		defer db.Close()
+
 		dapp := provideDapp()
 		system := provideSystem()
 

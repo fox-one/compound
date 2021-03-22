@@ -128,16 +128,23 @@ func (w *Payee) onWork(ctx context.Context) error {
 		_, err := w.outputArchiveStore.Find(ctx, u.TraceID)
 		if err != nil {
 			if gorm.IsRecordNotFoundError(err) {
-				if err := w.handleOutput(ctx, u); err != nil {
-					return err
-				}
+				err = w.db.Tx(func(tx *db.DB) error {
+					if err := w.handleOutput(ctx, tx, u); err != nil {
+						return err
+					}
 
-				//archive output
-				archive := core.OutputArchive{
-					ID:      u.ID,
-					TraceID: u.TraceID,
-				}
-				if err := w.outputArchiveStore.Save(ctx, &archive); err != nil {
+					//archive output
+					archive := core.OutputArchive{
+						ID:      u.ID,
+						TraceID: u.TraceID,
+					}
+					if err := w.outputArchiveStore.Save(ctx, tx, &archive); err != nil {
+						return err
+					}
+					return nil
+				})
+
+				if err != nil {
 					return err
 				}
 			} else {
@@ -154,7 +161,7 @@ func (w *Payee) onWork(ctx context.Context) error {
 	return nil
 }
 
-func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
+func (w *Payee) handleOutput(ctx context.Context, tx *db.DB, output *core.Output) error {
 	log := logger.FromContext(ctx).WithField("output", output.TraceID)
 	ctx = logger.WithContext(ctx, log)
 
@@ -195,7 +202,7 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 		return err
 	}
 
-	return w.handleUserAction(ctx, output, actionType, userID, followID.String(), body)
+	return w.handleUserAction(ctx, tx, output, actionType, userID, followID.String(), body)
 }
 
 func (w *Payee) handleProposalAction(ctx context.Context, output *core.Output, member *core.Member, body []byte) error {
@@ -219,24 +226,24 @@ func (w *Payee) handleProposalAction(ctx context.Context, output *core.Output, m
 	return w.handleCreateProposalEvent(ctx, output, member, core.ActionType(actionType), traceID.String(), body)
 }
 
-func (w *Payee) handleUserAction(ctx context.Context, output *core.Output, actionType core.ActionType, userID, followID string, body []byte) error {
+func (w *Payee) handleUserAction(ctx context.Context, tx *db.DB, output *core.Output, actionType core.ActionType, userID, followID string, body []byte) error {
 	switch actionType {
 	case core.ActionTypeSupply:
-		return w.handleSupplyEvent(ctx, output, userID, followID, body)
+		return w.handleSupplyEvent(ctx, tx, output, userID, followID, body)
 	case core.ActionTypeBorrow:
-		return w.handleBorrowEvent(ctx, output, userID, followID, body)
+		return w.handleBorrowEvent(ctx, tx, output, userID, followID, body)
 	case core.ActionTypeRedeem:
-		return w.handleRedeemEvent(ctx, output, userID, followID, body)
+		return w.handleRedeemEvent(ctx, tx, output, userID, followID, body)
 	case core.ActionTypeRepay:
-		return w.handleRepayEvent(ctx, output, userID, followID, body)
+		return w.handleRepayEvent(ctx, tx, output, userID, followID, body)
 	case core.ActionTypePledge:
-		return w.handlePledgeEvent(ctx, output, userID, followID, body)
+		return w.handlePledgeEvent(ctx, tx, output, userID, followID, body)
 	case core.ActionTypeUnpledge:
-		return w.handleUnpledgeEvent(ctx, output, userID, followID, body)
+		return w.handleUnpledgeEvent(ctx, tx, output, userID, followID, body)
 	case core.ActionTypeLiquidate:
-		return w.handleLiquidationEvent(ctx, output, userID, followID, body)
+		return w.handleLiquidationEvent(ctx, tx, output, userID, followID, body)
 	default:
-		return w.handleRefundEvent(ctx, w.db, output, userID, followID, core.ActionTypeRefundTransfer, core.ErrUnknown, "")
+		return w.handleRefundEvent(ctx, tx, output, userID, followID, core.ActionTypeRefundTransfer, core.ErrUnknown, "")
 	}
 
 }

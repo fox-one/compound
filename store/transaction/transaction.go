@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/fox-one/pkg/store/db"
+	"github.com/jinzhu/gorm"
 )
 
 type transactionStore struct {
@@ -32,7 +33,19 @@ func init() {
 }
 
 func (s *transactionStore) Create(ctx context.Context, tx *db.DB, transaction *core.Transaction) error {
-	return tx.Update().Where("trace_id=?", transaction.TraceID).FirstOrCreate(transaction).Error
+	return tx.Update().Where("trace_id=?", transaction.TraceID).Create(transaction).Error
+}
+
+func (s *transactionStore) FindByTraceID(ctx context.Context, traceID string) (*core.Transaction, error) {
+	var transaction core.Transaction
+	if err := s.db.View().Where("trace_id=?", traceID).First(&transaction).Error; err != nil {
+		if gorm.IsRecordNotFoundError(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &transaction, nil
 }
 
 func (s *transactionStore) Update(ctx context.Context, tx *db.DB, transaction *core.Transaction) error {

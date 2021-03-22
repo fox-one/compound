@@ -98,6 +98,7 @@ type Transaction struct {
 // TransactionStore transaction store interface
 type TransactionStore interface {
 	Create(ctx context.Context, tx *db.DB, transactions *Transaction) error
+	FindByTraceID(ctx context.Context, traceID string) (*Transaction, error)
 	Update(ctx context.Context, tx *db.DB, transaction *Transaction) error
 	List(ctx context.Context, offset time.Time, limit int) ([]*Transaction, error)
 }

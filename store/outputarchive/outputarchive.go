@@ -29,8 +29,8 @@ func init() {
 	})
 }
 
-func (s *store) Save(ctx context.Context, archive *core.OutputArchive) error {
-	return s.db.Update().Where("trace_id=?", archive.TraceID).FirstOrCreate(archive).Error
+func (s *store) Save(ctx context.Context, tx *db.DB, archive *core.OutputArchive) error {
+	return tx.Update().Where("trace_id=?", archive.TraceID).FirstOrCreate(archive).Error
 }
 
 func (s *store) Find(ctx context.Context, traceID string) (*core.OutputArchive, error) {

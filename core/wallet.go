@@ -72,7 +72,7 @@ type OutputArchive struct {
 
 // OutputArchiveStore archive store
 type OutputArchiveStore interface {
-	Save(ctx context.Context, archive *OutputArchive) error
+	Save(ctx context.Context, tx *db.DB, archive *OutputArchive) error
 	Find(ctx context.Context, traceID string) (*OutputArchive, error)
 }
 
