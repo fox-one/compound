@@ -94,16 +94,6 @@ var workerCmd = &cobra.Command{
 			spentsync.New(db, walletStore, transactionStore),
 		}
 
-		workers = []worker.Worker{
-			cashier.New(walletStore, walletService, system),
-			message.New(messageStore, messageService),
-			// priceoracle.New(system, dapp, marketStore, priceStore, blockService, priceService),
-			snapshot.NewPayee(db, system, dapp, propertyStore, userStore, outputArchiveStore, walletStore, priceStore, marketStore, supplyStore, borrowStore, proposalStore, transactionStore, proposalService, priceService, blockService, marketService, supplyService, borrowService, accountService, allowListService),
-			syncer.New(walletStore, walletService, propertyStore),
-			txsender.New(walletStore),
-			spentsync.New(db, walletStore, transactionStore),
-		}
-
 		wg := sync.WaitGroup{}
 		for _, w := range workers {
 			wg.Add(1)
