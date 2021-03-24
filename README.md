@@ -1,204 +1,104 @@
 # compound
 
-> compound 节点引擎。
+A implementation of the [compound protocol](https://github.com/compound-finance/compound-protocol) based on [Mixin](https://github.com/MixinNetwork/mixin) [MTG](https://github.com/MixinNetwork/developers.mixin.one/blob/main/developers/src/i18n/en/document/mainnet/mtg.md) technology.
 
-## 项目结构
+## Key Words
 
-```
+### [Mixin(Mixin network)](https://github.com/MixinNetwork/mixin)
+A public blockchain driven by TEE (Trusted Execution Environment) based on the DAG with aBFT. Unlike other projects which have great theories but hardly any actual implementations of blockchain transaction solution, Mixin Network provides a more secure, private, 0 fees, developer-friendly and user-friendly transaction solution with lightning speed.
 
----
-|-cmd     // cli入口 
-|-config  //缺省的配置文件目录
-|-deploy  //部署目录
-|-docs    //存放项目文档
-|-core  //业务数据模型
-|-pkg     //公共库目录
-|-service //业务
-|-store   //数据持久化层
-|-worker  //后台服务
-|-handler     // api服务
-|-Dockerfile // docker 配置文件
-|-main.go //程序入口
+### [MTG(Mixin Trusted Group)](https://github.com/MixinNetwork/developers.mixin.one/blob/main/developers/src/i18n/en/document/mainnet/mtg.md)
 
-```
+An alternative to smart contacts on Mixin Network.
 
-## 配置
- 参考[配置模板](deploy/config.node.yaml.tpl)
+Basically, MTG is a Multi-signature custodian consensus solution. Several teams will be selected and arranged as the “Trusted Group” in Pando, becoming the “Nodes”. Concensus has to be reached among the nodes to perform certain administrative actions. As a result, stable services and asset safety are guaranteed.
 
-## 运行
+For example, let’s say there is a M/N multi-sig group where M represents the number of nodes, and the group manages some assets in the multi-sig address. When one of the nodes needs to transfer some assets out, it needs to collect at least N signatures from others to perform the action.
 
-* 运行API服务
+MTG is the framework. Pando is an application designed using the framework on Mixin Network.
 
-```
+### CToken
 
-// port: 自定义端口，缺省端口为80，
-// config: 自定义配置文件， 缺省路径为 ./config/config.yaml
-./compound server --port 80 --config ./config/config.yaml
+The corresponding certificate token that you obtained when you supply an number of cetain encrypted currency to the market.
 
-```
+## Functions
 
-* 运行worker
+#### Supply
 
-```
-// config: 自定义配置文件，缺省路径为 ./config/config.yaml
-./compound worker --config ./config/config.yaml
-```
+Users supply encrypted currencies to the market to provide liquidity, 
+and obtain the corresponding token.and obtain corresponding income as a reward for providing liquidity.
 
-> 注意：运行worker 前需要给节点DAPP转一些`Vote asset`过去，因为每个节点都会消费`Vote asset`往链上写价格
+![](docs/images/uc_supply.png)
 
+#### Pledge
 
-## 部署
+Users should mortgage CToken to the market before borrow.
 
-部署文件查看[Makefile](./Makefile)
+![](docs/images/uc_pledge.png)
 
-部署环境有3个：
-* local  //本地环境
-* test   //测试环境
-* prod   //生产环境
+#### Unpledge
 
-对应的在deploy目录下有3个环境对应的配置文件`config.${ENV}.yaml`，如下：`config.local.yaml, config.test.yaml, config.prod.yaml`。
+Users take back the CToken that pledged to the market.
 
+![](docs/images/uc_unpledge.png)
 
-* 直接编译可执行文件到本地：
-```
-make build-%    //如：make build-local
-```
+#### Redeem
 
-* 编译为docker镜像(配置文件打包进docker镜像)：
-  1. 修改 Makefile `REPOSITORY_PATH`的值
-  2. 发布镜像到仓库执行 `make deploy-%`，例：make deploy-prod
+Users return the CToken and obtain the corresponding encrypted currency that supplied before, including interest as the liquidity reward.
+
+![](docs/images/uc_redeem.png)
+
+#### Borrow
+
+Users borrow encrypted currencies from the market, and will pay a certain interest to repay the loan.
+
+![](docs/images/uc_borrow.png)
+
+#### Repay
+
+Users repay the borrowed encrypted currency and need to pay an extra interest.
+
+![](docs/images/uc_repay.png)
+
+#### Liquidation
+
+As the market price changes, the user A's loan has exceeded his mortgaged assets, that is to say, A's loan liquidity is less than or equal to 0, then other users can use a lower price to obtain A's mortgage assets to help A's repayment of part of the debt has made A's loan liquidity greater than 0.
+
+![](docs/images/uc_liquidity.png)
 
 
-* 如不想把配置文件打包进docke镜像
-  1. 修改`Dockerfile`, 删除 `ADD config/config.yaml config/config.yaml`
-  2. 修改`Dockerfile`，增加配置 `VOLUME [ "/var/data/compound" ]`
-  3. 把配置文件放在host目录下 `/var/data/compound`
-  4. 运行时通过config配置自定义配置文件，如：`./compound server --port 80 --config /var/data/compound/config.yaml`
+## [Design](docs/design.md)
 
-* health check 接口
-   1. api:   `/hc`
-   2. worker: `/hc`
+## [Deployment](docs/deploy.md)
 
+## [Governance](docs/governance.md)
 
-## 管理员工具
+##[Userguide](docs/userguide.md)
 
-### Keys
-> 生成Ed25519公私钥对
-
-cmd:
+## [LICENSE](LICENSE)
 
 ```
-./compound keys
-```
 
-### inject-ctoken
-> 往多签钱包注入ctoken
+MIT License
 
-cmd:
+Copyright (c) 2020 Fox.ONE
 
-```
-./compound inject-ctoken --asset xxxxx --amount 10000
-or
-./compound ic --asset xxxxx --amount 10000
-```
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-### withdraw
-> 发起从多签钱包提现的投票请求
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-cmd:
-
-```
-./compound withdraw --opponent xxxx --asset xxxxxxx --amount 10000
-```
-
-### add-market
-> 添加借贷市场
-
-cmd:
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 ```
-//-s  symbol
-//-a asset_id
-//-c ctoken_asset_id
-./compound add-market --s BTC --a xxxxxx --c yyyyyy
-or
-./compound am -s BTC -a xxxxx -c yyyyyyy
-```
-
-### update-market
-> 更新market参数
-
-cmd:
-
-```
-//-s symbol
-//-ie init_exchange
-//-rf reserve_factor
-//-li liquidation_incentive
-//-cf collateral_factor
-//-br base_rate
-./compound update-market --s BTC --ie 1 --rf 0.1 --li 0.05 --cf 0.75 --br 0.025
-or
-./compound um --s BTC --ie 1 --rf 0.1 --li 0.05 --cf 0.75 --br 0.025
-```
-
-### update-market-advance
-> 更新market参数
-
-cmd:
-
-```
-//-s symbol
-//-bc borrow_cap
-//-clf close_factor
-//-m multiplier
-//-jm jump_multiplier
-//-k kink
-./compound update-market-advance --s BTC --bc 0 --clf 0.5 --m 0.3 --jm 0.5 --k 0.7
-or
-./compound uma --s BTC --bc 0 --clf 0.5 --m 0.3 --jm 0.5 --k 0.7
-```
-
-### close-market
-> 关闭market
-
-cmd:
-
-```
-./compound close-market --asset xxxxxxxx
-or
-./compound cm --asset xxxxxx
-```
-
-### open-market
-> open market
-
-cmd:
-
-```
-./compound open-market --asset xxxxx
-or
-./compound om --asset xxxxxxx
-```
-
-## 附
-
-### Price oracle(价格预言机)
-
-> compound 的price oracle通过以下机制来保证compound market价格的稳定：
-
-* 每个compound节点都像链上提供价格
-* compound通过m/n多签的方式，保证n个节点至少m个节点提供的价格有效才算该market的当前block的价格有效，算法如下：
-  1. 把所有节点提供的价格按价格升序排序
-  2. 相邻价格比较，差值>=5%的价格无效
-  3. 剩余价格满足m/n则此次价格有效
-  4. 把m个价格算均值a，a就是market当前blockNum的价格
-* 每个节点是通过price oracle服务获取指定market 1小时内的价格均值作为当前节点提供的价格写上主链
-* 当出现价格被恶意攻击时，由于是用1小时内的价格均值作为market的价格，所以恶意的价格对market的影响有限，同时管理人员可以同时决策是否有必要`close-market`，并在价格恢复后`open-market`
-
-### market 熔断
-> 某个market价格异常情况下，关闭市场
-
-* 当某个market的价格被恶意攻击时，管理人员有权执行`close-market`命令，申请闭市投票，投票通过则market关闭
-* 已关闭的market不可借贷，其他market不影响正常借贷
-* 但是当存在至少一个market关闭的情况下，将禁止所有market的清算行为，因为清算会影响到用户所有账户的流动性
