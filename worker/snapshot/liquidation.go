@@ -12,6 +12,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// handle liquidation event
 func (w *Payee) handleLiquidationEvent(ctx context.Context, tx *db.DB, output *core.Output, userID, followID string, body []byte) error {
 	log := logger.FromContext(ctx).WithField("worker", "seize_token")
 

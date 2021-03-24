@@ -15,6 +15,8 @@ import (
 )
 
 // Cashier cashier
+//
+// use output to spend
 type Cashier struct {
 	worker.TickWorker
 	walletStore   core.WalletStore

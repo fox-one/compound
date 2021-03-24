@@ -8,6 +8,7 @@ import (
 	"github.com/fox-one/pkg/store/db"
 )
 
+// handle redeem event
 func (w *Payee) handleRedeemEvent(ctx context.Context, tx *db.DB, output *core.Output, userID, followID string, body []byte) error {
 	log := logger.FromContext(ctx).WithField("worker", "supply_redeem")
 	ctokenAssetID := output.AssetID

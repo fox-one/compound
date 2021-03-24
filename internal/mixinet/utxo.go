@@ -29,6 +29,7 @@ func cmpUTXO(a, b *mixin.MultisigUTXO) int {
 	return -1
 }
 
+// SortOutputs sort outputs by UTXO
 func SortOutputs(outputs []*core.Output) {
 	sort.Slice(outputs, func(i, j int) bool {
 		ui, uj := outputs[i].UTXO, outputs[j].UTXO

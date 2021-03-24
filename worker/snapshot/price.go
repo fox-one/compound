@@ -14,6 +14,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// handle price proposal
 func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *core.Output, member *core.Member, traceID string, body []byte) error {
 	return w.db.Tx(func(tx *db.DB) error {
 		log := logger.FromContext(ctx).WithField("worker", "handleProposalProvidePriceEvent")
@@ -90,13 +91,14 @@ func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *cor
 			// less than threshold
 			return nil
 		}
-
+		// sort priceTicker by price ASC
 		sort.Slice(priceTickers, func(i, j int) bool {
 			return priceTickers[i].Price.LessThan(priceTickers[j].Price)
 		})
 
 		validPrices := make(map[string]decimal.Decimal)
 
+		// find the valid price
 		for i := 1; i < priceLen; i++ {
 			first := priceTickers[i-1]
 			second := priceTickers[i]
@@ -114,6 +116,7 @@ func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *cor
 			return nil
 		}
 
+		// calculate the avg price
 		sumOfPrice := decimal.Zero
 		for _, p := range validPrices {
 			sumOfPrice = sumOfPrice.Add(p)

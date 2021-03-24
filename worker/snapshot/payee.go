@@ -125,6 +125,7 @@ func (w *Payee) onWork(ctx context.Context) error {
 	}
 
 	for _, u := range outputs {
+		// process the output only once
 		_, err := w.outputArchiveStore.Find(ctx, u.TraceID)
 		if err != nil {
 			if gorm.IsRecordNotFoundError(err) {
@@ -138,6 +139,7 @@ func (w *Payee) onWork(ctx context.Context) error {
 						ID:      u.ID,
 						TraceID: u.TraceID,
 					}
+					// save the processed output
 					if err := w.outputArchiveStore.Save(ctx, tx, &archive); err != nil {
 						return err
 					}

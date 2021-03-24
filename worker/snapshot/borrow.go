@@ -11,6 +11,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// handle borrow event
 func (w *Payee) handleBorrowEvent(ctx context.Context, tx *db.DB, output *core.Output, userID, followID string, body []byte) error {
 
 	log := logger.FromContext(ctx).WithField("worker", "borrow")
@@ -59,7 +60,7 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, tx *db.DB, output *core.O
 	borrow, isRecordNotFound, e := w.borrowStore.Find(ctx, userID, market.AssetID)
 	if e != nil {
 		if isRecordNotFound {
-			//new
+			//new borrow record
 			borrow = &core.Borrow{
 				UserID:        userID,
 				AssetID:       market.AssetID,

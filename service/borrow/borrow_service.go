@@ -28,6 +28,7 @@ func New(
 	}
 }
 
+// BorrowAllowed check borrow capacity, check account liquidity
 func (s *borrowService) BorrowAllowed(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *core.Market, time time.Time) bool {
 	log := logger.FromContext(ctx)
 
@@ -76,7 +77,7 @@ func (s *borrowService) BorrowAllowed(ctx context.Context, borrowAmount decimal.
 	return true
 }
 
-//Deprecated
+// Deprecated
 func (s *borrowService) MaxBorrow(ctx context.Context, userID string, market *core.Market) (decimal.Decimal, error) {
 	// check borrow cap
 	supplies := market.TotalCash.Sub(market.Reserves)

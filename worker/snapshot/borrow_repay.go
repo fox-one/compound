@@ -9,6 +9,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// handle borrow repay event
 func (w *Payee) handleRepayEvent(ctx context.Context, tx *db.DB, output *core.Output, userID, followID string, body []byte) error {
 
 	log := logger.FromContext(ctx).WithField("worker", "borrow_repay")

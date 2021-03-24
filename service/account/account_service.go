@@ -37,6 +37,11 @@ func New(
 	}
 }
 
+// CalculateAccountLiquidity calculate account liquidity
+//
+// 	supplyValue = supply.collaterals * market.exchange_rate * market.collateral_factor * market.price
+// 	borrowValue = borrow.Balance()
+// 	liquidity = total_supply_values - total_borrow_values
 func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID string, blockNum int64) (decimal.Decimal, error) {
 	supplies, e := s.supplyStore.FindByUser(ctx, userID)
 	if e != nil {
@@ -92,22 +97,9 @@ func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID s
 	return liquidity, nil
 }
 
-// key with asset_id
-func (s *accountService) markets(ctx context.Context) (map[string]*core.Market, error) {
-	markets, e := s.marketStore.All(ctx)
-	if e != nil {
-		return nil, e
-	}
-
-	maps := make(map[string]*core.Market)
-
-	for _, m := range markets {
-		maps[m.AssetID] = m
-	}
-
-	return maps, nil
-}
-
+// SeizeTokenAllowed
+//
+// check account liquidity
 func (s *accountService) SeizeTokenAllowed(ctx context.Context, supply *core.Supply, borrow *core.Borrow, time time.Time) bool {
 	if supply.UserID != borrow.UserID {
 		return false
@@ -172,5 +164,5 @@ func (s *accountService) MaxSeize(ctx context.Context, supply *core.Supply, borr
 }
 
 func (s *accountService) SeizeToken(ctx context.Context, supply *core.Supply, borrow *core.Borrow, repayAmount decimal.Decimal) (string, error) {
-	return "", nil
+	panic("implement me")
 }

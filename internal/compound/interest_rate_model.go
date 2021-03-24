@@ -45,7 +45,6 @@ func GetExchangeRate(totalCash, totalBorrows, totalReserves, tokenSupply, initia
 }
 
 // GetBorrowRatePerBlock borrowRate per block
-// if kink ==0 || borrow_rate_per_block 
 func GetBorrowRatePerBlock(utilizationRate, baseRate, multiplier, jumpMultiplier, kink decimal.Decimal) decimal.Decimal {
 	if kink.Equal(decimal.Zero) ||
 		utilizationRate.LessThanOrEqual(kink) {

@@ -10,6 +10,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// handle pledge event
 func (w *Payee) handlePledgeEvent(ctx context.Context, tx *db.DB, output *core.Output, userID, followID string, body []byte) error {
 	log := logger.FromContext(ctx).WithField("worker", "pledge")
 	ctokens := output.Amount

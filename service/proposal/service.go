@@ -64,7 +64,7 @@ func (p *service) ProposalCreated(ctx context.Context, proposal *core.Proposal, 
 	buttonsData, _ := json.Marshal(buttons)
 
 	post := renderProposal(proposal)
-	
+
 	var messages []*core.Message
 	for _, admin := range p.system.Admins {
 		// post
@@ -91,6 +91,7 @@ func (p *service) ProposalCreated(ctx context.Context, proposal *core.Proposal, 
 	return p.messages.Create(ctx, messages)
 }
 
+// ProposalApproved send proposal approved message to all the node managers
 func (p *service) ProposalApproved(ctx context.Context, proposal *core.Proposal, by *core.Member) error {
 	var messages []*core.Message
 
@@ -112,6 +113,7 @@ func (p *service) ProposalApproved(ctx context.Context, proposal *core.Proposal,
 	return p.messages.Create(ctx, messages)
 }
 
+// ProposalPassed send proposal approved message to all the node managers
 func (p *service) ProposalPassed(ctx context.Context, proposal *core.Proposal) error {
 	var messages []*core.Message
 

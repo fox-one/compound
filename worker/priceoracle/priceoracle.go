@@ -20,6 +20,7 @@ import (
 )
 
 //Worker price oracle worker
+//
 // request the price of the asset and put a price proposal on chain
 type Worker struct {
 	worker.TickWorker

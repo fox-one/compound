@@ -60,7 +60,7 @@ func (s *service) CurSupplyRatePerBlock(ctx context.Context, market *core.Market
 	return sr, nil
 }
 
-//资金使用率，同一个block里保持一致，该数据会影响到借款和存款利率的计算
+//
 func (s *service) curUtilizationRateInternal(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
 	rate := compound.UtilizationRate(market.TotalCash, market.TotalBorrows, market.Reserves)
 	return rate, nil
@@ -76,7 +76,7 @@ func (s *service) curExchangeRateInternal(ctx context.Context, market *core.Mark
 	return rate, nil
 }
 
-// 借款年利率
+// CurBorrowRate current borrow APY
 func (s *service) CurBorrowRate(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
 	borrowRatePerBlock, e := s.curBorrowRatePerBlockInternal(ctx, market)
 	if e != nil {
@@ -86,7 +86,7 @@ func (s *service) CurBorrowRate(ctx context.Context, market *core.Market) (decim
 	return borrowRatePerBlock.Mul(compound.BlocksPerYear).Truncate(compound.MaxPricision), nil
 }
 
-// 借款块利率, 同一个block里保持一致
+//
 func (s *service) curBorrowRatePerBlockInternal(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
 	utilRate, e := s.curUtilizationRateInternal(ctx, market)
 	if e != nil {
@@ -98,7 +98,7 @@ func (s *service) curBorrowRatePerBlockInternal(ctx context.Context, market *cor
 	return rate, nil
 }
 
-// 存款年利率
+// CurSupplyRate current supply APY
 func (s *service) CurSupplyRate(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
 	supplyRatePerBlock, e := s.curSupplyRatePerBlockInternal(ctx, market)
 	if e != nil {
@@ -108,7 +108,7 @@ func (s *service) CurSupplyRate(ctx context.Context, market *core.Market) (decim
 	return supplyRatePerBlock.Mul(compound.BlocksPerYear).Truncate(compound.MaxPricision), nil
 }
 
-// 存款块利率, 同一个block里保持一致
+//
 func (s *service) curSupplyRatePerBlockInternal(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
 	utilRate, e := s.curUtilizationRateInternal(ctx, market)
 	if e != nil {
@@ -120,16 +120,19 @@ func (s *service) curSupplyRatePerBlockInternal(ctx context.Context, market *cor
 	return rate, nil
 }
 
-// 总借出量
+//
 func (s *service) CurTotalBorrows(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
 	return market.TotalBorrows, nil
 }
 
-// 总保留金
+//
 func (s *service) CurTotalReserves(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
 	return market.Reserves, nil
 }
 
+// AccrueInterest accrue interest market per block(15 seconds)
+//
+// Accruing interest only occurs when there is a behavior that causes changes in market transaction data, such as supply, borrow, pledge, unpledge, redeem, repay, price updating
 func (s *service) AccrueInterest(ctx context.Context, tx *db.DB, market *core.Market, time time.Time) error {
 	blockNumberPrior := market.BlockNumber
 

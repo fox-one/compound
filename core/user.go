@@ -8,6 +8,7 @@ import (
 )
 
 // User user info
+// binding user_id and address
 type User struct {
 	ID      uint64 `sql:"PRIMARY_KEY;AUTO_INCREMENT" json:"id"`
 	UserID  string `sql:"size:36;unique_index:idx_users_user_id" json:"user_id"`

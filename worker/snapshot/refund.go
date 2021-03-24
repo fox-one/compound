@@ -9,6 +9,7 @@ import (
 	uuidutil "github.com/fox-one/pkg/uuid"
 )
 
+// handle refund event
 func (w *Payee) handleRefundEvent(ctx context.Context, tx *db.DB, output *core.Output, userID, followID string, origin core.ActionType, errCode core.ErrorCode, msg string) error {
 	log := logger.FromContext(ctx).WithField("worker", "refund")
 	transferAction := core.TransferAction{
