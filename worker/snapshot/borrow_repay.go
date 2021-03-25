@@ -56,7 +56,7 @@ func (w *Payee) handleRepayEvent(ctx context.Context, tx *db.DB, output *core.Ou
 		return e
 	}
 	realRepaidBalance := repayAmount
-	redundantAmount := repayAmount.Sub(borrowBalance)
+	redundantAmount := repayAmount.Sub(borrowBalance).Truncate(8)
 	newBalance := borrowBalance.Sub(repayAmount)
 	newIndex := market.BorrowIndex
 	if newBalance.LessThanOrEqual(decimal.Zero) {
@@ -94,7 +94,7 @@ func (w *Payee) handleRepayEvent(ctx context.Context, tx *db.DB, output *core.Ou
 	}
 
 	if redundantAmount.GreaterThan(decimal.Zero) {
-		refundAmount := redundantAmount.Truncate(8)
+		refundAmount := redundantAmount
 		transferAction := core.TransferAction{
 			Source:   core.ActionTypeRepayRefundTransfer,
 			FollowID: followID,

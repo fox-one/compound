@@ -188,7 +188,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, tx *db.DB, output *c
 
 	// update borrow account and borrow market
 	reallyRepayAmount := repayValue.Div(borrowPrice).Truncate(16)
-	redundantAmount := userPayAmount.Sub(reallyRepayAmount).Truncate(16)
+	redundantAmount := userPayAmount.Sub(reallyRepayAmount).Truncate(8)
 	newBorrowBalance := borrowBalance.Sub(reallyRepayAmount).Truncate(16)
 	newIndex := borrowMarket.BorrowIndex
 	if newBorrowBalance.LessThanOrEqual(decimal.Zero) {
