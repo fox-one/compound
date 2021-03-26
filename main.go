@@ -2,9 +2,7 @@ package main
 
 import (
 	"compound/cmd"
-	"compound/core"
 	"fmt"
-	"time"
 )
 
 var (
@@ -14,8 +12,6 @@ var (
 
 func main() {
 	version := fmt.Sprintf("%s-%s", version, commit)
-
-	fmt.Println(core.CalculatePriceTick(time.Now()))
 
 	cmd.Run(version)
 }
