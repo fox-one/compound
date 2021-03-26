@@ -23,10 +23,7 @@ func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *cor
 			return nil
 		}
 
-		blockNum, e := w.blockService.GetBlock(ctx, output.CreatedAt)
-		if e != nil {
-			return e
-		}
+		blockNum := core.CalculatePriceBlock(output.CreatedAt)
 
 		market, isRecordNotFound, e := w.marketStore.FindBySymbol(ctx, data.Symbol)
 		if isRecordNotFound {

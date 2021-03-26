@@ -10,6 +10,11 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+const (
+	// 600 seconds
+	defaultPriceTimeAlign = 600
+)
+
 // Price price info
 type Price struct {
 	ID          int64           `sql:"PRIMARY_KEY;AUTO_INCREMENT" json:"id,omitempty"`
@@ -43,4 +48,10 @@ type IPriceOracleService interface {
 	GetCurrentUnderlyingPrice(ctx context.Context, market *Market) (decimal.Decimal, error)
 	PullPriceTicker(ctx context.Context, assetID string, t time.Time) (*PriceTicker, error)
 	PullAllPriceTickers(ctx context.Context, t time.Time) ([]*PriceTicker, error)
+}
+
+func CalculatePriceBlock(t time.Time) int64 {
+	unix := t.UTC().Unix()
+	blockNum := unix / defaultPriceTimeAlign
+	return blockNum
 }

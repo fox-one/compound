@@ -28,18 +28,16 @@ type Worker struct {
 	Dapp               *core.Wallet
 	MarketStore        core.IMarketStore
 	PriceStore         core.IPriceStore
-	BlockService       core.IBlockService
 	PriceOracleService core.IPriceOracleService
 }
 
 // New new block worker
-func New(system *core.System, dapp *core.Wallet, marketStore core.IMarketStore, priceStr core.IPriceStore, blockSrv core.IBlockService, priceSrv core.IPriceOracleService) *Worker {
+func New(system *core.System, dapp *core.Wallet, marketStore core.IMarketStore, priceStr core.IPriceStore, priceSrv core.IPriceOracleService) *Worker {
 	job := Worker{
 		System:             system,
 		Dapp:               dapp,
 		MarketStore:        marketStore,
 		PriceStore:         priceStr,
-		BlockService:       blockSrv,
 		PriceOracleService: priceSrv,
 	}
 
@@ -102,11 +100,7 @@ func (w *Worker) onWork(ctx context.Context) error {
 func (w *Worker) isPriceProvided(ctx context.Context, market *core.Market) bool {
 	log := logger.FromContext(ctx).WithField("worker", "priceoracle")
 
-	curBlockNum, e := w.BlockService.GetBlock(ctx, time.Now())
-	if e != nil {
-		log.WithError(e).Errorln("GetBlock err")
-		return false
-	}
+	curBlockNum := core.CalculatePriceBlock(time.Now())
 
 	price, _, e := w.PriceStore.FindByAssetBlock(ctx, market.AssetID, curBlockNum)
 	if e != nil {
@@ -131,11 +125,7 @@ func (w *Worker) isPriceProvided(ctx context.Context, market *core.Market) bool 
 func (w *Worker) pushPriceOnChain(ctx context.Context, market *core.Market, ticker *core.PriceTicker) error {
 	log := logger.FromContext(ctx).WithField("worker", "priceoracle")
 
-	blockNum, e := w.BlockService.GetBlock(ctx, time.Now())
-	if e != nil {
-		log.Errorln(e)
-		return e
-	}
+	blockNum := core.CalculatePriceBlock(time.Now())
 
 	traceID := id.UUIDFromString(fmt.Sprintf("price-%s-%s-%d", w.System.ClientID, market.AssetID, blockNum))
 	// transfer
