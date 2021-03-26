@@ -34,6 +34,10 @@ type Worker struct {
 // New new block worker
 func New(system *core.System, dapp *core.Wallet, marketStore core.IMarketStore, priceStr core.IPriceStore, priceSrv core.IPriceOracleService) *Worker {
 	job := Worker{
+		TickWorker: worker.TickWorker{
+			Delay:    1 * time.Second,
+			ErrDelay: 1 * time.Second,
+		},
 		System:             system,
 		Dapp:               dapp,
 		MarketStore:        marketStore,
@@ -81,7 +85,6 @@ func (w *Worker) onWork(ctx context.Context) error {
 					log.Errorln("pull price ticker error:", e)
 					return
 				}
-				log.Infoln("symbol:", ticker.Symbol, ":price:", ticker.Price)
 				if ticker.Price.LessThanOrEqual(decimal.Zero) {
 					log.Errorln("invalid ticker price:", ticker.Symbol, ":", ticker.Price)
 					return
@@ -98,13 +101,10 @@ func (w *Worker) onWork(ctx context.Context) error {
 }
 
 func (w *Worker) isPriceProvided(ctx context.Context, market *core.Market) bool {
-	log := logger.FromContext(ctx).WithField("worker", "priceoracle")
-
 	curBlockNum := core.CalculatePriceBlock(time.Now())
 
 	price, _, e := w.PriceStore.FindByAssetBlock(ctx, market.AssetID, curBlockNum)
 	if e != nil {
-		log.WithError(e).Errorln("findByAssetBlock err")
 		return false
 	}
 
@@ -155,7 +155,6 @@ func (w *Worker) pushPriceOnChain(ctx context.Context, market *core.Market, tick
 	input.OpponentMultisig.Receivers = w.System.MemberIDs()
 	input.OpponentMultisig.Threshold = w.System.Threshold
 
-	log.Infoln("asset:", input.AssetID, ":amount:", input.Amount)
 	// multisig transfer
 	_, e = w.Dapp.Client.Transaction(ctx, &input, w.Dapp.Pin)
 	if e != nil {
