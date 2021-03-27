@@ -19,50 +19,50 @@ MTG is the framework. Pando is an application designed using the framework on Mi
 
 ### CToken
 
-The corresponding certificate token that you obtained when you supply an number of cetain encrypted currency to the market.
+The corresponding certificate token you obtain after you supply a number of cetain encrypted currency to the market.
 
 ## Functions
 
 #### Supply
 
 Users supply encrypted currencies to the market to provide liquidity, 
-and obtain the corresponding token.and obtain corresponding income as a reward for providing liquidity.
+and obtain the corresponding ctokens. They receive interest yields by providing liquidity.
 
 ![](docs/images/uc_supply.png)
 
 #### Pledge
 
-Users should mortgage CToken to the market before borrow.
+Users have to pledge cToken to the market before any borrow.
 
 ![](docs/images/uc_pledge.png)
 
 #### Unpledge
 
-Users take back the CToken that pledged to the market.
+Users take back the cToken that pledged to the market.
 
 ![](docs/images/uc_unpledge.png)
 
 #### Redeem
 
-Users return the CToken and obtain the corresponding encrypted currency that supplied before, including interest as the liquidity reward.
+Users return the CToken in exchange for corresponding encrypted currency that were supplied before, including interest yields as the reward for providing liquidity. 
 
 ![](docs/images/uc_redeem.png)
 
 #### Borrow
 
-Users borrow encrypted currencies from the market, and will pay a certain interest to repay the loan.
+Users borrow encrypted currencies from the market at a certain interest rate.
 
 ![](docs/images/uc_borrow.png)
 
 #### Repay
 
-Users repay the borrowed encrypted currency and need to pay an extra interest.
+Users repay the borrowed encrypted currency and the interest accrued during the borrow period.
 
 ![](docs/images/uc_repay.png)
 
 #### Liquidation
 
-As the market price changes, the user A's loan has exceeded his mortgaged assets, that is to say, A's loan liquidity is less than or equal to 0, then other users can use a lower price to obtain A's mortgage assets to help A's repayment of part of the debt has made A's loan liquidity greater than 0.
+Due to the fluctuation of the market price, the value of a user's loan may exceed that of his pledged assets. When that happens, the other users can use a lower price to obtain the user's pledged assets so that the user's debt that are not covered by pleged assets are repayed.     
 
 ![](docs/images/uc_liquidity.png)
 
