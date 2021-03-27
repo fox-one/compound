@@ -6,8 +6,8 @@ Compound is an implementation of MTG and a parachain of Mixin network.
 
 ![](images/architecture.png)
 
-* The user transfer a payment(UTXO) that carries business data to the Mixin network.
-* Compound sync the outputs(UTXO), parses the business data(in output.memo)
+* The user transfers a payment(UTXO) that carries business data to the Mixin network.
+* Compound syncs the outputs(UTXO) by parsing the business data(in output.memo)
 * Compound dispatchs the business action(included in business data) and processes each action(supply, borrow...)
 
 ![](images/workflow.png)
@@ -145,13 +145,13 @@ Price oracle uses the following methods to ensure the document of market price
 	4. Calculate the average value of m prices as the current block price in the market.
 * When the price is maliciously attacked, since the average price within 1 hour is used as the market price, the malicious price has limited impact on the market. At the same time, managers can decide whether it is necessary to `close-market` at the same time. After restoration of `open-market`.
 
-### Market fuse protection
+### Market Trade-Curbing Mechanism
 
 > Close the market when the price of a certain market is abnormal.
 
-* When the price of a market is maliciously attacked, managers have the right to execute the `close-market` order and apply for a closed-market vote. If the vote is passed, the market will be closed.
-* Closed markets cannot be traded.
-* However, when at least one market is closed, liquidation of all markets will be prohibited, because liquidation will affect the liquidity of all market accounts of users.
+* When the price of a market is maliciously attacked, managers have the right to execute the `close-market` order and apply for a closed-market vote. If the request is approved, the market will be closed.
+* Trades are prohibited in closed markets.
+* However, as long as there are closed markets, liquidation of all markets will be prohibited, because liquidation will affect the liquidity of all market accounts of users.
 
 ## The implementation of compound protocol 
 
