@@ -190,21 +190,20 @@ func (w *Payee) handleOutput(ctx context.Context, tx *db.DB, output *core.Output
 		return nil
 	}
 
-	userID := output.Sender
-	if userID == "" {
-		userID = reserveUserID.String()
+	if output.Sender == "" {
+		return nil
 	}
 
 	//upsert user
 	user := core.User{
-		UserID:  userID,
-		Address: core.BuildUserAddress(userID),
+		UserID:  output.Sender,
+		Address: core.BuildUserAddress(output.Sender),
 	}
 	if err = w.userStore.Save(ctx, &user); err != nil {
 		return err
 	}
 
-	return w.handleUserAction(ctx, tx, output, actionType, userID, followID.String(), body)
+	return w.handleUserAction(ctx, tx, output, actionType, output.Sender, followID.String(), body)
 }
 
 func (w *Payee) handleProposalAction(ctx context.Context, output *core.Output, member *core.Member, body []byte) error {
