@@ -7,7 +7,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"sort"
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/store/db"
@@ -16,26 +15,26 @@ import (
 
 // handle price proposal
 func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *core.Output, member *core.Member, traceID string, body []byte) error {
+	log := logger.FromContext(ctx).WithField("worker", "handleProposalProvidePriceEvent")
+	var data proposal.ProvidePriceReq
+	if _, e := mtg.Scan(body, &data); e != nil {
+		return nil
+	}
+
+	blockNum := core.CalculatePriceBlock(output.CreatedAt)
+
+	market, isRecordNotFound, e := w.marketStore.FindBySymbol(ctx, data.Symbol)
+	if isRecordNotFound {
+		return nil
+	}
+
+	if e != nil {
+		return e
+	}
+
+	log.Infof("asset:%s,block:%d, output.updated_at:%v", data.Symbol, blockNum, output.CreatedAt)
+
 	return w.db.Tx(func(tx *db.DB) error {
-		log := logger.FromContext(ctx).WithField("worker", "handleProposalProvidePriceEvent")
-		var data proposal.ProvidePriceReq
-		if _, e := mtg.Scan(body, &data); e != nil {
-			return nil
-		}
-
-		blockNum := core.CalculatePriceBlock(output.CreatedAt)
-
-		market, isRecordNotFound, e := w.marketStore.FindBySymbol(ctx, data.Symbol)
-		if isRecordNotFound {
-			return nil
-		}
-
-		if e != nil {
-			return e
-		}
-
-		log.Infof("asset:%s,block:%d, output.updated_at:%v", data.Symbol, blockNum, output.CreatedAt)
-
 		priceTickers := make([]*core.PriceTicker, 0)
 		price, isRecordNotFound, e := w.priceStore.FindByAssetBlock(ctx, market.AssetID, blockNum)
 		if e != nil {
@@ -71,9 +70,6 @@ func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *cor
 		}
 
 		// exists
-		price.AssetID = market.AssetID
-		price.BlockNumber = blockNum
-
 		if e = json.Unmarshal(price.Content, &priceTickers); e != nil {
 			return e
 		}
@@ -85,36 +81,45 @@ func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *cor
 
 		priceLen := len(priceTickers)
 		if priceLen < int(w.system.Threshold) {
-			// less than threshold
+			// less than threshold, update content
+			bs, e := json.Marshal(priceTickers)
+			if e != nil {
+				return e
+			}
+
+			price.Content = bs
+			if e = w.priceStore.Update(ctx, tx, price); e != nil {
+				log.WithError(e).Errorln("update price err")
+				return e
+			}
+
 			return nil
 		}
-		// sort priceTicker by price ASC
-		sort.Slice(priceTickers, func(i, j int) bool {
-			return priceTickers[i].Price.LessThan(priceTickers[j].Price)
-		})
+
+		sumOfPrice := decimal.Zero
+		for _, t := range priceTickers {
+			sumOfPrice = sumOfPrice.Add(t.Price)
+		}
+
+		avgPrice := sumOfPrice.Div(decimal.NewFromInt(int64(priceLen)))
 
 		validPrices := make(map[string]decimal.Decimal)
-
-		// find the valid price
-		for i := 1; i < priceLen; i++ {
-			first := priceTickers[i-1]
-			second := priceTickers[i]
-			delta := second.Price.Sub(first.Price).Abs()
-			changeRatio := delta.Div(first.Price)
-			if changeRatio.LessThan(decimal.NewFromFloat(0.05)) {
-				validPrices[first.Provider] = first.Price
-				validPrices[second.Provider] = first.Price
+		for _, t := range priceTickers {
+			delta := t.Price.Sub(avgPrice).Abs()
+			changeRate := delta.Div(avgPrice)
+			if changeRate.LessThan(decimal.NewFromFloat(0.05)) {
+				validPrices[t.Provider] = t.Price
 			}
 		}
 
 		lenOfValidPrices := len(validPrices)
 		if len(validPrices) < int(w.system.Threshold) {
-			// less than threshold
+			// less than threshold, give up
 			return nil
 		}
 
 		// calculate the avg price
-		sumOfPrice := decimal.Zero
+		sumOfPrice = decimal.Zero
 		for _, p := range validPrices {
 			sumOfPrice = sumOfPrice.Add(p)
 		}
