@@ -20,7 +20,7 @@ func (w *Payee) handleRemoveScopeEvent(ctx context.Context, p *core.Proposal, re
 	log := logger.FromContext(ctx).WithField("worker", "remove-scope")
 	log.Infoln("remove operation scope:", req.Scope)
 
-	return w.allowListService.AddAllowListScope(ctx, core.OperationScope(req.Scope))
+	return w.allowListService.RemoveAllowListScope(ctx, core.OperationScope(req.Scope))
 }
 
 func (w *Payee) handleAddAllowListEvent(ctx context.Context, p *core.Proposal, req proposal.AllowListReq, t time.Time) error {
