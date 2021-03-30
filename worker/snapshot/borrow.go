@@ -21,6 +21,7 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeBorrow, core.ErrInvalidArgument)
 	}
 
+	borrowAmount = borrowAmount.Truncate(8)
 	assetID := asset.String()
 	log.Infoln("borrow, asset:", assetID, ":amount:", borrowAmount)
 	market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)

@@ -12,7 +12,7 @@ import (
 func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
 	log := logger.FromContext(ctx).WithField("worker", "supply")
 
-	supplyAmount := output.Amount.Abs()
+	supplyAmount := output.Amount
 	assetID := output.AssetID
 
 	market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)

@@ -54,7 +54,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 	seizedUserID := seizedUser.UserID
 	seizedAssetID := seizedAsset.String()
 
-	userPayAmount := output.Amount.Abs()
+	userPayAmount := output.Amount
 	userPayAssetID := output.AssetID
 
 	log.Infof("seizedUser:%s, seizedAsset:%s, payAsset:%s, payAmount:%s", seizedUserID, seizedAssetID, userPayAssetID, userPayAmount)
@@ -154,12 +154,12 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 		return e
 	}
 
-	maxSeize := supply.Collaterals.Mul(supplyExchangeRate).Mul(supplyMarket.CloseFactor)
-	seizedPrice := supplyPrice.Sub(supplyPrice.Mul(supplyMarket.LiquidationIncentive))
-	maxSeizeValue := maxSeize.Mul(seizedPrice)
-	repayValue := userPayAmount.Mul(borrowPrice)
-	borrowBalanceValue := borrowBalance.Mul(borrowPrice)
-	seizedAmount := repayValue.Div(seizedPrice)
+	maxSeize := supply.Collaterals.Mul(supplyExchangeRate).Mul(supplyMarket.CloseFactor).Truncate(16)
+	seizedPrice := supplyPrice.Sub(supplyPrice.Mul(supplyMarket.LiquidationIncentive)).Truncate(16)
+	maxSeizeValue := maxSeize.Mul(seizedPrice).Truncate(16)
+	repayValue := userPayAmount.Mul(borrowPrice).Truncate(16)
+	borrowBalanceValue := borrowBalance.Mul(borrowPrice).Truncate(16)
+	seizedAmount := repayValue.Div(seizedPrice).Truncate(16)
 	if repayValue.GreaterThan(maxSeizeValue) {
 		repayValue = maxSeizeValue
 		seizedAmount = repayValue.Div(seizedPrice)
@@ -216,7 +216,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 	extra.Put(core.TransactionKeyAmount, seizedAmount)
 	extra.Put(core.TransactionKeyPrice, seizedPrice)
 	if redundantAmount.GreaterThan(decimal.Zero) {
-		extra.Put(core.TransactionKeyRefund, redundantAmount.Truncate(8))
+		extra.Put(core.TransactionKeyRefund, redundantAmount)
 	} else {
 		extra.Put(core.TransactionKeyRefund, decimal.Zero)
 	}
@@ -238,7 +238,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 
 	//refund redundant assets to liquidator
 	if redundantAmount.GreaterThan(decimal.Zero) {
-		refundAmount := redundantAmount.Truncate(8)
+		refundAmount := redundantAmount
 
 		refundTransferAction := core.TransferAction{
 			Source:   core.ActionTypeLiquidateRefundTransfer,

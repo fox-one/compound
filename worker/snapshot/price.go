@@ -37,7 +37,7 @@ func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *cor
 	if e != nil {
 		if isRecordNotFound {
 			// new one
-			ts := make(map[string]decimal.Decimal, 0)
+			ts := make(map[string]decimal.Decimal)
 			ts[member.ClientID] = data.Price
 
 			bs, e := json.Marshal(ts)

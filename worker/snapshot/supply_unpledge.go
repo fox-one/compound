@@ -23,7 +23,7 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 	}
 
 	log.Infof("ctokenAssetID:%s, amount:%s", ctokenAsset.String(), unpledgedAmount)
-
+	unpledgedAmount = unpledgedAmount.Truncate(8)
 	ctokenAssetID := ctokenAsset.String()
 	market, isRecordNotFound, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
 	if isRecordNotFound {
