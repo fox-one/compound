@@ -7,10 +7,9 @@ import (
 	"errors"
 
 	"github.com/fox-one/pkg/logger"
-	"github.com/fox-one/pkg/store/db"
 )
 
-func (w *Payee) handleWithdrawEvent(ctx context.Context, p *core.Proposal, req proposal.WithdrawReq) error {
+func (w *Payee) handleWithdrawEvent(ctx context.Context, p *core.Proposal, req proposal.WithdrawReq, output *core.Output) error {
 	log := logger.FromContext(ctx).WithField("worker", "withdraw")
 
 	amount := req.Amount.Truncate(8)
@@ -33,30 +32,25 @@ func (w *Payee) handleWithdrawEvent(ctx context.Context, p *core.Proposal, req p
 		return nil
 	}
 
-	return w.db.Tx(func(tx *db.DB) error {
-		// update market total_cash and reserves
-		market.TotalCash = market.TotalCash.Sub(amount)
-		market.Reserves = market.Reserves.Sub(amount)
+	// update market total_cash and reserves
+	market.TotalCash = market.TotalCash.Sub(amount)
+	market.Reserves = market.Reserves.Sub(amount)
 
-		if err := w.marketStore.Update(ctx, tx, market); err != nil {
-			log.WithError(err).Errorln("update market error")
-			return err
-		}
+	if err := w.marketStore.Update(ctx, market, output.ID); err != nil {
+		log.WithError(err).Errorln("update market error")
+		return err
+	}
 
-		// create transfer
-		transfer := &core.Transfer{
-			TraceID:   p.TraceID,
-			AssetID:   req.Asset,
-			Amount:    amount,
-			Threshold: 1,
-			Opponents: []string{req.Opponent},
-		}
+	transfer, err := core.NewTransfer(p.TraceID, req.Asset, amount, req.Opponent)
+	if err != nil {
+		log.WithError(err).Errorln("new transfer error")
+		return err
+	}
 
-		if err := w.walletStore.CreateTransfers(ctx, w.db, []*core.Transfer{transfer}); err != nil {
-			log.WithError(err).Errorln("wallets.CreateTransfers")
-			return err
-		}
+	if err := w.walletStore.CreateTransfers(ctx, []*core.Transfer{transfer}); err != nil {
+		log.WithError(err).Errorln("wallets.CreateTransfers")
+		return err
+	}
 
-		return nil
-	})
+	return nil
 }

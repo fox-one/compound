@@ -9,7 +9,7 @@ import (
 	"github.com/fox-one/pkg/logger"
 )
 
-func (w *Payee) handleAddMarketEvent(ctx context.Context, p *core.Proposal, req proposal.AddMarketReq) error {
+func (w *Payee) handleAddMarketEvent(ctx context.Context, p *core.Proposal, req proposal.AddMarketReq, output *core.Output) error {
 	log := logger.FromContext(ctx).WithField("worker", "add-market")
 
 	log.Infof("asset:%s", req.AssetID)
@@ -27,7 +27,7 @@ func (w *Payee) handleAddMarketEvent(ctx context.Context, p *core.Proposal, req 
 			Status:        core.MarketStatusOpen,
 		}
 
-		if e = w.marketStore.Save(ctx, w.db, &market); e != nil {
+		if e = w.marketStore.Save(ctx, &market); e != nil {
 			return e
 		}
 	}

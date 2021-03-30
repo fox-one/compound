@@ -5,7 +5,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/fox-one/pkg/store/db"
 	"github.com/shopspring/decimal"
 )
 
@@ -47,12 +46,12 @@ func (b *Borrow) Balance(ctx context.Context, market *Market) (decimal.Decimal, 
 
 // IBorrowStore supply store interface
 type IBorrowStore interface {
-	Save(ctx context.Context, tx *db.DB, borrow *Borrow) error
+	Save(ctx context.Context, borrow *Borrow) error
 	Find(ctx context.Context, userID string, assetID string) (*Borrow, bool, error)
 	FindByUser(ctx context.Context, userID string) ([]*Borrow, error)
 	FindByAssetID(ctx context.Context, assetID string) ([]*Borrow, error)
 	CountOfBorrowers(ctx context.Context, assetID string) (int64, error)
-	Update(ctx context.Context, tx *db.DB, borrow *Borrow) error
+	Update(ctx context.Context, borrow *Borrow, version int64) error
 	All(ctx context.Context) ([]*Borrow, error)
 	Users(ctx context.Context) ([]string, error)
 }

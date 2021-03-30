@@ -29,9 +29,10 @@ func init() {
 	})
 }
 
-func (s *marketStore) Save(ctx context.Context, tx *db.DB, market *core.Market) error {
-	return tx.Update().Where("asset_id=?", market.AssetID).Create(market).Error
+func (s *marketStore) Save(ctx context.Context, market *core.Market) error {
+	return s.db.Update().Where("asset_id=?", market.AssetID).FirstOrCreate(market).Error
 }
+
 func (s *marketStore) Find(ctx context.Context, assetID string) (*core.Market, bool, error) {
 	if assetID == "" {
 		return nil, true, errors.New("invalid asset_id")
@@ -94,11 +95,11 @@ func (s *marketStore) AllAsMap(ctx context.Context) (map[string]*core.Market, er
 	return maps, nil
 }
 
-func (s *marketStore) Update(ctx context.Context, tx *db.DB, market *core.Market) error {
-	version := market.Version
-	market.Version++
-	if err := tx.Update().Model(core.Market{}).Where("asset_id=? and version=?", market.AssetID, version).Updates(market).Error; err != nil {
-		return err
+func (s *marketStore) Update(ctx context.Context, market *core.Market, version int64) error {
+	if version > market.Version {
+		// do real update
+		market.Version = version
+		return s.db.Update().Model(market).Updates(market).Error
 	}
 
 	return nil

@@ -32,8 +32,8 @@ func init() {
 	})
 }
 
-func (s *transactionStore) Create(ctx context.Context, tx *db.DB, transaction *core.Transaction) error {
-	return tx.Update().Where("trace_id=?", transaction.TraceID).Create(transaction).Error
+func (s *transactionStore) Create(ctx context.Context, transaction *core.Transaction) error {
+	return s.db.Update().Where("trace_id=?", transaction.TraceID).FirstOrCreate(transaction).Error
 }
 
 func (s *transactionStore) FindByTraceID(ctx context.Context, traceID string) (*core.Transaction, error) {

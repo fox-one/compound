@@ -161,18 +161,20 @@ func afterFindTransfer(transfer *core.Transfer) {
 	}
 }
 
-func (s *walletStore) CreateTransfers(_ context.Context, tx *db.DB, transfers []*core.Transfer) error {
+func (s *walletStore) CreateTransfers(_ context.Context, transfers []*core.Transfer) error {
 	sort.Slice(transfers, func(i, j int) bool {
 		return transfers[i].TraceID < transfers[j].TraceID
 	})
 
-	for _, transfer := range transfers {
-		if err := tx.Update().Where("trace_id = ?", transfer.TraceID).FirstOrCreate(transfer).Error; err != nil {
-			return err
+	return s.db.Tx(func(tx *db.DB) error {
+		for _, transfer := range transfers {
+			if err := tx.Update().Where("trace_id = ?", transfer.TraceID).FirstOrCreate(transfer).Error; err != nil {
+				return err
+			}
 		}
-	}
 
-	return nil
+		return nil
+	})
 }
 
 func updateTransfer(db *db.DB, transfer *core.Transfer) error {
@@ -182,8 +184,8 @@ func updateTransfer(db *db.DB, transfer *core.Transfer) error {
 	}).Error
 }
 
-func (s *walletStore) UpdateTransfer(ctx context.Context, tx *db.DB, transfer *core.Transfer) error {
-	return updateTransfer(tx, transfer)
+func (s *walletStore) UpdateTransfer(ctx context.Context, transfer *core.Transfer) error {
+	return updateTransfer(s.db, transfer)
 }
 
 func (s *walletStore) ListPendingTransfers(_ context.Context) ([]*core.Transfer, error) {

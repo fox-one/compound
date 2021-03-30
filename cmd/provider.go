@@ -17,7 +17,6 @@ import (
 	"compound/store/market"
 	"compound/store/message"
 	"compound/store/operation"
-	"compound/store/outputarchive"
 	"compound/store/price"
 	"compound/store/proposal"
 	"compound/store/supply"
@@ -134,10 +133,6 @@ func provideUserStore(db *db.DB) core.UserStore {
 
 func provideTransactionStore(db *db.DB) core.TransactionStore {
 	return transaction.New(db)
-}
-
-func provideOutputArchiveStore(db *db.DB) core.OutputArchiveStore {
-	return outputarchive.New(db)
 }
 
 func provideAllowListStore(db *db.DB) core.IAllowListStore {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/fox-one/pkg/store/db"
 	"github.com/shopspring/decimal"
 )
 
@@ -21,13 +20,13 @@ type Supply struct {
 
 // ISupplyStore supply store interface
 type ISupplyStore interface {
-	Save(ctx context.Context, tx *db.DB, supply *Supply) error
+	Save(ctx context.Context, supply *Supply) error
 	Find(ctx context.Context, userID string, ctokenAssetID string) (*Supply, bool, error)
 	FindByUser(ctx context.Context, userID string) ([]*Supply, error)
 	FindByCTokenAssetID(ctx context.Context, assetID string) ([]*Supply, error)
 	SumOfSupplies(ctx context.Context, ctokenAssetID string) (decimal.Decimal, error)
 	CountOfSuppliers(ctx context.Context, ctokenAssetID string) (int64, error)
-	Update(ctx context.Context, tx *db.DB, supply *Supply) error
+	Update(ctx context.Context, supply *Supply, version int64) error
 	All(ctx context.Context) ([]*Supply, error)
 	Users(ctx context.Context) ([]string, error)
 }

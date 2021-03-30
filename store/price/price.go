@@ -32,8 +32,8 @@ func init() {
 	})
 }
 
-func (s *priceStore) Create(ctx context.Context, tx *db.DB, price *core.Price) error {
-	return tx.Update().Where("asset_id=? and block_number=?", price.AssetID, price.BlockNumber).FirstOrCreate(price).Error
+func (s *priceStore) Create(ctx context.Context, price *core.Price) error {
+	return s.db.Update().Where("asset_id=? and block_number=?", price.AssetID, price.BlockNumber).FirstOrCreate(price).Error
 }
 
 func (s *priceStore) FindByAssetBlock(ctx context.Context, assetID string, blockNumber int64) (*core.Price, bool, error) {
@@ -44,10 +44,13 @@ func (s *priceStore) FindByAssetBlock(ctx context.Context, assetID string, block
 	return &price, false, nil
 }
 
-func (s *priceStore) Update(ctx context.Context, tx *db.DB, price *core.Price) error {
-	version := price.Version
-	price.Version++
-	return tx.Update().Model(core.Price{}).Where("asset_id=? and block_number=? and version=?", price.AssetID, price.BlockNumber, version).Updates(price).Error
+func (s *priceStore) Update(ctx context.Context, price *core.Price, version int64) error {
+	if version > price.Version {
+		price.Version = version
+		return s.db.Update().Model(price).Updates(price).Error
+	}
+
+	return nil
 }
 
 func (s *priceStore) DeleteByTime(ctx context.Context, t time.Time) error {

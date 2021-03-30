@@ -5,12 +5,11 @@ import (
 	"context"
 
 	"github.com/fox-one/pkg/logger"
-	"github.com/fox-one/pkg/store/db"
 	"github.com/shopspring/decimal"
 )
 
 // handle borrow repay event
-func (w *Payee) handleRepayEvent(ctx context.Context, tx *db.DB, output *core.Output, userID, followID string, body []byte) error {
+func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
 
 	log := logger.FromContext(ctx).WithField("worker", "borrow_repay")
 
@@ -21,7 +20,7 @@ func (w *Payee) handleRepayEvent(ctx context.Context, tx *db.DB, output *core.Ou
 	market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)
 	if isRecordNotFound {
 		log.Warningln("market not found")
-		return w.handleRefundEvent(ctx, tx, output, userID, followID, core.ActionTypeRepay, core.ErrMarketNotFound, "")
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRepay, core.ErrMarketNotFound)
 	}
 
 	if e != nil {
@@ -30,11 +29,11 @@ func (w *Payee) handleRepayEvent(ctx context.Context, tx *db.DB, output *core.Ou
 	}
 
 	if w.marketService.IsMarketClosed(ctx, market) {
-		return w.handleRefundEvent(ctx, tx, output, userID, followID, core.ActionTypeRepay, core.ErrMarketClosed, "")
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRepay, core.ErrMarketClosed)
 	}
 
 	//update interest
-	if e = w.marketService.AccrueInterest(ctx, tx, market, output.CreatedAt); e != nil {
+	if e = w.marketService.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
 		log.Errorln(e)
 		return e
 	}
@@ -42,7 +41,7 @@ func (w *Payee) handleRepayEvent(ctx context.Context, tx *db.DB, output *core.Ou
 	borrow, isRecordNotFound, e := w.borrowStore.Find(ctx, userID, market.AssetID)
 	if isRecordNotFound {
 		log.Warningln("borrow not found")
-		return w.handleRefundEvent(ctx, tx, output, userID, followID, core.ActionTypeRepay, core.ErrBorrowNotFound, "")
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRepay, core.ErrBorrowNotFound)
 	}
 	if e != nil {
 		log.Errorln(e)
@@ -67,7 +66,7 @@ func (w *Payee) handleRepayEvent(ctx context.Context, tx *db.DB, output *core.Ou
 
 	borrow.Principal = newBalance.Truncate(16)
 	borrow.InterestIndex = newIndex.Truncate(16)
-	if e = w.borrowStore.Update(ctx, tx, borrow); e != nil {
+	if e = w.borrowStore.Update(ctx, borrow, output.ID); e != nil {
 		log.Errorln(e)
 		return e
 	}
@@ -75,20 +74,14 @@ func (w *Payee) handleRepayEvent(ctx context.Context, tx *db.DB, output *core.Ou
 	market.TotalBorrows = market.TotalBorrows.Sub(realRepaidBalance).Truncate(16)
 	market.TotalCash = market.TotalCash.Add(realRepaidBalance).Truncate(16)
 
-	if e = w.marketStore.Update(ctx, tx, market); e != nil {
-		log.Errorln(e)
-		return e
-	}
-
-	//update interest
-	if e = w.marketService.AccrueInterest(ctx, tx, market, output.CreatedAt); e != nil {
+	if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
 		log.Errorln(e)
 		return e
 	}
 
 	// add transaction
 	transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeRepay, output, nil)
-	if e = w.transactionStore.Create(ctx, tx, transaction); e != nil {
+	if e = w.transactionStore.Create(ctx, transaction); e != nil {
 		log.WithError(e).Errorln("create transaction error")
 		return e
 	}
@@ -100,7 +93,7 @@ func (w *Payee) handleRepayEvent(ctx context.Context, tx *db.DB, output *core.Ou
 			FollowID: followID,
 		}
 
-		return w.transferOut(ctx, tx, userID, followID, output.TraceID, assetID, refundAmount, &transferAction)
+		return w.transferOut(ctx, userID, followID, output.TraceID, assetID, refundAmount, &transferAction)
 	}
 
 	return nil

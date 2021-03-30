@@ -30,8 +30,8 @@ func init() {
 	})
 }
 
-func (s *borrowStore) Save(ctx context.Context, tx *db.DB, borrow *core.Borrow) error {
-	if e := tx.Update().Where("user_id=? and asset_id=?", borrow.UserID, borrow.AssetID).Create(borrow).Error; e != nil {
+func (s *borrowStore) Save(ctx context.Context, borrow *core.Borrow) error {
+	if e := s.db.Update().Where("user_id=? and asset_id=?", borrow.UserID, borrow.AssetID).Create(borrow).Error; e != nil {
 		return e
 	}
 
@@ -65,11 +65,10 @@ func (s *borrowStore) FindByAssetID(ctx context.Context, assetID string) ([]*cor
 	return borrows, nil
 }
 
-func (s *borrowStore) Update(ctx context.Context, tx *db.DB, borrow *core.Borrow) error {
-	version := borrow.Version
-	borrow.Version++
-	if err := tx.Update().Model(core.Borrow{}).Where("user_id=? and asset_id=? and version=?", borrow.UserID, borrow.AssetID, version).Updates(borrow).Error; err != nil {
-		return err
+func (s *borrowStore) Update(ctx context.Context, borrow *core.Borrow, version int64) error {
+	if version > borrow.Version {
+		borrow.Version = version
+		return s.db.Update().Model(borrow).Updates(borrow).Error
 	}
 
 	return nil

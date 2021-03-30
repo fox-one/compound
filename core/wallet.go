@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/fox-one/mixin-sdk-go"
-	"github.com/fox-one/pkg/store/db"
 	"github.com/jmoiron/sqlx/types"
 	"github.com/lib/pq"
 	"github.com/shopspring/decimal"
@@ -63,19 +62,6 @@ type RawTransaction struct {
 	Data      string    `sql:"type:MEDIUMTEXT" json:"data,omitempty"`
 }
 
-// OutputArchive output archive
-type OutputArchive struct {
-	ID        int64     `sql:"PRIMARY_KEY" json:"id,omitempty"`
-	TraceID   string    `sql:"type:char(36);unique_index:idx_outputarchives_trace_id" json:"trace_id,omitempty"`
-	CreatedAt time.Time `sql:"default:CURRENT_TIMESTAMP" json:"created_at,omitempty"`
-}
-
-// OutputArchiveStore archive store
-type OutputArchiveStore interface {
-	Save(ctx context.Context, tx *db.DB, archive *OutputArchive) error
-	Find(ctx context.Context, traceID string) (*OutputArchive, error)
-}
-
 // WalletStore define wallet db operations
 type WalletStore interface {
 	// Save batch update multiple Output
@@ -86,8 +72,8 @@ type WalletStore interface {
 	ListUnspent(ctx context.Context, assetID string, limit int) ([]*Output, error)
 	ListSpentBy(ctx context.Context, assetID string, spentBy string) ([]*Output, error)
 	// Transfers
-	CreateTransfers(ctx context.Context, tx *db.DB, transfers []*Transfer) error
-	UpdateTransfer(ctx context.Context, tx *db.DB, transfer *Transfer) error
+	CreateTransfers(ctx context.Context, transfers []*Transfer) error
+	UpdateTransfer(ctx context.Context, transfer *Transfer) error
 	ListPendingTransfers(ctx context.Context) ([]*Transfer, error)
 	ListNotPassedTransfers(ctx context.Context) ([]*Transfer, error)
 	Spent(ctx context.Context, outputs []*Output, transfer *Transfer) error

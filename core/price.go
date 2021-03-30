@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/fox-one/pkg/store/db"
 	"github.com/jmoiron/sqlx/types"
 	"github.com/shopspring/decimal"
 )
@@ -37,9 +36,9 @@ type PriceTicker struct {
 
 // IPriceStore price store interface
 type IPriceStore interface {
-	Create(ctx context.Context, tx *db.DB, price *Price) error
+	Create(ctx context.Context, price *Price) error
 	FindByAssetBlock(ctx context.Context, assetID string, blockNumber int64) (*Price, bool, error)
-	Update(ctx context.Context, tx *db.DB, price *Price) error
+	Update(ctx context.Context, price *Price, version int64) error
 	DeleteByTime(ctx context.Context, t time.Time) error
 }
 

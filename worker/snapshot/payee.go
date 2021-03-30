@@ -11,10 +11,8 @@ import (
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/property"
-	"github.com/fox-one/pkg/store/db"
 	uuidutil "github.com/fox-one/pkg/uuid"
 	"github.com/gofrs/uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/shopspring/decimal"
 )
 
@@ -26,36 +24,33 @@ const (
 // Payee payee worker
 type Payee struct {
 	worker.TickWorker
-	db                 *db.DB
-	system             *core.System
-	dapp               *core.Wallet
-	propertyStore      property.Store
-	userStore          core.UserStore
-	outputArchiveStore core.OutputArchiveStore
-	walletStore        core.WalletStore
-	priceStore         core.IPriceStore
-	marketStore        core.IMarketStore
-	supplyStore        core.ISupplyStore
-	borrowStore        core.IBorrowStore
-	proposalStore      core.ProposalStore
-	transactionStore   core.TransactionStore
-	proposalService    core.ProposalService
-	blockService       core.IBlockService
-	priceService       core.IPriceOracleService
-	marketService      core.IMarketService
-	supplyService      core.ISupplyService
-	borrowService      core.IBorrowService
-	accountService     core.IAccountService
-	allowListService   core.IAllowListService
+	system           *core.System
+	dapp             *core.Wallet
+	propertyStore    property.Store
+	userStore        core.UserStore
+	walletStore      core.WalletStore
+	priceStore       core.IPriceStore
+	marketStore      core.IMarketStore
+	supplyStore      core.ISupplyStore
+	borrowStore      core.IBorrowStore
+	proposalStore    core.ProposalStore
+	transactionStore core.TransactionStore
+	proposalService  core.ProposalService
+	blockService     core.IBlockService
+	priceService     core.IPriceOracleService
+	marketService    core.IMarketService
+	supplyService    core.ISupplyService
+	borrowService    core.IBorrowService
+	accountService   core.IAccountService
+	allowListService core.IAllowListService
 }
 
 // NewPayee new payee
-func NewPayee(db *db.DB,
+func NewPayee(
 	system *core.System,
 	dapp *core.Wallet,
 	propertyStore property.Store,
 	userStore core.UserStore,
-	outputArchiveStore core.OutputArchiveStore,
 	walletStore core.WalletStore,
 	priceStore core.IPriceStore,
 	marketStore core.IMarketStore,
@@ -72,27 +67,25 @@ func NewPayee(db *db.DB,
 	accountService core.IAccountService,
 	allowListService core.IAllowListService) *Payee {
 	payee := Payee{
-		db:                 db,
-		system:             system,
-		dapp:               dapp,
-		propertyStore:      propertyStore,
-		userStore:          userStore,
-		outputArchiveStore: outputArchiveStore,
-		walletStore:        walletStore,
-		priceStore:         priceStore,
-		marketStore:        marketStore,
-		supplyStore:        supplyStore,
-		borrowStore:        borrowStore,
-		proposalStore:      proposalStore,
-		transactionStore:   transactionStore,
-		proposalService:    proposalService,
-		priceService:       priceSrv,
-		blockService:       blockService,
-		marketService:      marketSrv,
-		supplyService:      supplyService,
-		borrowService:      borrowService,
-		accountService:     accountService,
-		allowListService:   allowListService,
+		system:           system,
+		dapp:             dapp,
+		propertyStore:    propertyStore,
+		userStore:        userStore,
+		walletStore:      walletStore,
+		priceStore:       priceStore,
+		marketStore:      marketStore,
+		supplyStore:      supplyStore,
+		borrowStore:      borrowStore,
+		proposalStore:    proposalStore,
+		transactionStore: transactionStore,
+		proposalService:  proposalService,
+		priceService:     priceSrv,
+		blockService:     blockService,
+		marketService:    marketSrv,
+		supplyService:    supplyService,
+		borrowService:    borrowService,
+		accountService:   accountService,
+		allowListService: allowListService,
 	}
 
 	return &payee
@@ -125,33 +118,8 @@ func (w *Payee) onWork(ctx context.Context) error {
 	}
 
 	for _, u := range outputs {
-		// process the output only once
-		_, err := w.outputArchiveStore.Find(ctx, u.TraceID)
-		if err != nil {
-			if gorm.IsRecordNotFoundError(err) {
-				err = w.db.Tx(func(tx *db.DB) error {
-					if err := w.handleOutput(ctx, tx, u); err != nil {
-						return err
-					}
-
-					//archive output
-					archive := core.OutputArchive{
-						ID:      u.ID,
-						TraceID: u.TraceID,
-					}
-					// save the processed output
-					if err := w.outputArchiveStore.Save(ctx, tx, &archive); err != nil {
-						return err
-					}
-					return nil
-				})
-
-				if err != nil {
-					return err
-				}
-			} else {
-				return err
-			}
+		if err := w.handleOutput(ctx, u); err != nil {
+			return err
 		}
 
 		if err := w.propertyStore.Save(ctx, checkpointKey, u.ID); err != nil {
@@ -163,7 +131,7 @@ func (w *Payee) onWork(ctx context.Context) error {
 	return nil
 }
 
-func (w *Payee) handleOutput(ctx context.Context, tx *db.DB, output *core.Output) error {
+func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 	log := logger.FromContext(ctx).WithField("output", output.TraceID)
 	ctx = logger.WithContext(ctx, log)
 
@@ -203,7 +171,7 @@ func (w *Payee) handleOutput(ctx context.Context, tx *db.DB, output *core.Output
 		return err
 	}
 
-	return w.handleUserAction(ctx, tx, output, actionType, output.Sender, followID.String(), body)
+	return w.handleUserAction(ctx, output, actionType, output.Sender, followID.String(), body)
 }
 
 func (w *Payee) handleProposalAction(ctx context.Context, output *core.Output, member *core.Member, body []byte) error {
@@ -227,29 +195,28 @@ func (w *Payee) handleProposalAction(ctx context.Context, output *core.Output, m
 	return w.handleCreateProposalEvent(ctx, output, member, core.ActionType(actionType), traceID.String(), body)
 }
 
-func (w *Payee) handleUserAction(ctx context.Context, tx *db.DB, output *core.Output, actionType core.ActionType, userID, followID string, body []byte) error {
+func (w *Payee) handleUserAction(ctx context.Context, output *core.Output, actionType core.ActionType, userID, followID string, body []byte) error {
 	switch actionType {
 	case core.ActionTypeSupply:
-		return w.handleSupplyEvent(ctx, tx, output, userID, followID, body)
+		return w.handleSupplyEvent(ctx, output, userID, followID, body)
 	case core.ActionTypeBorrow:
-		return w.handleBorrowEvent(ctx, tx, output, userID, followID, body)
+		return w.handleBorrowEvent(ctx, output, userID, followID, body)
 	case core.ActionTypeRedeem:
-		return w.handleRedeemEvent(ctx, tx, output, userID, followID, body)
+		return w.handleRedeemEvent(ctx, output, userID, followID, body)
 	case core.ActionTypeRepay:
-		return w.handleRepayEvent(ctx, tx, output, userID, followID, body)
+		return w.handleRepayEvent(ctx, output, userID, followID, body)
 	case core.ActionTypePledge:
-		return w.handlePledgeEvent(ctx, tx, output, userID, followID, body)
+		return w.handlePledgeEvent(ctx, output, userID, followID, body)
 	case core.ActionTypeUnpledge:
-		return w.handleUnpledgeEvent(ctx, tx, output, userID, followID, body)
+		return w.handleUnpledgeEvent(ctx, output, userID, followID, body)
 	case core.ActionTypeLiquidate:
-		return w.handleLiquidationEvent(ctx, tx, output, userID, followID, body)
+		return w.handleLiquidationEvent(ctx, output, userID, followID, body)
 	default:
-		return w.handleRefundEvent(ctx, tx, output, userID, followID, core.ActionTypeRefundTransfer, core.ErrUnknown, "")
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRefundTransfer, core.ErrUnknown)
 	}
-
 }
 
-func (w *Payee) transferOut(ctx context.Context, tx *db.DB, userID, followID, outputTraceID, assetID string, amount decimal.Decimal, transferAction *core.TransferAction) error {
+func (w *Payee) transferOut(ctx context.Context, userID, followID, outputTraceID, assetID string, amount decimal.Decimal, transferAction *core.TransferAction) error {
 	memoStr, e := transferAction.Format()
 	if e != nil {
 		return e
@@ -265,7 +232,7 @@ func (w *Payee) transferOut(ctx context.Context, tx *db.DB, userID, followID, ou
 		Memo:      memoStr,
 	}
 
-	if err := w.walletStore.CreateTransfers(ctx, tx, []*core.Transfer{&transfer}); err != nil {
+	if err := w.walletStore.CreateTransfers(ctx, []*core.Transfer{&transfer}); err != nil {
 		logger.FromContext(ctx).WithError(err).Errorln("wallets.CreateTransfers")
 		return err
 	}

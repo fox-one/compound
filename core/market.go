@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/fox-one/pkg/store/db"
 	"github.com/shopspring/decimal"
 )
 
@@ -74,13 +73,13 @@ func (s MarketStatus) IsValid() bool {
 
 // IMarketStore asset store interface
 type IMarketStore interface {
-	Save(ctx context.Context, tx *db.DB, market *Market) error
+	Save(ctx context.Context, market *Market) error
 	Find(ctx context.Context, assetID string) (*Market, bool, error)
 	FindBySymbol(ctx context.Context, symbol string) (*Market, bool, error)
 	FindByCToken(ctx context.Context, ctokenAssetID string) (*Market, bool, error)
 	All(ctx context.Context) ([]*Market, error)
 	AllAsMap(ctx context.Context) (map[string]*Market, error)
-	Update(ctx context.Context, tx *db.DB, market *Market) error
+	Update(ctx context.Context, market *Market, version int64) error
 }
 
 // IMarketService market interface
@@ -93,7 +92,7 @@ type IMarketService interface {
 	CurSupplyRate(ctx context.Context, market *Market) (decimal.Decimal, error)
 	CurTotalBorrows(ctx context.Context, market *Market) (decimal.Decimal, error)
 	CurTotalReserves(ctx context.Context, market *Market) (decimal.Decimal, error)
-	AccrueInterest(ctx context.Context, db *db.DB, market *Market, time time.Time) error
+	AccrueInterest(ctx context.Context, market *Market, time time.Time) error
 	IsMarketClosed(ctx context.Context, market *Market) bool
 	HasClosedMarkets(ctx context.Context) bool
 }

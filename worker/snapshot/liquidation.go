@@ -6,32 +6,31 @@ import (
 	"context"
 
 	"github.com/fox-one/pkg/logger"
-	"github.com/fox-one/pkg/store/db"
 	"github.com/gofrs/uuid"
 	"github.com/jinzhu/gorm"
 	"github.com/shopspring/decimal"
 )
 
 // handle liquidation event
-func (w *Payee) handleLiquidationEvent(ctx context.Context, tx *db.DB, output *core.Output, userID, followID string, body []byte) error {
+func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
 	log := logger.FromContext(ctx).WithField("worker", "seize_token")
 
 	liquidator := userID
 	var seizedAddress uuid.UUID
 	var seizedAsset uuid.UUID
 	if _, err := mtg.Scan(body, &seizedAddress, &seizedAsset); err != nil {
-		return w.handleRefundEvent(ctx, tx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrInvalidArgument, "")
+		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrInvalidArgument)
 	}
 
 	// check market close status
 	if w.marketService.HasClosedMarkets(ctx) {
-		return w.handleRefundEvent(ctx, tx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrMarketClosed, "")
+		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrMarketClosed)
 	}
 
 	seizedUser, e := w.userStore.FindByAddress(ctx, seizedAddress.String())
 	if e != nil {
 		if gorm.IsRecordNotFoundError(e) {
-			return w.handleRefundEvent(ctx, tx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrInvalidArgument, "")
+			return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrInvalidArgument)
 		}
 		return e
 	}
@@ -48,7 +47,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, tx *db.DB, output *c
 		}
 		if !userAllowed {
 			// not allowed, refund
-			return w.handleRefundEvent(ctx, tx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrOperationForbidden, "")
+			return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrOperationForbidden)
 		}
 	}
 
@@ -60,14 +59,37 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, tx *db.DB, output *c
 
 	log.Infof("seizedUser:%s, seizedAsset:%s, payAsset:%s, payAmount:%s", seizedUserID, seizedAssetID, userPayAssetID, userPayAmount)
 
-	// to seize
+	// supply market
 	supplyMarket, isRecordNotFound, e := w.marketStore.Find(ctx, seizedAssetID)
 	if isRecordNotFound {
 		log.Warningln("supply market not found")
-		return w.handleRefundEvent(ctx, tx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrMarketNotFound, "")
+		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrMarketNotFound)
 	}
 	if e != nil {
 		log.WithError(e).Errorln("find supply market error")
+		return e
+	}
+
+	// borrow market
+	borrowMarket, isRecordNotFound, e := w.marketStore.Find(ctx, userPayAssetID)
+	if isRecordNotFound {
+		log.Warningln("borrow market not found")
+		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrMarketNotFound)
+	}
+	if e != nil {
+		log.WithError(e).Errorln("find borrow market error")
+		return e
+	}
+
+	//supply market accrue interest
+	if e = w.marketService.AccrueInterest(ctx, supplyMarket, output.CreatedAt); e != nil {
+		log.Errorln(e)
+		return e
+	}
+
+	//borrow market accrue interest
+	if e = w.marketService.AccrueInterest(ctx, borrowMarket, output.CreatedAt); e != nil {
+		log.Errorln(e)
 		return e
 	}
 
@@ -77,33 +99,11 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, tx *db.DB, output *c
 		return e
 	}
 
-	// to repay
-	borrowMarket, isRecordNotFound, e := w.marketStore.Find(ctx, userPayAssetID)
-	if isRecordNotFound {
-		log.Warningln("borrow market not found")
-		return w.handleRefundEvent(ctx, tx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrMarketNotFound, "")
-	}
-	if e != nil {
-		log.WithError(e).Errorln("find borrow market error")
-		return e
-	}
-
-	//supply market accrue interest
-	if e = w.marketService.AccrueInterest(ctx, tx, supplyMarket, output.CreatedAt); e != nil {
-		log.Errorln(e)
-		return e
-	}
-
-	//borrow market accrue interest
-	if e = w.marketService.AccrueInterest(ctx, tx, borrowMarket, output.CreatedAt); e != nil {
-		log.Errorln(e)
-		return e
-	}
-
+	// supply
 	supply, isRecordNotFound, e := w.supplyStore.Find(ctx, seizedUserID, supplyMarket.CTokenAssetID)
 	if isRecordNotFound {
 		log.Warningln("supply not found")
-		return w.handleRefundEvent(ctx, tx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrSupplyNotFound, "")
+		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrSupplyNotFound)
 	}
 
 	if e != nil {
@@ -111,10 +111,11 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, tx *db.DB, output *c
 		return e
 	}
 
+	// borrow
 	borrow, isRecordNotFound, e := w.borrowStore.Find(ctx, seizedUserID, borrowMarket.AssetID)
 	if isRecordNotFound {
 		log.Warningln("borrow not found")
-		return w.handleRefundEvent(ctx, tx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrBorrowNotFound, "")
+		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrBorrowNotFound)
 	}
 	if e != nil {
 		log.WithError(e).Errorln("find borrow error")
@@ -144,7 +145,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, tx *db.DB, output *c
 
 	// refund to liquidator if seize not allowed
 	if !w.accountService.SeizeTokenAllowed(ctx, supply, borrow, output.CreatedAt) {
-		return w.handleRefundEvent(ctx, tx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrSeizeNotAllowed, "")
+		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrSeizeNotAllowed)
 	}
 
 	borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, borrowMarket)
@@ -173,7 +174,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, tx *db.DB, output *c
 	seizedCTokens := seizedAmount.Div(supplyExchangeRate).Truncate(16)
 	//update supply
 	supply.Collaterals = supply.Collaterals.Sub(seizedCTokens).Truncate(16)
-	if e = w.supplyStore.Update(ctx, tx, supply); e != nil {
+	if e = w.supplyStore.Update(ctx, supply, output.ID); e != nil {
 		log.Errorln(e)
 		return e
 	}
@@ -181,7 +182,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, tx *db.DB, output *c
 	//update supply market ctokens
 	supplyMarket.TotalCash = supplyMarket.TotalCash.Sub(seizedAmount).Truncate(16)
 	supplyMarket.CTokens = supplyMarket.CTokens.Sub(seizedCTokens).Truncate(16)
-	if e = w.marketStore.Update(ctx, tx, supplyMarket); e != nil {
+	if e = w.marketStore.Update(ctx, supplyMarket, output.ID); e != nil {
 		log.Errorln(e)
 		return e
 	}
@@ -197,26 +198,14 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, tx *db.DB, output *c
 	}
 	borrow.Principal = newBorrowBalance.Truncate(16)
 	borrow.InterestIndex = newIndex.Truncate(16)
-	if e = w.borrowStore.Update(ctx, tx, borrow); e != nil {
+	if e = w.borrowStore.Update(ctx, borrow, output.ID); e != nil {
 		log.Errorln(e)
 		return e
 	}
 
 	borrowMarket.TotalBorrows = borrowMarket.TotalBorrows.Sub(reallyRepayAmount).Truncate(16)
 	borrowMarket.TotalCash = borrowMarket.TotalCash.Add(reallyRepayAmount).Truncate(16)
-	if e = w.marketStore.Update(ctx, tx, borrowMarket); e != nil {
-		log.Errorln(e)
-		return e
-	}
-
-	//supply market accrue interest
-	if e = w.marketService.AccrueInterest(ctx, tx, supplyMarket, output.CreatedAt); e != nil {
-		log.Errorln(e)
-		return e
-	}
-
-	//borrow market accrue interest
-	if e = w.marketService.AccrueInterest(ctx, tx, borrowMarket, output.CreatedAt); e != nil {
+	if e = w.marketStore.Update(ctx, borrowMarket, output.ID); e != nil {
 		log.Errorln(e)
 		return e
 	}
@@ -233,7 +222,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, tx *db.DB, output *c
 	}
 
 	transaction := core.BuildTransactionFromOutput(ctx, liquidator, followID, core.ActionTypeLiquidate, output, &extra)
-	if e = w.transactionStore.Create(ctx, tx, transaction); e != nil {
+	if e = w.transactionStore.Create(ctx, transaction); e != nil {
 		log.WithError(e).Errorln("create transaction error")
 		return e
 	}
@@ -243,7 +232,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, tx *db.DB, output *c
 		Source:   core.ActionTypeLiquidateTransfer,
 		FollowID: followID,
 	}
-	if e = w.transferOut(ctx, tx, liquidator, followID, output.TraceID, supplyMarket.AssetID, seizedAmount, &transferAction); e != nil {
+	if e = w.transferOut(ctx, liquidator, followID, output.TraceID, supplyMarket.AssetID, seizedAmount, &transferAction); e != nil {
 		return e
 	}
 
@@ -255,7 +244,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, tx *db.DB, output *c
 			Source:   core.ActionTypeLiquidateRefundTransfer,
 			FollowID: followID,
 		}
-		if e = w.transferOut(ctx, tx, liquidator, followID, output.TraceID, output.AssetID, refundAmount, &refundTransferAction); e != nil {
+		if e = w.transferOut(ctx, liquidator, followID, output.TraceID, output.AssetID, refundAmount, &refundTransferAction); e != nil {
 			return e
 		}
 	}

@@ -7,7 +7,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"time"
 
 	"github.com/asaskevich/govalidator"
 	"github.com/fox-one/pkg/logger"
@@ -59,7 +58,7 @@ func (w *Payee) handleVoteProposalEvent(ctx context.Context, output *core.Output
 	}
 
 	if passed {
-		return w.handlePassedProposal(ctx, p, output.CreatedAt)
+		return w.handlePassedProposal(ctx, p, output)
 	}
 
 	return nil
@@ -152,51 +151,51 @@ func (w *Payee) handleCreateProposalEvent(ctx context.Context, output *core.Outp
 	return nil
 }
 
-func (w *Payee) handlePassedProposal(ctx context.Context, p *core.Proposal, t time.Time) error {
+func (w *Payee) handlePassedProposal(ctx context.Context, p *core.Proposal, output *core.Output) error {
 	switch p.Action {
 	case core.ActionTypeProposalAddMarket:
 		var proposalReq proposal.AddMarketReq
 		_ = json.Unmarshal(p.Content, &proposalReq)
-		return w.handleAddMarketEvent(ctx, p, proposalReq)
+		return w.handleAddMarketEvent(ctx, p, proposalReq, output)
 
 	case core.ActionTypeProposalUpdateMarket:
 		var proposalReq proposal.UpdateMarketReq
 		_ = json.Unmarshal(p.Content, &proposalReq)
-		return w.handleUpdateMarketEvent(ctx, p, proposalReq, t)
+		return w.handleUpdateMarketEvent(ctx, p, proposalReq, output)
 
 	case core.ActionTypeProposalUpdateMarketAdvance:
 		var proposalReq proposal.UpdateMarketAdvanceReq
 		_ = json.Unmarshal(p.Content, &proposalReq)
-		return w.handleUpdateMarketAdvanceEvent(ctx, p, proposalReq, t)
+		return w.handleUpdateMarketAdvanceEvent(ctx, p, proposalReq, output)
 
 	case core.ActionTypeProposalWithdrawReserves:
 		var proposalReq proposal.WithdrawReq
 		_ = json.Unmarshal(p.Content, &proposalReq)
-		return w.handleWithdrawEvent(ctx, p, proposalReq)
+		return w.handleWithdrawEvent(ctx, p, proposalReq, output)
 	case core.ActionTypeProposalCloseMarket:
 		var req proposal.MarketStatusReq
 		_ = json.Unmarshal(p.Content, &req)
-		return w.handleCloseMarketEvent(ctx, p, req, t)
+		return w.handleCloseMarketEvent(ctx, p, req, output)
 	case core.ActionTypeProposalOpenMarket:
 		var req proposal.MarketStatusReq
 		_ = json.Unmarshal(p.Content, &req)
-		return w.handleOpenMarketEvent(ctx, p, req, t)
+		return w.handleOpenMarketEvent(ctx, p, req, output)
 	case core.ActionTypeProposalAddScope:
 		var req proposal.ScopeReq
 		_ = json.Unmarshal(p.Content, &req)
-		return w.handleAddScopeEvent(ctx, p, req, t)
+		return w.handleAddScopeEvent(ctx, p, req, output)
 	case core.ActionTypeProposalRemoveScope:
 		var req proposal.ScopeReq
 		_ = json.Unmarshal(p.Content, &req)
-		return w.handleRemoveScopeEvent(ctx, p, req, t)
+		return w.handleRemoveScopeEvent(ctx, p, req, output)
 	case core.ActionTypeProposalAddAllowList:
 		var req proposal.AllowListReq
 		_ = json.Unmarshal(p.Content, &req)
-		return w.handleAddAllowListEvent(ctx, p, req, t)
+		return w.handleAddAllowListEvent(ctx, p, req, output)
 	case core.ActionTypeProposalRemoveAllowList:
 		var req proposal.AllowListReq
 		_ = json.Unmarshal(p.Content, &req)
-		return w.handleRemoveAllowListEvent(ctx, p, req, t)
+		return w.handleRemoveAllowListEvent(ctx, p, req, output)
 	}
 
 	return nil

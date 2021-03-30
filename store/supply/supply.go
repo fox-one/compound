@@ -31,8 +31,8 @@ func init() {
 	})
 }
 
-func (s *supplyStore) Save(ctx context.Context, tx *db.DB, supply *core.Supply) error {
-	if e := tx.Update().Where("user_id=? and c_token_asset_id=?", supply.UserID, supply.CTokenAssetID).Create(supply).Error; e != nil {
+func (s *supplyStore) Save(ctx context.Context, supply *core.Supply) error {
+	if e := s.db.Update().Where("user_id=? and c_token_asset_id=?", supply.UserID, supply.CTokenAssetID).Create(supply).Error; e != nil {
 		return e
 	}
 
@@ -56,11 +56,10 @@ func (s *supplyStore) FindByUser(ctx context.Context, userID string) ([]*core.Su
 	return supplies, nil
 }
 
-func (s *supplyStore) Update(ctx context.Context, tx *db.DB, supply *core.Supply) error {
-	version := supply.Version
-	supply.Version++
-	if err := tx.Update().Model(core.Supply{}).Where("user_id=? and c_token_asset_id=? and version=?", supply.UserID, supply.CTokenAssetID, version).Updates(supply).Error; err != nil {
-		return err
+func (s *supplyStore) Update(ctx context.Context, supply *core.Supply, version int64) error {
+	if version > supply.Version {
+		supply.Version = version
+		return s.db.Update().Model(supply).Updates(supply).Error
 	}
 
 	return nil

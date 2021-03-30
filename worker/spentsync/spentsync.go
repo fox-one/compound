@@ -94,28 +94,26 @@ func (w *SpentSync) handleTransfer(ctx context.Context, transfer *core.Transfer)
 		return nil
 	}
 
-	return w.db.Tx(func(tx *db.DB) error {
-		//add transaction
-		snapshotTraceID, err := w.snapshotTraceID(ctx, signedTx)
-		if err != nil {
-			log.WithError(err).Errorln("get snapshot trace id error")
-			return nil
-		}
-		transaction := core.BuildTransactionFromTransfer(ctx, transfer, snapshotTraceID)
-		if err = w.transactionStore.Create(ctx, tx, transaction); err != nil {
-			log.WithError(err).Errorln("create transaction error")
-			return err
-		}
-
-		//update transfer
-		transfer.Passed = true
-		if err := w.walletStore.UpdateTransfer(ctx, tx, transfer); err != nil {
-			log.WithError(err).Errorln("wallets.UpdateTransfer")
-			return err
-		}
-
+	//add transaction
+	snapshotTraceID, err := w.snapshotTraceID(ctx, signedTx)
+	if err != nil {
+		log.WithError(err).Errorln("get snapshot trace id error")
 		return nil
-	})
+	}
+	transaction := core.BuildTransactionFromTransfer(ctx, transfer, snapshotTraceID)
+	if err = w.transactionStore.Create(ctx, transaction); err != nil {
+		log.WithError(err).Errorln("create transaction error")
+		return err
+	}
+
+	//update transfer
+	transfer.Passed = true
+	if err := w.walletStore.UpdateTransfer(ctx, transfer); err != nil {
+		log.WithError(err).Errorln("wallets.UpdateTransfer")
+		return err
+	}
+
+	return nil
 }
 
 func (w *SpentSync) snapshotTraceID(ctx context.Context, signedTx string) (string, error) {

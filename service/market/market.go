@@ -7,7 +7,6 @@ import (
 
 	"context"
 
-	"github.com/fox-one/pkg/store/db"
 	"github.com/shopspring/decimal"
 )
 
@@ -133,7 +132,7 @@ func (s *service) CurTotalReserves(ctx context.Context, market *core.Market) (de
 // AccrueInterest accrue interest market per block(15 seconds)
 //
 // Accruing interest only occurs when there is a behavior that causes changes in market transaction data, such as supply, borrow, pledge, unpledge, redeem, repay, price updating
-func (s *service) AccrueInterest(ctx context.Context, tx *db.DB, market *core.Market, time time.Time) error {
+func (s *service) AccrueInterest(ctx context.Context, market *core.Market, time time.Time) error {
 	blockNumberPrior := market.BlockNumber
 
 	blockNum, e := s.blockSrv.GetBlock(ctx, time)
@@ -191,7 +190,7 @@ func (s *service) AccrueInterest(ctx context.Context, tx *db.DB, market *core.Ma
 	market.SupplyRatePerBlock = supplyRate.Truncate(16)
 	market.BorrowRatePerBlock = borrowRate.Truncate(16)
 
-	return s.marketStore.Update(ctx, tx, market)
+	return nil
 }
 
 func (s *service) IsMarketClosed(ctx context.Context, market *core.Market) bool {
