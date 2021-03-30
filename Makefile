@@ -36,5 +36,3 @@ aws-login:
 
 deploy-%: docker-build-%
 	docker push ${REPOSITORY_PATH}/compound-${ENV}:${VERSION}
-ttt:
-	@echo "repository path:${REPOSITORY_PATH}"
