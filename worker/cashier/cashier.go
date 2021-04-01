@@ -69,7 +69,7 @@ func (w *Cashier) onWork(ctx context.Context) error {
 func (w *Cashier) handleTransfer(ctx context.Context, transfer *core.Transfer) error {
 	log := logger.FromContext(ctx)
 
-	const limit = 64
+	const limit = 32
 	outputs, err := w.walletStore.ListUnspent(ctx, transfer.AssetID, limit)
 	if err != nil {
 		log.WithError(err).Errorln("wallets.ListUnspent")
@@ -119,7 +119,7 @@ func (w *Cashier) handleTransfer(ctx context.Context, transfer *core.Transfer) e
 }
 
 func (w *Cashier) spent(ctx context.Context, outputs []*core.Output, transfer *core.Transfer) error {
-	if tx, err := w.walletService.Spent(ctx, outputs, transfer); err != nil {
+	if tx, err := w.walletService.Spend(ctx, outputs, transfer); err != nil {
 		logger.FromContext(ctx).WithError(err).Errorln("walletz.Spent")
 		return err
 	} else if tx != nil {

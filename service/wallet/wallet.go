@@ -56,7 +56,7 @@ func (s *walletService) Pull(ctx context.Context, offset time.Time, limit int) (
 
 // Spent 消费指定的 UTXO
 // 如果 transfer 是 nil，则合并这些 UTXO
-func (s *walletService) Spent(ctx context.Context, outputs []*core.Output, transfer *core.Transfer) (*core.RawTransaction, error) {
+func (s *walletService) Spend(ctx context.Context, outputs []*core.Output, transfer *core.Transfer) (*core.RawTransaction, error) {
 	state, tx, err := s.signTransaction(ctx, outputs, transfer)
 	if err != nil {
 		return nil, err
@@ -89,14 +89,14 @@ func (s *walletService) Spent(ctx context.Context, outputs []*core.Output, trans
 		if !govalidator.IsIn(s.client.ClientID, sig.Signers...) {
 			if valiErr := s.validateMultisig(sig, transfer); valiErr != nil {
 				// unlock multisig
-				unlock, err := s.client.CreateMultisig(ctx, mixin.MultisigActionUnlock, tx)
-				if err != nil {
-					return nil, fmt.Errorf("CreateMultisig %s failed: %w", mixin.MultisigActionUnlock, err)
-				}
+				// unlock, err := s.client.CreateMultisig(ctx, mixin.MultisigActionUnlock, tx)
+				// if err != nil {
+				// 	return nil, fmt.Errorf("CreateMultisig %s failed: %w", mixin.MultisigActionUnlock, err)
+				// }
 
-				if err := s.client.UnlockMultisig(ctx, unlock.RequestID, s.pin); err != nil {
-					return nil, fmt.Errorf("UnlockMultisig failed: %w", err)
-				}
+				// if err := s.client.UnlockMultisig(ctx, unlock.RequestID, s.pin); err != nil {
+				// 	return nil, fmt.Errorf("UnlockMultisig failed: %w", err)
+				// }
 
 				// 消费失败
 				return nil, valiErr
@@ -123,13 +123,36 @@ func (s *walletService) Spent(ctx context.Context, outputs []*core.Output, trans
 	return nil, nil
 }
 
+func (s *walletService) ReqTransfer(ctx context.Context, transfer *core.Transfer) (string, error) {
+	input := mixin.TransferInput{
+		AssetID: transfer.AssetID,
+		Amount:  transfer.Amount.Truncate(8),
+		TraceID: transfer.TraceID,
+		Memo:    transfer.Memo,
+	}
+
+	input.OpponentMultisig.Receivers = transfer.Opponents
+	input.OpponentMultisig.Threshold = transfer.Threshold
+
+	payment, err := s.client.VerifyPayment(ctx, input)
+	if err != nil {
+		return "", err
+	}
+
+	return payment.CodeID, nil
+}
+
 // signTransaction 根据输入的 Output 计算出 Transaction Hash
 func (s *walletService) signTransaction(ctx context.Context, outputs []*core.Output, transfer *core.Transfer) (string, string, error) {
 	if len(outputs) == 0 {
 		return mixin.UTXOStateSpent, "", nil
 	}
 
-	input := &mixin.TransactionInput{Memo: transfer.Memo, Hint: transfer.TraceID}
+	input := &mixin.TransactionInput{
+		Memo: transfer.Memo,
+		Hint: transfer.TraceID,
+	}
+
 	state := outputs[0].State
 	signedTx := outputs[0].UTXO.SignedTx
 	sum := decimal.Zero
@@ -227,7 +250,7 @@ func (s *walletService) validateTransaction(tx *mixin.Transaction, transfer *cor
 			if len(output.Keys) != len(transfer.Opponents) {
 				return errors.New("receivers not match")
 			}
-		case 1: // 检查找零
+		default: // 检查找零
 			if expect, got := mixin.NewThresholdScript(s.threshold).String(), output.Script.String(); expect != got {
 				return fmt.Errorf("first output script not matched, expect %s got %s", expect, got)
 			}
@@ -235,8 +258,6 @@ func (s *walletService) validateTransaction(tx *mixin.Transaction, transfer *cor
 			if len(output.Keys) != len(s.members) {
 				return errors.New("receivers not match")
 			}
-		default:
-			return errors.New("unexpected output")
 		}
 	}
 
