@@ -17,8 +17,8 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 
 	liquidator := userID
 	var seizedAddress uuid.UUID
-	var seizedAsset uuid.UUID
-	if _, err := mtg.Scan(body, &seizedAddress, &seizedAsset); err != nil {
+	var seizedCTokenAsset uuid.UUID
+	if _, err := mtg.Scan(body, &seizedAddress, &seizedCTokenAsset); err != nil {
 		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrInvalidArgument)
 	}
 
@@ -52,15 +52,15 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 	}
 
 	seizedUserID := seizedUser.UserID
-	seizedAssetID := seizedAsset.String()
+	seizedCTokenAssetID := seizedCTokenAsset.String()
 
 	userPayAmount := output.Amount
 	userPayAssetID := output.AssetID
 
-	log.Infof("seizedUser:%s, seizedAsset:%s, payAsset:%s, payAmount:%s", seizedUserID, seizedAssetID, userPayAssetID, userPayAmount)
+	log.Infof("seizedUser:%s, seizedAsset:%s, payAsset:%s, payAmount:%s", seizedUserID, seizedCTokenAssetID, userPayAssetID, userPayAmount)
 
 	// supply market
-	supplyMarket, isRecordNotFound, e := w.marketStore.Find(ctx, seizedAssetID)
+	supplyMarket, isRecordNotFound, e := w.marketStore.FindByCToken(ctx, seizedCTokenAssetID)
 	if isRecordNotFound {
 		log.Warningln("supply market not found")
 		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrMarketNotFound)
@@ -154,6 +154,8 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 		return e
 	}
 
+	// calculate values
+	//ctokenValue = ctokenAmount / exchange_rate * price
 	maxSeize := supply.Collaterals.Mul(supplyExchangeRate).Mul(supplyMarket.CloseFactor).Truncate(16)
 	seizedPrice := supplyPrice.Sub(supplyPrice.Mul(supplyMarket.LiquidationIncentive)).Truncate(16)
 	maxSeizeValue := maxSeize.Mul(seizedPrice).Truncate(16)
@@ -170,8 +172,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 		seizedAmount = repayValue.Div(seizedPrice)
 	}
 
-	seizedAmount = seizedAmount.Truncate(8)
-	seizedCTokens := seizedAmount.Div(supplyExchangeRate).Truncate(16)
+	seizedCTokens := seizedAmount.Div(supplyExchangeRate).Truncate(8)
 	//update supply
 	supply.Collaterals = supply.Collaterals.Sub(seizedCTokens).Truncate(16)
 	if e = w.supplyStore.Update(ctx, supply, output.ID); e != nil {
@@ -180,14 +181,12 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 	}
 
 	//update supply market ctokens
-	supplyMarket.TotalCash = supplyMarket.TotalCash.Sub(seizedAmount).Truncate(16)
-	supplyMarket.CTokens = supplyMarket.CTokens.Sub(seizedCTokens).Truncate(16)
 	if e = w.marketStore.Update(ctx, supplyMarket, output.ID); e != nil {
 		log.Errorln(e)
 		return e
 	}
 
-	// update borrow account and borrow market
+	// update borrow account
 	reallyRepayAmount := repayValue.Div(borrowPrice).Truncate(16)
 	redundantAmount := userPayAmount.Sub(reallyRepayAmount).Truncate(8)
 	newBorrowBalance := borrowBalance.Sub(reallyRepayAmount).Truncate(16)
@@ -203,6 +202,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 		return e
 	}
 
+	// update borrow market
 	borrowMarket.TotalBorrows = borrowMarket.TotalBorrows.Sub(reallyRepayAmount).Truncate(16)
 	borrowMarket.TotalCash = borrowMarket.TotalCash.Add(reallyRepayAmount).Truncate(16)
 	if e = w.marketStore.Update(ctx, borrowMarket, output.ID); e != nil {
@@ -212,8 +212,8 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 
 	// add transaction
 	extra := core.NewTransactionExtra()
-	extra.Put(core.TransactionKeyAssetID, seizedAsset)
-	extra.Put(core.TransactionKeyAmount, seizedAmount)
+	extra.Put(core.TransactionKeyCTokenAssetID, seizedCTokenAssetID)
+	extra.Put(core.TransactionKeyAmount, seizedCTokens)
 	extra.Put(core.TransactionKeyPrice, seizedPrice)
 	if redundantAmount.GreaterThan(decimal.Zero) {
 		extra.Put(core.TransactionKeyRefund, redundantAmount)
@@ -227,12 +227,12 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 		return e
 	}
 
-	// transfer
+	// transfer seized ctoken to liquidator
 	transferAction := core.TransferAction{
 		Source:   core.ActionTypeLiquidateTransfer,
 		FollowID: followID,
 	}
-	if e = w.transferOut(ctx, liquidator, followID, output.TraceID, supplyMarket.AssetID, seizedAmount, &transferAction); e != nil {
+	if e = w.transferOut(ctx, liquidator, followID, output.TraceID, supplyMarket.CTokenAssetID, seizedCTokens, &transferAction); e != nil {
 		return e
 	}
 
