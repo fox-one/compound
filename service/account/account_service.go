@@ -42,7 +42,7 @@ func New(
 // 	supplyValue = supply.collaterals * market.exchange_rate * market.collateral_factor * market.price
 // 	borrowValue = borrow.Balance()
 // 	liquidity = total_supply_values - total_borrow_values
-func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID string, blockNum int64) (decimal.Decimal, error) {
+func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID string) (decimal.Decimal, error) {
 	supplies, e := s.supplyStore.FindByUser(ctx, userID)
 	if e != nil {
 		return decimal.Zero, e
@@ -105,13 +105,8 @@ func (s *accountService) SeizeTokenAllowed(ctx context.Context, supply *core.Sup
 		return false
 	}
 
-	blockNum, e := s.blockService.GetBlock(ctx, time)
-	if e != nil {
-		return false
-	}
-
 	// check liquidity
-	liquidity, e := s.CalculateAccountLiquidity(ctx, borrow.UserID, blockNum)
+	liquidity, e := s.CalculateAccountLiquidity(ctx, borrow.UserID)
 	if e != nil {
 		return false
 	}

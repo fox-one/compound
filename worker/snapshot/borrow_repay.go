@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/fox-one/pkg/logger"
+	foxuuid "github.com/fox-one/pkg/uuid"
 	"github.com/shopspring/decimal"
 )
 
@@ -64,23 +65,40 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 		realRepaidBalance = borrowBalance
 	}
 
-	borrow.Principal = newBalance.Truncate(16)
-	borrow.InterestIndex = newIndex.Truncate(16)
-	if e = w.borrowStore.Update(ctx, borrow, output.ID); e != nil {
-		log.Errorln(e)
-		return e
+	if output.ID > borrow.Version {
+		borrow.Principal = newBalance.Truncate(16)
+		borrow.InterestIndex = newIndex.Truncate(16)
+		if e = w.borrowStore.Update(ctx, borrow, output.ID); e != nil {
+			log.Errorln(e)
+			return e
+		}
 	}
 
-	market.TotalBorrows = market.TotalBorrows.Sub(realRepaidBalance).Truncate(16)
-	market.TotalCash = market.TotalCash.Add(realRepaidBalance).Truncate(16)
+	if output.ID > market.Version {
+		market.TotalBorrows = market.TotalBorrows.Sub(realRepaidBalance).Truncate(16)
+		market.TotalCash = market.TotalCash.Add(realRepaidBalance).Truncate(16)
+		if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
+			log.Errorln(e)
+			return e
+		}
+	}
 
-	if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
-		log.Errorln(e)
+	// market transaction
+	marketTransaction := core.BuildMarketUpdateTransaction(ctx, market, foxuuid.Modify(output.TraceID, "update_market"))
+	if e = w.transactionStore.Create(ctx, marketTransaction); e != nil {
+		log.WithError(e).Errorln("create transaction error")
 		return e
 	}
 
 	// add transaction
-	transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeRepay, output, nil)
+	extra := core.NewTransactionExtra()
+	extra.Put(core.TransactionKeyBorrow, core.ExtraBorrow{
+		UserID:        borrow.UserID,
+		AssetID:       borrow.AssetID,
+		Principal:     borrow.Principal,
+		InterestIndex: borrow.InterestIndex,
+	})
+	transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeRepay, output, extra)
 	if e = w.transactionStore.Create(ctx, transaction); e != nil {
 		log.WithError(e).Errorln("create transaction error")
 		return e

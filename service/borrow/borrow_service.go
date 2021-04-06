@@ -49,14 +49,8 @@ func (s *borrowService) BorrowAllowed(ctx context.Context, borrowAmount decimal.
 		return false
 	}
 
-	blockNum, e := s.blockService.GetBlock(ctx, time)
-	if e != nil {
-		log.Errorln(e)
-		return false
-	}
-
 	// check liquidity
-	liquidity, e := s.accountService.CalculateAccountLiquidity(ctx, userID, blockNum)
+	liquidity, e := s.accountService.CalculateAccountLiquidity(ctx, userID)
 	if e != nil {
 		log.Errorln(e)
 		return false
@@ -85,13 +79,8 @@ func (s *borrowService) MaxBorrow(ctx context.Context, userID string, market *co
 		return decimal.Zero, errors.New("insufficient market cash")
 	}
 
-	blockNum, e := s.blockService.GetBlock(ctx, time.Now())
-	if e != nil {
-		return decimal.Zero, e
-	}
-
 	// check liquidity
-	liquidity, e := s.accountService.CalculateAccountLiquidity(ctx, userID, blockNum)
+	liquidity, e := s.accountService.CalculateAccountLiquidity(ctx, userID)
 	if e != nil {
 		return decimal.Zero, e
 	}

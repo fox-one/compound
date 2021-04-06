@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/fox-one/pkg/logger"
+	"github.com/fox-one/pkg/uuid"
 	"github.com/shopspring/decimal"
 )
 
@@ -52,6 +53,13 @@ func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, user
 		return e
 	}
 
+	// market transaction
+	marketTransaction := core.BuildMarketUpdateTransaction(ctx, market, uuid.Modify(output.TraceID, "update_market"))
+	if e = w.transactionStore.Create(ctx, marketTransaction); e != nil {
+		log.WithError(e).Errorln("create transaction error")
+		return e
+	}
+
 	supply, isRecordNotFound, e := w.supplyStore.Find(ctx, userID, ctokenAssetID)
 	if e != nil {
 		if isRecordNotFound {
@@ -65,27 +73,29 @@ func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, user
 				log.Errorln(e)
 				return e
 			}
-			// add transaction
-			transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypePledge, output, nil)
-			if e = w.transactionStore.Create(ctx, transaction); e != nil {
-				log.WithError(e).Errorln("create transaction error")
-				return e
-			}
-			return nil
 		}
 		log.Errorln(e)
 		return e
-	}
-	//exists, update supply
-	supply.Collaterals = supply.Collaterals.Add(ctokens).Truncate(16)
-	e = w.supplyStore.Update(ctx, supply, output.ID)
-	if e != nil {
-		log.Errorln(e)
-		return e
+	} else {
+		//exists, update supply
+		if output.ID > supply.Version {
+			supply.Collaterals = supply.Collaterals.Add(ctokens).Truncate(16)
+			e = w.supplyStore.Update(ctx, supply, output.ID)
+			if e != nil {
+				log.Errorln(e)
+				return e
+			}
+		}
 	}
 
-	// add transaction
-	transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypePledge, output, nil)
+	// pledge transaction
+	extra := core.NewTransactionExtra()
+	extra.Put(core.TransactionKeySupply, core.ExtraSupply{
+		UserID:        supply.UserID,
+		CTokenAssetID: supply.CTokenAssetID,
+		Collaterals:   supply.Collaterals,
+	})
+	transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypePledge, output, extra)
 	if e = w.transactionStore.Create(ctx, transaction); e != nil {
 		log.WithError(e).Errorln("create transaction error")
 		return e

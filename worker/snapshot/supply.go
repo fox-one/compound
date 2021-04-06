@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/fox-one/pkg/logger"
+	"github.com/fox-one/pkg/uuid"
 	"github.com/shopspring/decimal"
 )
 
@@ -47,17 +48,27 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 	}
 
 	//update maket
-	market.CTokens = market.CTokens.Add(ctokens).Truncate(16)
-	market.TotalCash = market.TotalCash.Add(supplyAmount).Truncate(16)
-	if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
-		log.Errorln(e)
+	if output.ID > market.Version {
+		market.CTokens = market.CTokens.Add(ctokens).Truncate(16)
+		market.TotalCash = market.TotalCash.Add(supplyAmount).Truncate(16)
+		if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
+			log.Errorln(e)
+			return e
+		}
+	}
+
+	// market transaction
+	marketTransaction := core.BuildMarketUpdateTransaction(ctx, market, uuid.Modify(output.TraceID, "update_market"))
+	if e = w.transactionStore.Create(ctx, marketTransaction); e != nil {
+		log.WithError(e).Errorln("create transaction error")
 		return e
 	}
 
-	// add transaction
+	// transaction
 	extra := core.NewTransactionExtra()
 	extra.Put(core.TransactionKeyCTokenAssetID, market.CTokenAssetID)
 	extra.Put(core.TransactionKeyAmount, ctokens)
+
 	transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeSupply, output, &extra)
 	if e = w.transactionStore.Create(ctx, transaction); e != nil {
 		log.WithError(e).Errorln("create transaction error")

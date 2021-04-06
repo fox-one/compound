@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/fox-one/pkg/logger"
+	"github.com/fox-one/pkg/uuid"
 )
 
 // handle redeem event
@@ -55,14 +56,23 @@ func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, user
 
 	amount := redeemTokens.Mul(exchangeRate).Truncate(8)
 
-	market.TotalCash = market.TotalCash.Sub(amount).Truncate(16)
-	market.CTokens = market.CTokens.Sub(redeemTokens).Truncate(16)
-	if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
-		log.Errorln(e)
+	if output.ID > market.Version {
+		market.TotalCash = market.TotalCash.Sub(amount).Truncate(16)
+		market.CTokens = market.CTokens.Sub(redeemTokens).Truncate(16)
+		if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
+			log.Errorln(e)
+			return e
+		}
+	}
+
+	// market transaction
+	marketTransaction := core.BuildMarketUpdateTransaction(ctx, market, uuid.Modify(output.TraceID, "update_market"))
+	if e = w.transactionStore.Create(ctx, marketTransaction); e != nil {
+		log.WithError(e).Errorln("create transaction error")
 		return e
 	}
 
-	// add transaction
+	// transaction
 	extra := core.NewTransactionExtra()
 	extra.Put(core.TransactionKeyAssetID, market.AssetID)
 	extra.Put(core.TransactionKeyAmount, amount)

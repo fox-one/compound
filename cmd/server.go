@@ -26,16 +26,7 @@ var serverCmd = &cobra.Command{
 		db := provideDatabase()
 		defer db.Close()
 
-		userStore := provideUserStore(db)
-		marketStore := provideMarketStore(db)
-		supplyStore := provideSupplyStore(db)
-		borrowStore := provideBorrowStore(db)
 		transactionStore := provideTransactionStore(db)
-
-		blockService := provideBlockService()
-		priceService := providePriceService(blockService)
-		marketService := provideMarketService(marketStore, blockService)
-		accountService := provideAccountService(marketStore, supplyStore, borrowStore, priceService, blockService, marketService)
 
 		mux := chi.NewMux()
 		mux.Use(middleware.Recoverer)
@@ -52,7 +43,7 @@ var serverCmd = &cobra.Command{
 
 		{
 			//restful api
-			mux.Mount("/api/v1", rest.Handle(userStore, marketStore, supplyStore, borrowStore, transactionStore, blockService, priceService, accountService, marketService))
+			mux.Mount("/api/v1", rest.Handle(transactionStore))
 		}
 
 		port, _ := cmd.Flags().GetInt("port")
