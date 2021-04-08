@@ -5,11 +5,10 @@ REPOSITORY_PATH = $(shell cat .config.ini)
 ENV = $*
 GO = go
 
-%-local: GO = GO111MODULE=on go
-%-test: GO = GOOS=linux GOARCH=amd64 GO111MODULE=on go
-%-prod: GO = GOOS=linux GOARCH=amd64 GO111MODULE=on go
+%-local: GO = GO111MODULE=on CGO_ENABLED=1 CGO_CFLAGS='-O -D__BLST_PORTABLE__' go
+%-test: GO = GO111MODULE=on CGO_ENABLED=1 CGO_CFLAGS='-O -D__BLST_PORTABLE__' go
+%-prod: GO = GO111MODULE=on CGO_ENABLED=1 CGO_CFLAGS='-O -D__BLST_PORTABLE__' go
 
-.PHONY: clean
 clean-%:	
 	@echo "cleaning building caches and configs......................."
 	${GO} clean
@@ -19,16 +18,18 @@ clean-%:
 
 sync-%: 
 	@echo "sync code and config file..........................."
-	git pull
+	# git pull
 	cp -f ./deploy/config.${ENV}.yaml ./config/config.yaml
 
-build-%: clean-% sync-%
-	${GO} build --ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT}"
-	cp ./compound ./compound.${ENV}
+refresh-%: clean-% sync-%
+	@echo "clean and sync ..............."
 
-docker-build-%: build-%
+build: 
+	${GO} build --ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT}"
+
+docker-build-%: clean-% sync-%
 	@echo "repository path -> ${REPOSITORY_PATH}"
-	docker build -t ${REPOSITORY_PATH}/compound-${ENV}:${VERSION} . 
+	docker build -t ${REPOSITORY_PATH}/compound-${ENV}:${VERSION} -f ./deploy/docker/Dockerfile . 
 
 .PHONY: aws-login
 aws-login:

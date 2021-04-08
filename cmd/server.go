@@ -26,6 +26,8 @@ var serverCmd = &cobra.Command{
 		db := provideDatabase()
 		defer db.Close()
 
+		config := provideConfig()
+		marketStore := provideMarketStore(db)
 		transactionStore := provideTransactionStore(db)
 
 		mux := chi.NewMux()
@@ -43,7 +45,7 @@ var serverCmd = &cobra.Command{
 
 		{
 			//restful api
-			mux.Mount("/api/v1", rest.Handle(transactionStore))
+			mux.Mount("/api/v1", rest.Handle(config, marketStore, transactionStore))
 		}
 
 		port, _ := cmd.Flags().GetInt("port")
