@@ -6,6 +6,7 @@ import (
 	"context"
 
 	"github.com/fox-one/pkg/logger"
+	foxuuid "github.com/fox-one/pkg/uuid"
 )
 
 func (w *Payee) handleOpenMarketEvent(ctx context.Context, p *core.Proposal, req proposal.MarketStatusReq, output *core.Output) error {
@@ -27,6 +28,13 @@ func (w *Payee) handleOpenMarketEvent(ctx context.Context, p *core.Proposal, req
 	market.Status = core.MarketStatusOpen
 	if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
 		log.Errorln(e)
+		return e
+	}
+
+	// market transaction
+	marketTransaction := core.BuildMarketUpdateTransaction(ctx, market, foxuuid.Modify(output.TraceID, "update_market"))
+	if e = w.transactionStore.Create(ctx, marketTransaction); e != nil {
+		log.WithError(e).Errorln("create transaction error")
 		return e
 	}
 
@@ -52,6 +60,13 @@ func (w *Payee) handleCloseMarketEvent(ctx context.Context, p *core.Proposal, re
 	market.Status = core.MarketStatusClose
 	if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
 		log.Errorln(e)
+		return e
+	}
+
+	// market transaction
+	marketTransaction := core.BuildMarketUpdateTransaction(ctx, market, foxuuid.Modify(output.TraceID, "update_market"))
+	if e = w.transactionStore.Create(ctx, marketTransaction); e != nil {
+		log.WithError(e).Errorln("create transaction error")
 		return e
 	}
 

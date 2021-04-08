@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 
 	"github.com/fox-one/pkg/logger"
+	foxuuid "github.com/fox-one/pkg/uuid"
 	"github.com/shopspring/decimal"
 )
 
@@ -156,10 +157,19 @@ func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *cor
 		return e
 	}
 
-	market.Price = price.Price
-	market.PriceUpdatedAt = output.CreatedAt
-	if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
-		log.WithError(e).Errorln("update market price err")
+	if output.ID > market.Version {
+		market.Price = price.Price
+		market.PriceUpdatedAt = output.CreatedAt
+		if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
+			log.WithError(e).Errorln("update market price err")
+			return e
+		}
+	}
+
+	// market transaction
+	marketTransaction := core.BuildMarketUpdateTransaction(ctx, market, foxuuid.Modify(output.TraceID, "update_market"))
+	if e = w.transactionStore.Create(ctx, marketTransaction); e != nil {
+		log.WithError(e).Errorln("create transaction error")
 		return e
 	}
 

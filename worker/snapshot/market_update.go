@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/fox-one/pkg/logger"
+	foxuuid "github.com/fox-one/pkg/uuid"
 	"github.com/shopspring/decimal"
 )
 
@@ -54,6 +55,12 @@ func (w *Payee) handleUpdateMarketEvent(ctx context.Context, p *core.Proposal, r
 		return e
 	}
 
+	marketTransaction := core.BuildMarketUpdateTransaction(ctx, market, foxuuid.Modify(output.TraceID, "update_market"))
+	if e = w.transactionStore.Create(ctx, marketTransaction); e != nil {
+		log.WithError(e).Errorln("create transaction error")
+		return e
+	}
+
 	return nil
 }
 
@@ -94,6 +101,13 @@ func (w *Payee) handleUpdateMarketAdvanceEvent(ctx context.Context, p *core.Prop
 
 	if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
 		log.Errorln(e)
+		return e
+	}
+
+	// market transaction
+	marketTransaction := core.BuildMarketUpdateTransaction(ctx, market, foxuuid.Modify(output.TraceID, "update_market"))
+	if e = w.transactionStore.Create(ctx, marketTransaction); e != nil {
+		log.WithError(e).Errorln("create transaction error")
 		return e
 	}
 

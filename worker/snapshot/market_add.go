@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/fox-one/pkg/logger"
+	foxuuid "github.com/fox-one/pkg/uuid"
 )
 
 func (w *Payee) handleAddMarketEvent(ctx context.Context, p *core.Proposal, req proposal.AddMarketReq, output *core.Output) error {
@@ -20,14 +21,21 @@ func (w *Payee) handleAddMarketEvent(ctx context.Context, p *core.Proposal, req 
 	}
 
 	if isRecordNotFound {
-		market := core.Market{
+		market := &core.Market{
 			Symbol:        strings.ToUpper(req.Symbol),
 			AssetID:       req.AssetID,
 			CTokenAssetID: req.CTokenAssetID,
-			Status:        core.MarketStatusOpen,
+			Status:        core.MarketStatusClose,
 		}
 
-		if e = w.marketStore.Save(ctx, &market); e != nil {
+		if e = w.marketStore.Save(ctx, market); e != nil {
+			return e
+		}
+
+		// market transaction
+		marketTransaction := core.BuildMarketUpdateTransaction(ctx, market, foxuuid.Modify(output.TraceID, "update_market"))
+		if e = w.transactionStore.Create(ctx, marketTransaction); e != nil {
+			log.WithError(e).Errorln("create transaction error")
 			return e
 		}
 	}

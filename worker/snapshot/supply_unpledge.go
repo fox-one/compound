@@ -7,6 +7,7 @@ import (
 	"errors"
 
 	"github.com/fox-one/pkg/logger"
+	foxuuid "github.com/fox-one/pkg/uuid"
 	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
 )
@@ -65,14 +66,15 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 		return e
 	}
 
-	blockNum, e := w.blockService.GetBlock(ctx, output.CreatedAt)
-	if e != nil {
-		log.Errorln(e)
+	// market transaction
+	marketTransaction := core.BuildMarketUpdateTransaction(ctx, market, foxuuid.Modify(output.TraceID, "update_market"))
+	if e = w.transactionStore.Create(ctx, marketTransaction); e != nil {
+		log.WithError(e).Errorln("create transaction error")
 		return e
 	}
 
 	// check liqudity
-	liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, userID, blockNum)
+	liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, userID)
 	if e != nil {
 		log.Errorln(e)
 		return e
@@ -95,16 +97,23 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeUnpledge, core.ErrInsufficientLiquidity)
 	}
 
-	supply.Collaterals = supply.Collaterals.Sub(unpledgedAmount).Truncate(16)
-	if e = w.supplyStore.Update(ctx, supply, output.ID); e != nil {
-		log.Errorln(e)
-		return e
+	if output.ID > supply.Version {
+		supply.Collaterals = supply.Collaterals.Sub(unpledgedAmount).Truncate(16)
+		if e = w.supplyStore.Update(ctx, supply, output.ID); e != nil {
+			log.Errorln(e)
+			return e
+		}
 	}
 
-	// add transaction
+	// transaction
 	extra := core.NewTransactionExtra()
 	extra.Put(core.TransactionKeyCTokenAssetID, ctokenAssetID)
 	extra.Put(core.TransactionKeyAmount, unpledgedAmount)
+	extra.Put(core.TransactionKeySupply, core.ExtraSupply{
+		UserID:        supply.UserID,
+		CTokenAssetID: supply.CTokenAssetID,
+		Collaterals:   supply.Collaterals,
+	})
 	transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeUnpledge, output, &extra)
 	if e = w.transactionStore.Create(ctx, transaction); e != nil {
 		log.WithError(e).Errorln("create transaction error")

@@ -66,4 +66,6 @@ const (
 	ActionTypeProposalAddAllowList
 	// ActionTypeProposalRemoveAllowList proposal remove from allowlist action
 	ActionTypeProposalRemoveAllowList
+	// ActionTypeUpdateMarket update market
+	ActionTypeUpdateMarket
 )

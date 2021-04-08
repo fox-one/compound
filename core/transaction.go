@@ -54,7 +54,17 @@ const (
 	TransactionKeyRefund = "refund"
 	// TransactionKeyOrigin origin
 	TransactionKeyOrigin = "origin"
+	// TransactionKeySupply supply
+	TransactionKeySupply = "supply"
+	// TransactionKeyBorrow borrow
+	TransactionKeyBorrow = "borrow"
+	// TransactionKeyMarket market
+	TransactionKeyMarket = "market"
 )
+
+type ExtraDataFormatter interface {
+	Format() []byte
+}
 
 // TransactionExtraData extra data
 type TransactionExtraData map[string]interface{}
@@ -78,6 +88,19 @@ func (t TransactionExtraData) Format() []byte {
 	}
 
 	return bs
+}
+
+type ExtraSupply struct {
+	UserID        string          `json:"user_id"`
+	CTokenAssetID string          `json:"ctoken_asset_id"`
+	Collaterals   decimal.Decimal `json:"collaterals"`
+}
+
+type ExtraBorrow struct {
+	UserID        string          `json:"user_id"`
+	AssetID       string          `json:"asset_id"`
+	Principal     decimal.Decimal `json:"principal"`
+	InterestIndex decimal.Decimal `json:"interest_index"`
 }
 
 // Transaction transaction ifo
@@ -104,7 +127,7 @@ type TransactionStore interface {
 }
 
 // BuildTransactionFromOutput transaction from output
-func BuildTransactionFromOutput(ctx context.Context, userID, followID string, actionType ActionType, output *Output, extra *TransactionExtraData) *Transaction {
+func BuildTransactionFromOutput(ctx context.Context, userID, followID string, actionType ActionType, output *Output, extra ExtraDataFormatter) *Transaction {
 	data := []byte("{}")
 	if extra != nil {
 		data = extra.Format()
@@ -152,6 +175,20 @@ func BuildTransactionFromTransfer(ctx context.Context, transfer *Transfer, snaps
 		AssetID:         transfer.AssetID,
 		SnapshotTraceID: snapshotTraceID,
 		Data:            transactionExtra.Format(),
+	}
+}
+
+func BuildMarketUpdateTransaction(ctx context.Context, market *Market, traceID string) *Transaction {
+	data := market.Format()
+
+	return &Transaction{
+		UserID:   market.AssetID,
+		Action:   ActionTypeUpdateMarket,
+		TraceID:  traceID,
+		FollowID: "",
+		Amount:   decimal.Zero,
+		AssetID:  "",
+		Data:     data,
 	}
 }
 

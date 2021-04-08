@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -52,6 +53,15 @@ type Market struct {
 	Status             MarketStatus    `sql:"default:1" json:"status"`
 	CreatedAt          time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt          time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at"`
+}
+
+func (m *Market) Format() []byte {
+	bytes, err := json.Marshal(m)
+	if err != nil {
+		return []byte("{}")
+	}
+
+	return bytes
 }
 
 // MarketStatus market status
