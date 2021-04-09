@@ -10,17 +10,16 @@ import (
 )
 
 // Handle handle rest api request
-func Handle(config *core.Config, marketStore core.IMarketStore, transactionStore core.TransactionStore) http.Handler {
+func Handle(config *core.Config, marketStore core.IMarketStore, supplyStore core.ISupplyStore, borrowStore core.IBorrowStore, transactionStore core.TransactionStore, marketService core.IMarketService) http.Handler {
 	router := chi.NewRouter()
 
 	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		render.Error(w, twirp.NotFoundError("not found"))
 	})
 
-	// marketStore :=
-
 	router.Get("/transactions", transactionsHandler(transactionStore))
 	router.Get("/price-requests", priceRequestsHandler(config, marketStore))
+	router.Get("/markets/all", allMarketsHandler(marketStore, supplyStore, borrowStore, marketService))
 
 	return router
 }
