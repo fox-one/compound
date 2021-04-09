@@ -10,7 +10,7 @@ import (
 	"github.com/fox-one/pkg/uuid"
 )
 
-func priceRequestsHandler(cfg *core.Config, marketStr core.IMarketStore) http.HandlerFunc {
+func priceRequestsHandler(system *core.System, marketStr core.IMarketStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -21,21 +21,21 @@ func priceRequestsHandler(cfg *core.Config, marketStr core.IMarketStore) http.Ha
 		}
 
 		var members []string
-		for _, m := range cfg.Group.Members {
+		for _, m := range system.Members {
 			members = append(members, m.ClientID)
 		}
 
 		var requests []*core.PriceRequest
 		for _, m := range markets {
 			requests = append(requests, &core.PriceRequest{
-				TraceID: uuid.Modify(m.AssetID, fmt.Sprintf("price-request:%s:%d", cfg.Dapp.ClientID, time.Now().Unix()/600)),
+				TraceID: uuid.Modify(m.AssetID, fmt.Sprintf("price-request:%s:%d", system.ClientID, time.Now().Unix()/600)),
 				Asset:   core.Asset{AssetID: m.AssetID, Symbol: m.Symbol},
 				Receiver: &core.Receiver{
-					Threshold: cfg.Group.Threshold,
+					Threshold: system.Threshold,
 					Members:   members,
 				},
-				Signers:   cfg.PriceOracle.Signers,
-				Threshold: cfg.Group.Threshold,
+				Signers:   system.PriceOracleSigners,
+				Threshold: system.Threshold,
 			})
 		}
 
