@@ -3,11 +3,7 @@ VERSION = $(shell git describe --abbrev=0)
 
 REPOSITORY_PATH = $(shell cat .config.ini)
 ENV = $*
-GO = go
-
-%-local: GO = GO111MODULE=on CGO_ENABLED=1 CGO_CFLAGS='-O -D__BLST_PORTABLE__' go
-%-test: GO = GO111MODULE=on CGO_ENABLED=1 CGO_CFLAGS='-O -D__BLST_PORTABLE__' go
-%-prod: GO = GO111MODULE=on CGO_ENABLED=1 CGO_CFLAGS='-O -D__BLST_PORTABLE__' go
+GO = GO111MODULE=on CGO_ENABLED=1 CGO_CFLAGS='-O -D__BLST_PORTABLE__' go
 
 clean-%:	
 	@echo "cleaning building caches and configs......................."
