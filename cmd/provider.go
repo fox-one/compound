@@ -80,17 +80,18 @@ func provideSystem() *core.System {
 	}
 
 	return &core.System{
-		Admins:       cfg.Group.Admins,
-		ClientID:     cfg.Dapp.ClientID,
-		ClientSecret: cfg.Dapp.ClientSecret,
-		Members:      members,
-		Threshold:    cfg.Group.Threshold,
-		VoteAsset:    cfg.Group.Vote.Asset,
-		VoteAmount:   cfg.Group.Vote.Amount,
-		PrivateKey:   privateKey,
-		SignKey:      signKey,
-		Location:     cfg.Location,
-		Genesis:      cfg.Genesis,
+		Admins:             cfg.Group.Admins,
+		ClientID:           cfg.Dapp.ClientID,
+		ClientSecret:       cfg.Dapp.ClientSecret,
+		Members:            members,
+		Threshold:          cfg.Group.Threshold,
+		VoteAsset:          cfg.Group.Vote.Asset,
+		VoteAmount:         cfg.Group.Vote.Amount,
+		PrivateKey:         privateKey,
+		SignKey:            signKey,
+		Location:           cfg.Location,
+		Genesis:            cfg.Genesis,
+		PriceOracleSigners: cfg.PriceOracle.Signers,
 	}
 }
 

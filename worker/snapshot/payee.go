@@ -135,22 +135,27 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 	log := logger.FromContext(ctx).WithField("output", output.TraceID)
 	ctx = logger.WithContext(ctx, log)
 
-	message := w.decodeMemo(output.Memo)
+	businessData := w.decodeMemo(output.Memo)
 
-	// handle member vote action
-	if member, body, err := core.DecodeMemberProposalTransactionAction(message, w.system.Members); err == nil {
+	// handle member proposal action
+	if member, body, err := core.DecodeMemberProposalTransactionAction(businessData, w.system.Members); err == nil {
 		return w.handleProposalAction(ctx, output, member, body)
 	}
 
-	// handle user action
-	actionType, body, err := core.DecodeUserTransactionAction(w.system.PrivateKey, message)
+	// handle price provided by dirtoracle
+	if priceData, err := w.decodePriceTransaction(ctx, businessData); err == nil {
+		return w.handlePriceEvent(ctx, output, priceData)
+	}
+
+	// decode user action
+	actionType, body, err := core.DecodeUserTransactionAction(w.system.PrivateKey, businessData)
 	if err != nil {
 		log.WithError(err).Errorln("DecodeTransactionAction error")
 		return nil
 	}
 
 	var reserveUserID uuid.UUID
-	// transaction trace id, different from output trace id
+	// transaction trace id as order id, different from output trace id
 	var followID uuid.UUID
 	body, err = mtg.Scan(body, &reserveUserID, &followID)
 	if err != nil {
@@ -171,6 +176,7 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 		return err
 	}
 
+	// handle user action
 	return w.handleUserAction(ctx, output, actionType, output.Sender, followID.String(), body)
 }
 
