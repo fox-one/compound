@@ -15,6 +15,8 @@ FROM frolvlad/alpine-glibc:latest
 # 设置工作目录
 WORKDIR /app
 
+COPY --from=builder /app/builds/compound .
+
 # # 暴露端口
 EXPOSE 80
 

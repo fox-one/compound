@@ -21,7 +21,7 @@ refresh-%: clean-% sync-%
 	@echo "clean and sync ..............."
 
 build: 
-	${GO} build --ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT}"
+	${GO} build --ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT}" -o builds/
 
 docker-build-%: clean-% sync-%
 	@echo "repository path -> ${REPOSITORY_PATH}"
