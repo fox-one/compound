@@ -26,6 +26,8 @@ import (
 
 	"fmt"
 
+	_ "time/tzdata"
+
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/property"
 	"github.com/fox-one/pkg/store/db"
