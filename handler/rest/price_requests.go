@@ -25,7 +25,7 @@ func priceRequestsHandler(system *core.System, marketStr core.IMarketStore) http
 			members = append(members, m.ClientID)
 		}
 
-		var requests []*core.PriceRequest
+		requests := make([]*core.PriceRequest, 0)
 		for _, m := range markets {
 			if time.Now().After(m.PriceUpdatedAt.Add(10 * time.Minute)) {
 				requests = append(requests, &core.PriceRequest{
@@ -42,7 +42,7 @@ func priceRequestsHandler(system *core.System, marketStr core.IMarketStore) http
 		}
 
 		var response struct {
-			Data interface{} `json:"data"`
+			Data []*core.PriceRequest `json:"data"`
 		}
 
 		response.Data = requests
