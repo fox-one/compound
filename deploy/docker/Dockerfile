@@ -15,6 +15,8 @@ FROM frolvlad/alpine-glibc:latest
 # 设置工作目录
 WORKDIR /app
 
+ADD config/config.yaml config/config.yaml
+
 COPY --from=builder /app/builds/compound .
 
 # # 暴露端口

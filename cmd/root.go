@@ -3,6 +3,7 @@ package cmd
 import (
 	"compound/config"
 	"compound/core"
+	"errors"
 	"fmt"
 	"os"
 
@@ -50,16 +51,17 @@ func onInitialize(fs ...func()) {
 func initConfig() {
 	if cfgFile == "" {
 		filename := "./config/config.yaml"
-		fmt.Println(filename)
 		info, err := os.Stat(filename)
 		if !os.IsNotExist(err) && !info.IsDir() {
 			cfgFile = filename
 		}
 	}
 
-	if cfgFile != "" {
-		logrus.Debugln("use config file", cfgFile)
+	if cfgFile == "" {
+		panic(errors.New("no config file"))
 	}
+
+	logrus.Infoln("use config file: ", cfgFile)
 
 	if err := config.Load(cfgFile, &cfg); err != nil {
 		panic(err)
