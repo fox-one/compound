@@ -11,7 +11,7 @@ import (
 
 const (
 	// 600 seconds
-	defaultPriceTimeAlign = 600
+	defaultPriceTimeAlign = 1200
 )
 
 // Price price info

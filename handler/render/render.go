@@ -3,8 +3,6 @@ package render
 import (
 	"encoding/json"
 	"net/http"
-
-	"github.com/twitchtv/twirp"
 )
 
 type H map[string]interface{}
@@ -26,24 +24,20 @@ func Text(w http.ResponseWriter, t string) {
 }
 
 // Error write error
-func Error(w http.ResponseWriter, err error) {
-	_ = twirp.WriteError(w, err)
+func Error(w http.ResponseWriter, statusCode, errCode int, err error) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+
+	enc := json.NewEncoder(w)
+	_ = enc.Encode(H{"code": errCode, "msg": err.Error()})
 }
 
 // BadRequest bad request error
 func BadRequest(w http.ResponseWriter, err error) {
-	if _, ok := err.(twirp.Error); !ok {
-		err = twirp.NewError(twirp.Malformed, err.Error())
-	}
-
-	Error(w, err)
+	Error(w, http.StatusBadRequest, -1, err)
 }
 
 // NotFoundRequest not found request error
 func NotFoundRequest(w http.ResponseWriter, err error) {
-	if _, ok := err.(twirp.Error); !ok {
-		err = twirp.NewError(twirp.NotFound, err.Error())
-	}
-
-	Error(w, err)
+	Error(w, http.StatusNotFound, -1, err)
 }

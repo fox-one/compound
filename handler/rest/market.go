@@ -28,7 +28,11 @@ func allMarketsHandler(marketStr core.IMarketStore, supplyStr core.ISupplyStore,
 			marketViews = append(marketViews, marketView)
 		}
 
-		render.JSON(w, marketViews)
+		var response struct {
+			Data interface{} `json:"data"`
+		}
+		response.Data = marketViews
+		render.JSON(w, response)
 	}
 }
 
