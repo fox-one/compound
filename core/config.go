@@ -62,6 +62,7 @@ type Dapp struct {
 
 // PriceOracle price oracle config
 type PriceOracle struct {
-	EndPoint string    `json:"end_point"`
-	Signers  []*Signer `json:"signers"`
+	EndPoint  string    `json:"end_point"`
+	Threshold uint8     `json:"threshold"`
+	Signers   []*Signer `json:"signers"`
 }

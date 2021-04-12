@@ -18,6 +18,7 @@ type System struct {
 	PrivateKey         ed25519.PrivateKey
 	SignKey            ed25519.PrivateKey
 	PriceOracleSigners []*Signer
+	PriceThreshold     uint8
 	Location           string
 	Genesis            int64
 	Version            string

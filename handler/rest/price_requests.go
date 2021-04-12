@@ -36,7 +36,7 @@ func priceRequestsHandler(system *core.System, marketStr core.IMarketStore) http
 						Members:   members,
 					},
 					Signers:   system.PriceOracleSigners,
-					Threshold: system.Threshold,
+					Threshold: system.PriceThreshold,
 				})
 			}
 		}

@@ -94,6 +94,7 @@ func provideSystem() *core.System {
 		Location:           cfg.Location,
 		Genesis:            cfg.Genesis,
 		PriceOracleSigners: cfg.PriceOracle.Signers,
+		PriceThreshold:     cfg.PriceOracle.Threshold,
 	}
 }
 
