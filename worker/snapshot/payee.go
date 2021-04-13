@@ -29,7 +29,6 @@ type Payee struct {
 	propertyStore    property.Store
 	userStore        core.UserStore
 	walletStore      core.WalletStore
-	priceStore       core.IPriceStore
 	marketStore      core.IMarketStore
 	supplyStore      core.ISupplyStore
 	borrowStore      core.IBorrowStore
@@ -37,7 +36,6 @@ type Payee struct {
 	transactionStore core.TransactionStore
 	proposalService  core.ProposalService
 	blockService     core.IBlockService
-	priceService     core.IPriceOracleService
 	marketService    core.IMarketService
 	supplyService    core.ISupplyService
 	borrowService    core.IBorrowService
@@ -52,14 +50,12 @@ func NewPayee(
 	propertyStore property.Store,
 	userStore core.UserStore,
 	walletStore core.WalletStore,
-	priceStore core.IPriceStore,
 	marketStore core.IMarketStore,
 	supplyStore core.ISupplyStore,
 	borrowStore core.IBorrowStore,
 	proposalStore core.ProposalStore,
 	transactionStore core.TransactionStore,
 	proposalService core.ProposalService,
-	priceSrv core.IPriceOracleService,
 	blockService core.IBlockService,
 	marketSrv core.IMarketService,
 	supplyService core.ISupplyService,
@@ -72,14 +68,12 @@ func NewPayee(
 		propertyStore:    propertyStore,
 		userStore:        userStore,
 		walletStore:      walletStore,
-		priceStore:       priceStore,
 		marketStore:      marketStore,
 		supplyStore:      supplyStore,
 		borrowStore:      borrowStore,
 		proposalStore:    proposalStore,
 		transactionStore: transactionStore,
 		proposalService:  proposalService,
-		priceService:     priceSrv,
 		blockService:     blockService,
 		marketService:    marketSrv,
 		supplyService:    supplyService,
@@ -135,22 +129,27 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 	log := logger.FromContext(ctx).WithField("output", output.TraceID)
 	ctx = logger.WithContext(ctx, log)
 
-	message := w.decodeMemo(output.Memo)
+	businessData := w.decodeMemo(output.Memo)
 
-	// handle member vote action
-	if member, body, err := core.DecodeMemberProposalTransactionAction(message, w.system.Members); err == nil {
+	// handle member proposal action
+	if member, body, err := core.DecodeMemberProposalTransactionAction(businessData, w.system.Members); err == nil {
 		return w.handleProposalAction(ctx, output, member, body)
 	}
 
-	// handle user action
-	actionType, body, err := core.DecodeUserTransactionAction(w.system.PrivateKey, message)
+	// handle price provided by dirtoracle
+	if priceData, err := w.decodePriceTransaction(ctx, businessData); err == nil {
+		return w.handlePriceEvent(ctx, output, priceData)
+	}
+
+	// decode user action
+	actionType, body, err := core.DecodeUserTransactionAction(w.system.PrivateKey, businessData)
 	if err != nil {
 		log.WithError(err).Errorln("DecodeTransactionAction error")
 		return nil
 	}
 
 	var reserveUserID uuid.UUID
-	// transaction trace id, different from output trace id
+	// transaction trace id as order id, different from output trace id
 	var followID uuid.UUID
 	body, err = mtg.Scan(body, &reserveUserID, &followID)
 	if err != nil {
@@ -171,6 +170,7 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 		return err
 	}
 
+	// handle user action
 	return w.handleUserAction(ctx, output, actionType, output.Sender, followID.String(), body)
 }
 
@@ -188,8 +188,6 @@ func (w *Payee) handleProposalAction(ctx context.Context, output *core.Output, m
 
 	if core.ActionType(actionType) == core.ActionTypeProposalVote {
 		return w.handleVoteProposalEvent(ctx, output, member, traceID.String())
-	} else if core.ActionType(actionType) == core.ActionTypeProposalProvidePrice {
-		return w.handleProposalProvidePriceEvent(ctx, output, member, traceID.String(), body)
 	}
 
 	return w.handleCreateProposalEvent(ctx, output, member, core.ActionType(actionType), traceID.String(), body)

@@ -13,7 +13,6 @@ type accountService struct {
 	marketStore   core.IMarketStore
 	supplyStore   core.ISupplyStore
 	borrowStore   core.IBorrowStore
-	priceService  core.IPriceOracleService
 	blockService  core.IBlockService
 	marketService core.IMarketService
 }
@@ -23,7 +22,6 @@ func New(
 	marketStore core.IMarketStore,
 	supplyStore core.ISupplyStore,
 	borrowStore core.IBorrowStore,
-	priceSrv core.IPriceOracleService,
 	blockSrv core.IBlockService,
 	marketServie core.IMarketService,
 ) core.IAccountService {
@@ -31,7 +29,6 @@ func New(
 		marketStore:   marketStore,
 		supplyStore:   supplyStore,
 		borrowStore:   borrowStore,
-		priceService:  priceSrv,
 		blockService:  blockSrv,
 		marketService: marketServie,
 	}
@@ -54,11 +51,7 @@ func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID s
 			continue
 		}
 
-		price, e := s.priceService.GetCurrentUnderlyingPrice(ctx, market)
-		if e != nil {
-			continue
-		}
-
+		price := market.Price
 		exchangeRate, e := s.marketService.CurExchangeRate(ctx, market)
 		if e != nil {
 			continue
@@ -79,10 +72,7 @@ func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID s
 		if e != nil {
 			continue
 		}
-		price, e := s.priceService.GetCurrentUnderlyingPrice(ctx, market)
-		if e != nil {
-			continue
-		}
+		price := market.Price
 
 		borrowBalance, e := borrow.Balance(ctx, market)
 		if e != nil {
@@ -135,18 +125,12 @@ func (s *accountService) MaxSeize(ctx context.Context, supply *core.Supply, borr
 
 	maxSeize := supply.Collaterals.Mul(exchangeRate).Mul(supplyMarket.CloseFactor)
 
-	supplyPrice, e := s.priceService.GetCurrentUnderlyingPrice(ctx, supplyMarket)
-	if e != nil {
-		return decimal.Zero, e
-	}
+	supplyPrice := supplyMarket.Price
 	borrowMarket, _, e := s.marketStore.Find(ctx, borrow.AssetID)
 	if e != nil {
 		return decimal.Zero, e
 	}
-	borrowPrice, e := s.priceService.GetCurrentUnderlyingPrice(ctx, borrowMarket)
-	if e != nil {
-		return decimal.Zero, e
-	}
+	borrowPrice := borrowMarket.Price
 	seizePrice := supplyPrice.Sub(supplyPrice.Mul(supplyMarket.LiquidationIncentive))
 	seizeValue := maxSeize.Mul(seizePrice)
 	borrowValue := borrow.Principal.Mul(borrowPrice)

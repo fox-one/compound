@@ -98,8 +98,6 @@ func (w *Syncer) onWork(ctx context.Context) error {
 		return err
 	}
 
-	log.Infoln("save output successful")
-
 	if err := w.property.Save(ctx, checkpointKey, offset); err != nil {
 		log.WithError(err).Errorln("property.Save:", checkpointKey)
 		return err

@@ -1,16 +1,23 @@
 # 源镜像
-FROM alpine:latest
+FROM golang:1.16 AS builder
 
-RUN apk --no-cache add tzdata
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . ./
+
+RUN make build
+
+FROM frolvlad/alpine-glibc:latest
 
 # 设置工作目录
 WORKDIR /app
 
-# Add config files
 ADD config/config.yaml config/config.yaml
 
-# 将二进制可执行文件加入到docker容器中
-ADD compound compound
+COPY --from=builder /app/builds/compound .
 
 # # 暴露端口
 EXPOSE 80
