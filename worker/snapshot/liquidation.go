@@ -42,7 +42,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 		return e
 	}
 	if needAllowListCheck {
-		userAllowed, e := w.allowListService.CheckAllowList(ctx, seizedUser.UserID, core.OSLiquidation)
+		userAllowed, e := w.allowListService.CheckAllowList(ctx, userID, core.OSLiquidation)
 		if e != nil {
 			return e
 		}
