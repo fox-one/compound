@@ -2,28 +2,18 @@ package snapshot
 
 import (
 	"compound/core"
-	"compound/core/proposal"
-	"compound/pkg/mtg"
 	"context"
-	"database/sql"
-	"encoding/json"
+	"errors"
 
 	"github.com/fox-one/pkg/logger"
 	foxuuid "github.com/fox-one/pkg/uuid"
-	"github.com/shopspring/decimal"
+	"github.com/pandodao/blst"
 )
 
-// handle price proposal
-func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *core.Output, member *core.Member, traceID string, body []byte) error {
-	log := logger.FromContext(ctx).WithField("worker", "handleProposalProvidePriceEvent")
-	var data proposal.ProvidePriceReq
-	if _, e := mtg.Scan(body, &data); e != nil {
-		return nil
-	}
+func (w *Payee) handlePriceEvent(ctx context.Context, output *core.Output, priceData *core.PriceData) error {
+	log := logger.FromContext(ctx).WithField("worker", "handle_dirt_price_event")
 
-	blockNum := core.CalculatePriceBlock(output.CreatedAt)
-
-	market, isRecordNotFound, e := w.marketStore.FindBySymbol(ctx, data.Symbol)
+	market, isRecordNotFound, e := w.marketStore.Find(ctx, priceData.AssetID)
 	if isRecordNotFound {
 		return nil
 	}
@@ -31,134 +21,14 @@ func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *cor
 	if e != nil {
 		return e
 	}
-
-	log.Infof("asset:%s,block:%d, output.updated_at:%v", data.Symbol, blockNum, output.CreatedAt)
-
-	price, isRecordNotFound, e := w.priceStore.FindByAssetBlock(ctx, market.AssetID, blockNum)
-	if e != nil {
-		if isRecordNotFound {
-			// new one
-			ts := make(map[string]decimal.Decimal)
-			ts[member.ClientID] = data.Price
-
-			bs, e := json.Marshal(ts)
-			if e != nil {
-				return e
-			}
-
-			price = &core.Price{
-				AssetID:     market.AssetID,
-				BlockNumber: blockNum,
-				Content:     bs,
-			}
-			if e = w.priceStore.Create(ctx, price); e != nil {
-				log.WithError(e).Errorln("create price err")
-				return e
-			}
-			return nil
-		}
-		return e
-	}
-
-	if price.PassedAt.Valid {
-		//passed
-		return nil
-	}
-
-	// exists
-	tickerMap := make(map[string]decimal.Decimal)
-	if e = json.Unmarshal(price.Content, &tickerMap); e != nil {
-		return e
-	}
-
-	_, found := tickerMap[member.ClientID]
-	if !found {
-		tickerMap[member.ClientID] = data.Price
-	}
-
-	priceLen := len(tickerMap)
-	if priceLen < int(w.system.Threshold) {
-		// less than threshold, update content
-		// marshal tickers content
-		bs, e := json.Marshal(tickerMap)
-		if e != nil {
-			return e
-		}
-
-		price.Content = bs
-		if e = w.priceStore.Update(ctx, price, output.ID); e != nil {
-			log.WithError(e).Errorln("update price err")
-			return e
-		}
-
-		return nil
-	}
-
-	sumOfPrice := decimal.Zero
-	for _, t := range tickerMap {
-		sumOfPrice = sumOfPrice.Add(t)
-	}
-
-	avgPrice := sumOfPrice.Div(decimal.NewFromInt(int64(priceLen)))
-
-	validPrices := make(map[string]decimal.Decimal)
-	for k, v := range tickerMap {
-		delta := v.Sub(avgPrice).Abs()
-		changeRate := delta.Div(avgPrice)
-		if changeRate.LessThan(decimal.NewFromFloat(0.05)) {
-			validPrices[k] = v
-		}
-	}
-
-	lenOfValidPrices := len(validPrices)
-	if len(validPrices) < int(w.system.Threshold) {
-		// less than threshold, update content
-		// marshal tickers content
-		bs, e := json.Marshal(tickerMap)
-		if e != nil {
-			return e
-		}
-
-		price.Content = bs
-		if e = w.priceStore.Update(ctx, price, output.ID); e != nil {
-			log.WithError(e).Errorln("update price err")
-			return e
-		}
-
-		return nil
-	}
-
-	// avg price
-	sumOfPrice = decimal.Zero
-	for _, p := range validPrices {
-		sumOfPrice = sumOfPrice.Add(p)
-	}
-	price.Price = sumOfPrice.Div(decimal.NewFromInt(int64(lenOfValidPrices)))
-
-	price.PassedAt = sql.NullTime{
-		Time:  output.CreatedAt,
-		Valid: true,
-	}
-
-	// marshal tickers content
-	bs, e := json.Marshal(tickerMap)
-	if e != nil {
-		return e
-	}
-
-	price.Content = bs
-	if e = w.priceStore.Update(ctx, price, output.ID); e != nil {
-		log.WithError(e).Errorln("update price err")
-		return e
-	}
-
 	// accrue interest
 	if e = w.marketService.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
 		return e
 	}
 
 	if output.ID > market.Version {
-		market.Price = price.Price
+		log.Infoln("dirt_price: asset:", priceData.AssetID, ", price:", priceData.Price, ",time:", output.CreatedAt)
+		market.Price = priceData.Price
 		market.PriceUpdatedAt = output.CreatedAt
 		if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
 			log.WithError(e).Errorln("update market price err")
@@ -174,4 +44,29 @@ func (w *Payee) handleProposalProvidePriceEvent(ctx context.Context, output *cor
 	}
 
 	return nil
+}
+
+func (w *Payee) decodePriceTransaction(ctx context.Context, businessData []byte) (*core.PriceData, error) {
+	var p core.PriceData
+	if err := p.UnmarshalBinary(businessData); err != nil {
+		return nil, err
+	}
+
+	if verifyPriceData(&p, w.system.PriceOracleSigners, int(w.system.Threshold)) {
+		return &p, nil
+	}
+
+	return nil, errors.New("price data verify error")
+}
+
+func verifyPriceData(p *core.PriceData, signers []*core.Signer, threshold int) bool {
+	var pubs []*blst.PublicKey
+	for _, signer := range signers {
+		if p.Signature.Mask&(0x1<<signer.Index) != 0 {
+			pubs = append(pubs, signer.VerifyKey)
+		}
+	}
+
+	return len(pubs) >= threshold &&
+		blst.AggregatePublicKeys(pubs).Verify(p.Payload(), &p.Signature.Signature)
 }

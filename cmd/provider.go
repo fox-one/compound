@@ -9,7 +9,6 @@ import (
 	marketservice "compound/service/market"
 	messageservice "compound/service/message"
 	operationservice "compound/service/operation"
-	oracle "compound/service/oracle"
 	proposalservice "compound/service/proposal"
 	supplyservice "compound/service/supply"
 	walletservice "compound/service/wallet"
@@ -17,7 +16,6 @@ import (
 	"compound/store/market"
 	"compound/store/message"
 	"compound/store/operation"
-	"compound/store/price"
 	"compound/store/proposal"
 	"compound/store/supply"
 	"compound/store/transaction"
@@ -25,6 +23,8 @@ import (
 	"compound/store/wallet"
 
 	"fmt"
+
+	_ "time/tzdata"
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/property"
@@ -80,17 +80,19 @@ func provideSystem() *core.System {
 	}
 
 	return &core.System{
-		Admins:       cfg.Group.Admins,
-		ClientID:     cfg.Dapp.ClientID,
-		ClientSecret: cfg.Dapp.ClientSecret,
-		Members:      members,
-		Threshold:    cfg.Group.Threshold,
-		VoteAsset:    cfg.Group.Vote.Asset,
-		VoteAmount:   cfg.Group.Vote.Amount,
-		PrivateKey:   privateKey,
-		SignKey:      signKey,
-		Location:     cfg.Location,
-		Genesis:      cfg.Genesis,
+		Admins:             cfg.Group.Admins,
+		ClientID:           cfg.Dapp.ClientID,
+		ClientSecret:       cfg.Dapp.ClientSecret,
+		Members:            members,
+		Threshold:          cfg.Group.Threshold,
+		VoteAsset:          cfg.Group.Vote.Asset,
+		VoteAmount:         cfg.Group.Vote.Amount,
+		PrivateKey:         privateKey,
+		SignKey:            signKey,
+		Location:           cfg.Location,
+		Genesis:            cfg.Genesis,
+		PriceOracleSigners: cfg.PriceOracle.Signers,
+		PriceThreshold:     cfg.PriceOracle.Threshold,
 	}
 }
 
@@ -117,10 +119,6 @@ func provideWalletStore(db *db.DB) core.WalletStore {
 
 func provideMessageStore(db *db.DB) core.MessageStore {
 	return message.New(db)
-}
-
-func providePriceStore(db *db.DB) core.IPriceStore {
-	return price.New(db)
 }
 
 func provideProposalStore(db *db.DB) core.ProposalStore {
@@ -156,10 +154,6 @@ func provideBlockService() core.IBlockService {
 	return block.New(&cfg)
 }
 
-func providePriceService(blockSrv core.IBlockService) core.IPriceOracleService {
-	return oracle.New(&cfg, blockSrv)
-}
-
 func provideMarketService(marketStr core.IMarketStore, blockSrv core.IBlockService) core.IMarketService {
 	return marketservice.New(
 		marketStr,
@@ -172,10 +166,9 @@ func provideSupplyService(marketSrv core.IMarketService) core.ISupplyService {
 	)
 }
 
-func provideBorrowService(blockSrv core.IBlockService, priceSrv core.IPriceOracleService, accountSrv core.IAccountService) core.IBorrowService {
+func provideBorrowService(blockSrv core.IBlockService, accountSrv core.IAccountService) core.IBorrowService {
 	return borrowservice.New(
 		blockSrv,
-		priceSrv,
 		accountSrv,
 	)
 }
@@ -184,11 +177,10 @@ func provideAccountService(
 	marketStore core.IMarketStore,
 	supplyStore core.ISupplyStore,
 	borrowStore core.IBorrowStore,
-	priceSrv core.IPriceOracleService,
 	blockSrv core.IBlockService,
 	marketSrv core.IMarketService) core.IAccountService {
 
-	return accountservice.New(marketStore, supplyStore, borrowStore, priceSrv, blockSrv, marketSrv)
+	return accountservice.New(marketStore, supplyStore, borrowStore, blockSrv, marketSrv)
 }
 
 func provideAllowListService(

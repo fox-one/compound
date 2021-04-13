@@ -12,18 +12,15 @@ import (
 
 type borrowService struct {
 	blockService   core.IBlockService
-	priceService   core.IPriceOracleService
 	accountService core.IAccountService
 }
 
 // New new borrow service
 func New(
 	blockService core.IBlockService,
-	priceService core.IPriceOracleService,
 	accountService core.IAccountService) core.IBorrowService {
 	return &borrowService{
 		blockService:   blockService,
-		priceService:   priceService,
 		accountService: accountService,
 	}
 }
@@ -56,12 +53,7 @@ func (s *borrowService) BorrowAllowed(ctx context.Context, borrowAmount decimal.
 		return false
 	}
 
-	price, e := s.priceService.GetCurrentUnderlyingPrice(ctx, market)
-	if e != nil {
-		log.Errorln(e)
-		return false
-	}
-
+	price := market.Price
 	borrowValue := borrowAmount.Mul(price)
 	if borrowValue.GreaterThan(liquidity) {
 		log.Errorln("insufficient liquidity")
@@ -85,11 +77,7 @@ func (s *borrowService) MaxBorrow(ctx context.Context, userID string, market *co
 		return decimal.Zero, e
 	}
 
-	price, e := s.priceService.GetCurrentUnderlyingPrice(ctx, market)
-	if e != nil {
-		return decimal.Zero, e
-	}
-
+	price := market.Price
 	borrowAmount := liquidity.Div(price)
 
 	return borrowAmount, nil

@@ -24,6 +24,7 @@ require (
 	github.com/lib/pq v1.10.0
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c
+	github.com/pandodao/blst v1.0.1
 	github.com/pelletier/go-toml v1.8.1 // indirect
 	github.com/qinix/gods v1.12.0
 	github.com/rs/cors v1.7.0

@@ -80,12 +80,7 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 		return e
 	}
 
-	price, e := w.priceService.GetCurrentUnderlyingPrice(ctx, market)
-	if e != nil {
-		log.Errorln(e)
-		return e
-	}
-
+	price := market.Price
 	exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
 	if e != nil {
 		log.Errorln(e)
