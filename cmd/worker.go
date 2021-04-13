@@ -6,7 +6,6 @@ import (
 	"compound/worker"
 	"compound/worker/cashier"
 	"compound/worker/message"
-	"compound/worker/priceoracle"
 	"compound/worker/snapshot"
 	"compound/worker/spentsync"
 	"compound/worker/syncer"
@@ -45,7 +44,6 @@ var workerCmd = &cobra.Command{
 		borrowStore := provideBorrowStore(db)
 		walletStore := provideWalletStore(db)
 		messageStore := provideMessageStore(db)
-		priceStore := providePriceStore(db)
 		proposalStore := provideProposalStore(db)
 		userStore := provideUserStore(db)
 		transactionStore := provideTransactionStore(db)
@@ -58,11 +56,10 @@ var workerCmd = &cobra.Command{
 		})
 
 		blockService := provideBlockService()
-		priceService := providePriceService(blockService)
 		marketService := provideMarketService(marketStore, blockService)
-		accountService := provideAccountService(marketStore, supplyStore, borrowStore, priceService, blockService, marketService)
+		accountService := provideAccountService(marketStore, supplyStore, borrowStore, blockService, marketService)
 		supplyService := provideSupplyService(marketService)
-		borrowService := provideBorrowService(blockService, priceService, accountService)
+		borrowService := provideBorrowService(blockService, accountService)
 		messageService := provideMessageService(dapp.Client)
 		proposalService := provideProposalService(dapp.Client, system, marketStore, messageStore)
 		allowListService := provideAllowListService(propertyStore, allowListStore)
@@ -87,8 +84,7 @@ var workerCmd = &cobra.Command{
 		workers := []worker.Worker{
 			cashier.New(walletStore, walletService, system),
 			message.New(messageStore, messageService),
-			priceoracle.New(system, dapp, marketStore, priceStore, priceService),
-			snapshot.NewPayee(system, dapp, propertyStore, userStore, walletStore, priceStore, marketStore, supplyStore, borrowStore, proposalStore, transactionStore, proposalService, priceService, blockService, marketService, supplyService, borrowService, accountService, allowListService),
+			snapshot.NewPayee(system, dapp, propertyStore, userStore, walletStore, marketStore, supplyStore, borrowStore, proposalStore, transactionStore, proposalService, blockService, marketService, supplyService, borrowService, accountService, allowListService),
 			syncer.New(walletStore, walletService, propertyStore),
 			txsender.New(walletStore),
 			spentsync.New(db, walletStore, transactionStore),

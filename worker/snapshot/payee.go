@@ -29,7 +29,6 @@ type Payee struct {
 	propertyStore    property.Store
 	userStore        core.UserStore
 	walletStore      core.WalletStore
-	priceStore       core.IPriceStore
 	marketStore      core.IMarketStore
 	supplyStore      core.ISupplyStore
 	borrowStore      core.IBorrowStore
@@ -37,7 +36,6 @@ type Payee struct {
 	transactionStore core.TransactionStore
 	proposalService  core.ProposalService
 	blockService     core.IBlockService
-	priceService     core.IPriceOracleService
 	marketService    core.IMarketService
 	supplyService    core.ISupplyService
 	borrowService    core.IBorrowService
@@ -52,14 +50,12 @@ func NewPayee(
 	propertyStore property.Store,
 	userStore core.UserStore,
 	walletStore core.WalletStore,
-	priceStore core.IPriceStore,
 	marketStore core.IMarketStore,
 	supplyStore core.ISupplyStore,
 	borrowStore core.IBorrowStore,
 	proposalStore core.ProposalStore,
 	transactionStore core.TransactionStore,
 	proposalService core.ProposalService,
-	priceSrv core.IPriceOracleService,
 	blockService core.IBlockService,
 	marketSrv core.IMarketService,
 	supplyService core.ISupplyService,
@@ -72,14 +68,12 @@ func NewPayee(
 		propertyStore:    propertyStore,
 		userStore:        userStore,
 		walletStore:      walletStore,
-		priceStore:       priceStore,
 		marketStore:      marketStore,
 		supplyStore:      supplyStore,
 		borrowStore:      borrowStore,
 		proposalStore:    proposalStore,
 		transactionStore: transactionStore,
 		proposalService:  proposalService,
-		priceService:     priceSrv,
 		blockService:     blockService,
 		marketService:    marketSrv,
 		supplyService:    supplyService,
@@ -194,8 +188,6 @@ func (w *Payee) handleProposalAction(ctx context.Context, output *core.Output, m
 
 	if core.ActionType(actionType) == core.ActionTypeProposalVote {
 		return w.handleVoteProposalEvent(ctx, output, member, traceID.String())
-	} else if core.ActionType(actionType) == core.ActionTypeProposalProvidePrice {
-		return w.handleProposalProvidePriceEvent(ctx, output, member, traceID.String(), body)
 	}
 
 	return w.handleCreateProposalEvent(ctx, output, member, core.ActionType(actionType), traceID.String(), body)

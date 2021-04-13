@@ -123,22 +123,13 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 		return e
 	}
 
-	borrowPrice, e := w.priceService.GetCurrentUnderlyingPrice(ctx, borrowMarket)
-	if e != nil {
-		log.Errorln(e)
-		return e
-	}
-
+	borrowPrice := borrowMarket.Price
 	if borrowPrice.LessThanOrEqual(decimal.Zero) {
 		log.Errorln(e)
 		return e
 	}
 
-	supplyPrice, e := w.priceService.GetCurrentUnderlyingPrice(ctx, supplyMarket)
-	if e != nil {
-		log.Errorln(e)
-		return e
-	}
+	supplyPrice := supplyMarket.Price
 	if supplyPrice.LessThanOrEqual(decimal.Zero) {
 		log.Errorln(e)
 		return e
