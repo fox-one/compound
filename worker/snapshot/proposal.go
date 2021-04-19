@@ -28,6 +28,9 @@ func (w *Payee) handleVoteProposalEvent(ctx context.Context, output *core.Output
 	}
 
 	passed := p.PassedAt.Valid
+	if passed {
+		return nil
+	}
 
 	if !passed && !govalidator.IsIn(member.ClientID, p.Votes...) {
 		p.Votes = append(p.Votes, member.ClientID)
