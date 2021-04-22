@@ -154,7 +154,7 @@ func BuildTransactionFromTransfer(ctx context.Context, transfer *Transfer, snaps
 	if len(transfer.Opponents) > 0 {
 		userID = transfer.Opponents[0]
 	}
-
+	
 	transactionExtra := NewTransactionExtra()
 	transactionExtra.Put(TransactionKeyOrigin, transferAction.Origin)
 	if transferAction.Code > 0 {
