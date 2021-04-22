@@ -68,4 +68,10 @@ const (
 	ActionTypeProposalRemoveAllowList
 	// ActionTypeUpdateMarket update market
 	ActionTypeUpdateMarket
+	// ActionTypeQuickPledge supply -> pledge
+	ActionTypeQuickPledge
+	// ActionTypeQuickBorrow supply -> pledge -> borrow
+	ActionTypeQuickBorrow
+	// ActionTypeQuickBorrowTransfer quick borrow transfer
+	ActionTypeQuickBorrowTransfer
 )

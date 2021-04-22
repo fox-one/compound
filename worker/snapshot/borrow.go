@@ -82,6 +82,7 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 				return e
 			}
 		} else {
+			log.Errorln(e)
 			return e
 		}
 	} else {

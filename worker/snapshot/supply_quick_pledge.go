@@ -10,18 +10,18 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// handle pledge event
-func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
-	log := logger.FromContext(ctx).WithField("worker", "pledge")
-	ctokens := output.Amount
-	ctokenAssetID := output.AssetID
+// handle quick pledge event, supply and then pledge
+func (w *Payee) handleQuickPledgeEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
+	log := logger.FromContext(ctx).WithField("worker", "supply_pledge")
 
-	log.Infof("ctokenAssetID:%s, amount:%s", ctokenAssetID, ctokens)
+	//supply
+	supplyAmount := output.Amount
+	assetID := output.AssetID
 
-	market, isRecordNotFound, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
+	market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)
 	if isRecordNotFound {
 		log.Warningln("market not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypePledge, core.ErrMarketNotFound)
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrMarketNotFound)
 	}
 	if e != nil {
 		log.WithError(e).Errorln("find market error")
@@ -29,28 +29,39 @@ func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, user
 	}
 
 	if w.marketService.IsMarketClosed(ctx, market) {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypePledge, core.ErrMarketClosed)
-	}
-
-	if ctokens.GreaterThan(market.CTokens) {
-		log.Errorln(errors.New("ctoken overflow"))
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypePledge, core.ErrPledgeNotAllowed)
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrMarketClosed)
 	}
 
 	if market.CollateralFactor.LessThanOrEqual(decimal.Zero) {
 		log.Errorln(errors.New("pledge disallowed"))
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypePledge, core.ErrPledgeNotAllowed)
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrPledgeNotAllowed)
 	}
 
 	//accrue interest
 	if e = w.marketService.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
-		log.WithError(e).Errorln("accrue interest error")
+		log.Errorln(e)
 		return e
 	}
 
-	if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
-		log.WithError(e).Errorln("update market error")
+	exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
+	if e != nil {
+		log.Errorln(e)
 		return e
+	}
+
+	ctokens := supplyAmount.Div(exchangeRate).Truncate(8)
+	if ctokens.LessThan(decimal.NewFromFloat(0.00000001)) {
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrInvalidAmount)
+	}
+
+	//update maket
+	if output.ID > market.Version {
+		market.CTokens = market.CTokens.Add(ctokens).Truncate(16)
+		market.TotalCash = market.TotalCash.Add(supplyAmount).Truncate(16)
+		if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
+			log.Errorln(e)
+			return e
+		}
 	}
 
 	// market transaction
@@ -60,13 +71,14 @@ func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, user
 		return e
 	}
 
-	supply, isRecordNotFound, e := w.supplyStore.Find(ctx, userID, ctokenAssetID)
+	// pledge
+	supply, isRecordNotFound, e := w.supplyStore.Find(ctx, userID, market.CTokenAssetID)
 	if e != nil {
 		if isRecordNotFound {
 			//not exists, create
 			supply = &core.Supply{
 				UserID:        userID,
-				CTokenAssetID: ctokenAssetID,
+				CTokenAssetID: market.CTokenAssetID,
 				Collaterals:   ctokens,
 			}
 			if e = w.supplyStore.Save(ctx, supply); e != nil {
@@ -91,12 +103,14 @@ func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, user
 
 	// pledge transaction
 	extra := core.NewTransactionExtra()
+	extra.Put(core.TransactionKeyCTokenAssetID, market.CTokenAssetID)
+	extra.Put(core.TransactionKeyAmount, ctokens)
 	extra.Put(core.TransactionKeySupply, core.ExtraSupply{
 		UserID:        supply.UserID,
 		CTokenAssetID: supply.CTokenAssetID,
 		Collaterals:   supply.Collaterals,
 	})
-	transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypePledge, output, extra)
+	transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeQuickPledge, output, extra)
 	if e = w.transactionStore.Create(ctx, transaction); e != nil {
 		log.WithError(e).Errorln("create transaction error")
 		return e

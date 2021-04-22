@@ -207,6 +207,10 @@ func (w *Payee) handleUserAction(ctx context.Context, output *core.Output, actio
 		return w.handlePledgeEvent(ctx, output, userID, followID, body)
 	case core.ActionTypeUnpledge:
 		return w.handleUnpledgeEvent(ctx, output, userID, followID, body)
+	case core.ActionTypeQuickPledge:
+		return w.handleQuickPledgeEvent(ctx, output, userID, followID, body)
+	case core.ActionTypeQuickBorrow:
+		return w.handleQuickBorrowEvent(ctx, output, userID, followID, body)
 	case core.ActionTypeLiquidate:
 		return w.handleLiquidationEvent(ctx, output, userID, followID, body)
 	default:
