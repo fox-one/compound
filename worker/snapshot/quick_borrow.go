@@ -14,9 +14,9 @@ import (
 
 // handle quick borrow event, supply, then pledge, and then borrow
 func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
-	log := logger.FromContext(ctx).WithField("worker", "supply_pledge")
+	log := logger.FromContext(ctx).WithField("worker", "quick_borrow")
 
-	// parse params
+	// parse params, either underlying asset or ctoken asset
 	supplyAmount := output.Amount
 	supplyAssetID := output.AssetID
 
@@ -30,11 +30,22 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 	borrowAssetID := borrowAsset.String()
 
 	// check supply market
+	isSupplyCToken := false
 	supplyMarket, isRecordNotFound, e := w.marketStore.Find(ctx, supplyAssetID)
 	if isRecordNotFound {
-		log.Warningln("market not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrMarketNotFound)
+		supplyMarket, isRecordNotFound, e = w.marketStore.FindByCToken(ctx, supplyAssetID)
+		if isRecordNotFound {
+			log.Errorln("market not found")
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrMarketNotFound)
+		}
+		if e != nil {
+			log.WithError(e).Errorln("find market error")
+			return e
+		}
+
+		isSupplyCToken = true
 	}
+
 	if e != nil {
 		log.WithError(e).Errorln("find market error")
 		return e
@@ -103,7 +114,11 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 	}
 
 	// add the additional liquidity provided this time
-	liquidity = liquidity.Add(supplyAmount.Mul(supplyMarket.CollateralFactor).Mul(supplyMarket.Price))
+	if isSupplyCToken {
+		liquidity = liquidity.Add(supplyAmount.Mul(supplyMarket.ExchangeRate).Mul(supplyMarket.CollateralFactor).Mul(supplyMarket.Price))
+	} else {
+		liquidity = liquidity.Add(supplyAmount.Mul(supplyMarket.CollateralFactor).Mul(supplyMarket.Price))
+	}
 
 	borrowValue := borrowAmount.Mul(borrowMarket.Price)
 	if borrowValue.GreaterThan(liquidity) {
@@ -119,15 +134,24 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 	}
 
 	// supply, calculate ctokens
-	ctokens := supplyAmount.Div(exchangeRate).Truncate(8)
+	ctokens := decimal.Zero
+	if isSupplyCToken {
+		ctokens = supplyAmount
+	} else {
+		ctokens = supplyAmount.Div(exchangeRate).Truncate(8)
+	}
+
 	if ctokens.LessThan(decimal.NewFromFloat(0.00000001)) {
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrInvalidAmount)
 	}
 
-	//update supply maket
 	if output.ID > supplyMarket.Version {
-		supplyMarket.CTokens = supplyMarket.CTokens.Add(ctokens).Truncate(16)
-		supplyMarket.TotalCash = supplyMarket.TotalCash.Add(supplyAmount).Truncate(16)
+		// Only update the ctokens and total_cash of market when the underlying assets are provided
+		if !isSupplyCToken {
+			supplyMarket.CTokens = supplyMarket.CTokens.Add(ctokens).Truncate(16)
+			supplyMarket.TotalCash = supplyMarket.TotalCash.Add(supplyAmount).Truncate(16)
+		}
+
 		if e = w.marketStore.Update(ctx, supplyMarket, output.ID); e != nil {
 			log.Errorln(e)
 			return e

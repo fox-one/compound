@@ -12,7 +12,7 @@ import (
 
 // handle quick pledge event, supply and then pledge
 func (w *Payee) handleQuickPledgeEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
-	log := logger.FromContext(ctx).WithField("worker", "supply_pledge")
+	log := logger.FromContext(ctx).WithField("worker", "quick_pledge")
 
 	//supply
 	supplyAmount := output.Amount

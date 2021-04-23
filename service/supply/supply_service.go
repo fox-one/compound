@@ -20,16 +20,7 @@ func New(
 }
 
 func (s *supplyService) RedeemAllowed(ctx context.Context, redeemTokens decimal.Decimal, market *core.Market) bool {
-	exchangeRate, e := s.marketService.CurExchangeRate(ctx, market)
-	if e != nil {
-		return false
-	}
-
-	amount := redeemTokens.Mul(exchangeRate)
+	amount := redeemTokens.Mul(market.ExchangeRate)
 	supplies := market.TotalCash.Sub(market.Reserves)
-	if amount.GreaterThan(supplies) {
-		return false
-	}
-
-	return true
+	return supplies.GreaterThan(amount)
 }

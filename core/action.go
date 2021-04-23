@@ -74,4 +74,8 @@ const (
 	ActionTypeQuickBorrow
 	// ActionTypeQuickBorrowTransfer quick borrow transfer
 	ActionTypeQuickBorrowTransfer
+	// ActionTypeQuickRedeem unpledge -> redeem
+	ActionTypeQuickRedeem
+	// ActionTypeQuickRedeem quick redeem transfer
+	ActionTypeQuickRedeemTransfer
 )

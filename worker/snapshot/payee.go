@@ -211,6 +211,8 @@ func (w *Payee) handleUserAction(ctx context.Context, output *core.Output, actio
 		return w.handleQuickPledgeEvent(ctx, output, userID, followID, body)
 	case core.ActionTypeQuickBorrow:
 		return w.handleQuickBorrowEvent(ctx, output, userID, followID, body)
+	case core.ActionTypeQuickRedeem:
+		return w.handleQuickRedeemEvent(ctx, output, userID, followID, body)
 	case core.ActionTypeLiquidate:
 		return w.handleLiquidationEvent(ctx, output, userID, followID, body)
 	default:
