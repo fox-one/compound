@@ -42,11 +42,13 @@ func _() {
 	_ = x[ActionTypeQuickPledge-31]
 	_ = x[ActionTypeQuickBorrow-32]
 	_ = x[ActionTypeQuickBorrowTransfer-33]
+	_ = x[ActionTypeQuickRedeem-34]
+	_ = x[ActionTypeQuickRedeemTransfer-35]
 }
 
-const _ActionType_name = "DefaultSupplyBorrowRedeemRepayMintPledgeUnpledgeLiquidateRedeemTransferUnpledgeTransferBorrowTransferLiquidateTransferRefundTransferRepayRefundTransferLiquidateRefundTransferProposalAddMarketProposalUpdateMarketProposalWithdrawReservesProposalProvidePriceProposalVoteProposalInjectCTokenForMintProposalUpdateMarketAdvanceProposalTransferProposalCloseMarketProposalOpenMarketProposalAddScopeProposalRemoveScopeProposalAddAllowListProposalRemoveAllowListUpdateMarketQuickPledgeQuickBorrowQuickBorrowTransfer"
+const _ActionType_name = "DefaultSupplyBorrowRedeemRepayMintPledgeUnpledgeLiquidateRedeemTransferUnpledgeTransferBorrowTransferLiquidateTransferRefundTransferRepayRefundTransferLiquidateRefundTransferProposalAddMarketProposalUpdateMarketProposalWithdrawReservesProposalProvidePriceProposalVoteProposalInjectCTokenForMintProposalUpdateMarketAdvanceProposalTransferProposalCloseMarketProposalOpenMarketProposalAddScopeProposalRemoveScopeProposalAddAllowListProposalRemoveAllowListUpdateMarketQuickPledgeQuickBorrowQuickBorrowTransferQuickRedeemQuickRedeemTransfer"
 
-var _ActionType_index = [...]uint16{0, 7, 13, 19, 25, 30, 34, 40, 48, 57, 71, 87, 101, 118, 132, 151, 174, 191, 211, 235, 255, 267, 294, 321, 337, 356, 374, 390, 409, 429, 452, 464, 475, 486, 505}
+var _ActionType_index = [...]uint16{0, 7, 13, 19, 25, 30, 34, 40, 48, 57, 71, 87, 101, 118, 132, 151, 174, 191, 211, 235, 255, 267, 294, 321, 337, 356, 374, 390, 409, 429, 452, 464, 475, 486, 505, 516, 535}
 
 func (i ActionType) String() string {
 	if i < 0 || i >= ActionType(len(_ActionType_index)-1) {
