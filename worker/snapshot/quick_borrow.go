@@ -255,8 +255,6 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 	extra := core.NewTransactionExtra()
 	extra.Put(core.TransactionKeyAssetID, borrowAssetID)
 	extra.Put(core.TransactionKeyAmount, borrowAmount)
-	extra.Put(core.TransactionKeyCTokens, ctokens)
-	extra.Put(core.TransactionKeyCTokenAssetID, supplyMarket.CTokenAssetID)
 	extra.Put(core.TransactionKeySupply, core.ExtraSupply{
 		UserID:        supply.UserID,
 		CTokenAssetID: supply.CTokenAssetID,
