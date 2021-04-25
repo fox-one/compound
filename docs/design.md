@@ -133,18 +133,6 @@ group:
 * [price](../worker/snapshot/price.go) handles the price protocal action event.
 
 
-### Price oracle 
-Price oracle uses the following methods to ensure the document of market price
-
-* Every node should deploy its own price oracle server.
-* Each node obtains the average price of the specified market within 1 hour through the price oracle service as the price provided by the current node and writes it on the main chain.
-* The compound uses m/n multi-signature to ensure that the price provided by at least m nodes of n nodes is valid before the price of the current block of the market is valid.
-	1. Sorts the prices provided by all nodes in ascending order of price.
-	2. Comparing adjacent prices, the price difference >=5% is invalid
-	3. If the remaining price meets the multi-sign m/n requirement, the price is valid this time.
-	4. Calculate the average value of m prices as the current block price in the market.
-* When the price is maliciously attacked, since the average price within 1 hour is used as the market price, the malicious price has limited impact on the market. At the same time, managers can decide whether it is necessary to `close-market` at the same time. After restoration of `open-market`.
-
 ### Market Trade-Curbing Mechanism
 
 > Close the market when the price of a certain market is abnormal.
