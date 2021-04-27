@@ -136,6 +136,20 @@ func (w *Payee) handleCreateProposalEvent(ctx context.Context, output *core.Outp
 			return nil
 		}
 		p.Content, _ = json.Marshal(content)
+	case core.ActionTypeProposalAddOracleSigner:
+		var content proposal.AddOracleSignerReq
+		if _, err := mtg.Scan(body, &content); err != nil {
+			log.WithError(err).Errorln("decode proposal add oracle signer content err")
+			return nil
+		}
+		p.Content, _ = json.Marshal(content)
+	case core.ActionTypeProposalRemoveOracleSigner:
+		var content proposal.RemoveOracleSignerReq
+		if _, err := mtg.Scan(body, &content); err != nil {
+			log.WithError(err).Errorln("decode proposal remove oracle signer content err")
+			return nil
+		}
+		p.Content, _ = json.Marshal(content)
 	default:
 		log.Warningln("invalid proposal:", p.Action)
 		return nil
@@ -175,30 +189,46 @@ func (w *Payee) handlePassedProposal(ctx context.Context, p *core.Proposal, outp
 		var proposalReq proposal.WithdrawReq
 		_ = json.Unmarshal(p.Content, &proposalReq)
 		return w.handleWithdrawEvent(ctx, p, proposalReq, output)
+
 	case core.ActionTypeProposalCloseMarket:
 		var req proposal.MarketStatusReq
 		_ = json.Unmarshal(p.Content, &req)
 		return w.handleCloseMarketEvent(ctx, p, req, output)
+
 	case core.ActionTypeProposalOpenMarket:
 		var req proposal.MarketStatusReq
 		_ = json.Unmarshal(p.Content, &req)
 		return w.handleOpenMarketEvent(ctx, p, req, output)
+
 	case core.ActionTypeProposalAddScope:
 		var req proposal.ScopeReq
 		_ = json.Unmarshal(p.Content, &req)
 		return w.handleAddScopeEvent(ctx, p, req, output)
+
 	case core.ActionTypeProposalRemoveScope:
 		var req proposal.ScopeReq
 		_ = json.Unmarshal(p.Content, &req)
 		return w.handleRemoveScopeEvent(ctx, p, req, output)
+
 	case core.ActionTypeProposalAddAllowList:
 		var req proposal.AllowListReq
 		_ = json.Unmarshal(p.Content, &req)
 		return w.handleAddAllowListEvent(ctx, p, req, output)
+
 	case core.ActionTypeProposalRemoveAllowList:
 		var req proposal.AllowListReq
 		_ = json.Unmarshal(p.Content, &req)
 		return w.handleRemoveAllowListEvent(ctx, p, req, output)
+
+	case core.ActionTypeProposalAddOracleSigner:
+		var req proposal.AddOracleSignerReq
+		_ = json.Unmarshal(p.Content, &req)
+		return w.handleAddOracleSignerEvent(ctx, p, req, output)
+
+	case core.ActionTypeProposalRemoveOracleSigner:
+		var req proposal.RemoveOracleSignerReq
+		_ = json.Unmarshal(p.Content, &req)
+		return w.handleRemoveOracleSignerEvent(ctx, p, req, output)
 	}
 
 	return nil

@@ -78,4 +78,8 @@ const (
 	ActionTypeQuickRedeem
 	// ActionTypeQuickRedeem quick redeem transfer
 	ActionTypeQuickRedeemTransfer
+	// ActionTypeProposalAddOracleSigner add oracle signer proposal action
+	ActionTypeProposalAddOracleSigner
+	// ActionTypeProposalRemoveOracleSigner remove oracle signer proposal action
+	ActionTypeProposalRemoveOracleSigner
 )

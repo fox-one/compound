@@ -16,6 +16,7 @@ import (
 	"compound/store/market"
 	"compound/store/message"
 	"compound/store/operation"
+	"compound/store/oracle"
 	"compound/store/proposal"
 	"compound/store/supply"
 	"compound/store/transaction"
@@ -135,6 +136,10 @@ func provideTransactionStore(db *db.DB) core.TransactionStore {
 
 func provideAllowListStore(db *db.DB) core.IAllowListStore {
 	return operation.NewAllowListStore(db)
+}
+
+func provideOracleSignerStore(db *db.DB) core.OracleSignerStore {
+	return oracle.NewSignerStore(db)
 }
 
 // ------------------service------------------------------------

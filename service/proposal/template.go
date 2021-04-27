@@ -70,7 +70,7 @@ func renderApprovedBy(p *core.Proposal, member *core.Member) []byte {
 	}); err != nil {
 		panic(err)
 	}
-
+ 
 	return b.Bytes()
 }
 

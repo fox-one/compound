@@ -24,23 +24,24 @@ const (
 // Payee payee worker
 type Payee struct {
 	worker.TickWorker
-	system           *core.System
-	dapp             *core.Wallet
-	propertyStore    property.Store
-	userStore        core.UserStore
-	walletStore      core.WalletStore
-	marketStore      core.IMarketStore
-	supplyStore      core.ISupplyStore
-	borrowStore      core.IBorrowStore
-	proposalStore    core.ProposalStore
-	transactionStore core.TransactionStore
-	proposalService  core.ProposalService
-	blockService     core.IBlockService
-	marketService    core.IMarketService
-	supplyService    core.ISupplyService
-	borrowService    core.IBorrowService
-	accountService   core.IAccountService
-	allowListService core.IAllowListService
+	system            *core.System
+	dapp              *core.Wallet
+	propertyStore     property.Store
+	userStore         core.UserStore
+	walletStore       core.WalletStore
+	marketStore       core.IMarketStore
+	supplyStore       core.ISupplyStore
+	borrowStore       core.IBorrowStore
+	proposalStore     core.ProposalStore
+	transactionStore  core.TransactionStore
+	oracleSignerStore core.OracleSignerStore
+	proposalService   core.ProposalService
+	blockService      core.IBlockService
+	marketService     core.IMarketService
+	supplyService     core.ISupplyService
+	borrowService     core.IBorrowService
+	accountService    core.IAccountService
+	allowListService  core.IAllowListService
 }
 
 // NewPayee new payee
@@ -55,6 +56,7 @@ func NewPayee(
 	borrowStore core.IBorrowStore,
 	proposalStore core.ProposalStore,
 	transactionStore core.TransactionStore,
+	oracleSignerStr core.OracleSignerStore,
 	proposalService core.ProposalService,
 	blockService core.IBlockService,
 	marketSrv core.IMarketService,
@@ -63,23 +65,24 @@ func NewPayee(
 	accountService core.IAccountService,
 	allowListService core.IAllowListService) *Payee {
 	payee := Payee{
-		system:           system,
-		dapp:             dapp,
-		propertyStore:    propertyStore,
-		userStore:        userStore,
-		walletStore:      walletStore,
-		marketStore:      marketStore,
-		supplyStore:      supplyStore,
-		borrowStore:      borrowStore,
-		proposalStore:    proposalStore,
-		transactionStore: transactionStore,
-		proposalService:  proposalService,
-		blockService:     blockService,
-		marketService:    marketSrv,
-		supplyService:    supplyService,
-		borrowService:    borrowService,
-		accountService:   accountService,
-		allowListService: allowListService,
+		system:            system,
+		dapp:              dapp,
+		propertyStore:     propertyStore,
+		userStore:         userStore,
+		walletStore:       walletStore,
+		marketStore:       marketStore,
+		supplyStore:       supplyStore,
+		borrowStore:       borrowStore,
+		proposalStore:     proposalStore,
+		transactionStore:  transactionStore,
+		oracleSignerStore: oracleSignerStr,
+		proposalService:   proposalService,
+		blockService:      blockService,
+		marketService:     marketSrv,
+		supplyService:     supplyService,
+		borrowService:     borrowService,
+		accountService:    accountService,
+		allowListService:  allowListService,
 	}
 
 	return &payee
