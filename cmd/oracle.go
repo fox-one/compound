@@ -6,6 +6,7 @@ import (
 	"compound/pkg/id"
 	"compound/pkg/mtg"
 	"encoding/base64"
+	"fmt"
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/qrcode"
@@ -47,6 +48,8 @@ var addOracleSignerCmd = &cobra.Command{
 
 		sign := mtg.Sign(memo, system.SignKey)
 		memo = mtg.Pack(memo, sign)
+
+		fmt.Println(":", len(memo))
 
 		input := mixin.TransferInput{
 			AssetID: system.VoteAsset,
