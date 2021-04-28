@@ -10,12 +10,19 @@ import (
 
 	"github.com/asaskevich/govalidator"
 	"github.com/fox-one/pkg/logger"
+	"github.com/gofrs/uuid"
 )
 
-func (w *Payee) handleVoteProposalEvent(ctx context.Context, output *core.Output, member *core.Member, traceID string) error {
-	log := logger.FromContext(ctx).WithField("proposal", traceID)
+func (w *Payee) handleVoteProposalEvent(ctx context.Context, output *core.Output, member *core.Member, body []byte) error {
+	log := logger.FromContext(ctx).WithField("worker", "proposal_vote")
 
-	p, isRecordNotFound, err := w.proposalStore.Find(ctx, traceID)
+	var traceID uuid.UUID
+	_, err := mtg.Scan(body, &traceID)
+	if err != nil {
+		return nil
+	}
+
+	p, isRecordNotFound, err := w.proposalStore.Find(ctx, traceID.String())
 	if err != nil {
 		// 如果 proposal 不存在，直接跳过
 		if isRecordNotFound {

@@ -179,7 +179,7 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 
 func (w *Payee) handleProposalAction(ctx context.Context, output *core.Output, member *core.Member, action core.ActionType, body []byte) error {
 	if action == core.ActionTypeProposalVote {
-		return w.handleVoteProposalEvent(ctx, output, member, output.TraceID)
+		return w.handleVoteProposalEvent(ctx, output, member, body)
 	}
 
 	return w.handleCreateProposalEvent(ctx, output, member, action, output.TraceID, body)

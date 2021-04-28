@@ -35,9 +35,9 @@ type service struct {
 
 func (p *service) ProposalCreated(ctx context.Context, proposal *core.Proposal, by *core.Member) error {
 	buttons := generateButtons(ctx, p.marketStore, proposal)
-
+	trace, _ := uuid.FromString(proposal.TraceID)
 	uid, _ := uuid.FromString(p.system.ClientID)
-	memo, err := mtg.Encode(uid, int(core.ActionTypeProposalVote))
+	memo, err := mtg.Encode(uid, int(core.ActionTypeProposalVote), trace)
 	if err != nil {
 		return err
 	}
