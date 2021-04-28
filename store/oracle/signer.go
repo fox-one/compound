@@ -26,12 +26,12 @@ func NewSignerStore(db *db.DB) core.OracleSignerStore {
 }
 
 func (s *oracleSignerStore) Save(ctx context.Context, userID, publicKey string) error {
-	feed := core.OracleSigner{
+	signer := core.OracleSigner{
 		UserID:    userID,
 		PublicKey: publicKey,
 	}
 
-	return s.db.Update().Where("user_id = ?", userID).Assign(core.OracleSigner{UserID: userID, PublicKey: publicKey}).FirstOrCreate(&feed).Error
+	return s.db.Update().Where("user_id = ?", userID).Assign(core.OracleSigner{UserID: userID, PublicKey: publicKey}).FirstOrCreate(&signer).Error
 }
 
 func (s *oracleSignerStore) Delete(ctx context.Context, userID string) error {

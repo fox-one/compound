@@ -15,6 +15,7 @@ db:
 # 每个节点部署一个自己的price oracle
 price_oracle:
   end_point: https://poracle-dev.fox.one
+  threshold: 3
 
 dapp:
   num: 7000103159

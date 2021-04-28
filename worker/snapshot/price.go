@@ -3,6 +3,7 @@ package snapshot
 import (
 	"compound/core"
 	"context"
+	"encoding/base64"
 	"errors"
 
 	"github.com/fox-one/pkg/logger"
@@ -52,7 +53,30 @@ func (w *Payee) decodePriceTransaction(ctx context.Context, businessData []byte)
 		return nil, err
 	}
 
-	if verifyPriceData(&p, w.system.PriceOracleSigners, int(w.system.Threshold)) {
+	ss, err := w.oracleSignerStore.FindAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	signers := make([]*core.Signer, len(ss))
+	for idx, s := range ss {
+		bts, err := base64.StdEncoding.DecodeString(s.PublicKey)
+		if err != nil {
+			return nil, err
+		}
+
+		pub := blst.PublicKey{}
+		if err := pub.FromBytes(bts); err != nil {
+			return nil, err
+		}
+
+		signers[idx] = &core.Signer{
+			Index:     uint64(idx) + 1,
+			VerifyKey: &pub,
+		}
+	}
+
+	if verifyPriceData(&p, signers, int(w.system.Threshold)) {
 		return &p, nil
 	}
 
