@@ -33,7 +33,7 @@ var addAllowListCmd = &cobra.Command{
 	Short:   "add to allowlist",
 	Long:    "enable user doing something of the specified scope, such as liquidation",
 	Run: func(cmd *cobra.Command, args []string) {
-		buildProposalTransfer(cmd, func(ctx context.Context, clientID, traceID uuid.UUID) ([]byte, error) {
+		buildProposalTransfer(cmd, func(ctx context.Context, clientID uuid.UUID) ([]byte, error) {
 			userID, err := cmd.Flags().GetString("user")
 			if err != nil {
 				panic(err)
@@ -59,14 +59,14 @@ var addAllowListCmd = &cobra.Command{
 					Scope: scope,
 				}
 
-				memo, err = mtg.Encode(clientID, traceID, int(core.ActionTypeProposalAddScope), scopeReq)
+				memo, err = mtg.Encode(clientID, int(core.ActionTypeProposalAddScope), scopeReq)
 			} else {
 				allowListReq := proposal.AllowListReq{
 					UserID: userID,
 					Scope:  scope,
 				}
 
-				memo, err = mtg.Encode(clientID, traceID, int(core.ActionTypeProposalAddAllowList), allowListReq)
+				memo, err = mtg.Encode(clientID, int(core.ActionTypeProposalAddAllowList), allowListReq)
 			}
 
 			return memo, err
@@ -80,7 +80,7 @@ var removeAllowListCmd = &cobra.Command{
 	Short:   "remove from allowlist",
 	Long:    "disable user doing something of the specified scope, such as liquidation",
 	Run: func(cmd *cobra.Command, args []string) {
-		buildProposalTransfer(cmd, func(ctx context.Context, clientID, traceID uuid.UUID) ([]byte, error) {
+		buildProposalTransfer(cmd, func(ctx context.Context, clientID uuid.UUID) ([]byte, error) {
 			userID, err := cmd.Flags().GetString("user")
 			if err != nil {
 				panic(err)
@@ -106,14 +106,14 @@ var removeAllowListCmd = &cobra.Command{
 					Scope: scope,
 				}
 
-				memo, err = mtg.Encode(clientID, traceID, int(core.ActionTypeProposalRemoveScope), scopeReq)
+				memo, err = mtg.Encode(clientID, int(core.ActionTypeProposalRemoveScope), scopeReq)
 			} else {
 				allowListReq := proposal.AllowListReq{
 					UserID: userID,
 					Scope:  scope,
 				}
 
-				memo, err = mtg.Encode(clientID, traceID, int(core.ActionTypeProposalRemoveAllowList), allowListReq)
+				memo, err = mtg.Encode(clientID, int(core.ActionTypeProposalRemoveAllowList), allowListReq)
 			}
 
 			return memo, err
@@ -122,7 +122,7 @@ var removeAllowListCmd = &cobra.Command{
 }
 
 // BuildMemoFunc build memo func
-type BuildMemoFunc func(ctx context.Context, clientID, traceID uuid.UUID) ([]byte, error)
+type BuildMemoFunc func(ctx context.Context, clientID uuid.UUID) ([]byte, error)
 
 func buildProposalTransfer(cmd *cobra.Command, f BuildMemoFunc) {
 	ctx := cmd.Context()
@@ -132,7 +132,7 @@ func buildProposalTransfer(cmd *cobra.Command, f BuildMemoFunc) {
 	clientID, _ := uuid.FromString(system.ClientID)
 	traceID, _ := uuid.FromString(id.GenTraceID())
 
-	memo, err := f(ctx, clientID, traceID)
+	memo, err := f(ctx, clientID)
 	if err != nil {
 		panic(err)
 	}

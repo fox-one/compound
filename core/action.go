@@ -83,3 +83,21 @@ const (
 	// ActionTypeProposalRemoveOracleSigner remove oracle signer proposal action
 	ActionTypeProposalRemoveOracleSigner
 )
+
+func (a ActionType) IsProposalAction() bool {
+	return a == ActionTypeProposalAddMarket ||
+		a == ActionTypeProposalUpdateMarket ||
+		a == ActionTypeProposalWithdrawReserves ||
+		a == ActionTypeProposalProvidePrice ||
+		a == ActionTypeProposalVote ||
+		a == ActionTypeProposalInjectCTokenForMint ||
+		a == ActionTypeProposalUpdateMarketAdvance ||
+		a == ActionTypeProposalCloseMarket ||
+		a == ActionTypeProposalOpenMarket ||
+		a == ActionTypeProposalAddScope ||
+		a == ActionTypeProposalRemoveScope ||
+		a == ActionTypeProposalAddAllowList ||
+		a == ActionTypeProposalRemoveAllowList ||
+		a == ActionTypeProposalAddOracleSigner ||
+		a == ActionTypeProposalRemoveOracleSigner
+}

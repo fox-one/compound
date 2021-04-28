@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/gofrs/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 // Member member
@@ -32,28 +33,68 @@ func DecodeUserTransactionAction(privateKey ed25519.PrivateKey, message []byte) 
 }
 
 // DecodeMemberProposalTransactionAction decode member vote transaction
-func DecodeMemberProposalTransactionAction(message []byte, members []*Member) (*Member, []byte, error) {
-	body, sig, err := mtg.Unpack(message)
-	if err != nil {
-		return nil, nil, err
+func DecodeMemberProposalTransactionAction(message []byte, members []*Member) (*Member, ActionType, []byte, error) {
+	member, action, data, e := decodeSignedPackedProposalData(message, members)
+	if e != nil {
+		return decodeRawProposalData(message, members)
 	}
 
-	var id uuid.UUID
-	content, err := mtg.Scan(body, &id)
+	return member, action, data, nil
+}
+
+func decodeSignedPackedProposalData(message []byte, members []*Member) (*Member, ActionType, []byte, error) {
+	body, sig, err := mtg.Unpack(message)
 	if err != nil {
-		return nil, nil, err
+		return nil, ActionTypeDefault, nil, err
+	}
+
+	var clientID uuid.UUID
+	var actionType int
+	content, err := mtg.Scan(body, &clientID, &actionType)
+	if err != nil {
+		return nil, ActionTypeDefault, nil, err
+	}
+
+	action := ActionType(actionType)
+	if !action.IsProposalAction() {
+		return nil, ActionTypeDefault, nil, errors.New("invalid proposal action")
 	}
 
 	for _, m := range members {
-		if m.ClientID != id.String() {
+		if m.ClientID != clientID.String() {
 			continue
 		}
 
 		if !mtg.Verify(body, sig, m.VerifyKey) {
-			return nil, nil, errors.New("verify sig failed")
+			return nil, action, nil, errors.New("verify sig failed")
 		}
-		return m, content, nil
+		return m, action, content, nil
 	}
 
-	return nil, nil, errors.New("member not found")
+	return nil, action, nil, errors.New("member not found")
+}
+
+func decodeRawProposalData(message []byte, members []*Member) (*Member, ActionType, []byte, error) {
+	var clientID uuid.UUID
+	var actionType int
+	content, err := mtg.Scan(message, &clientID, &actionType)
+	if err != nil {
+		logrus.Errorln("mtg scan error:", err)
+		return nil, ActionTypeDefault, nil, err
+	}
+
+	action := ActionType(actionType)
+	if !action.IsProposalAction() {
+		return nil, ActionTypeDefault, nil, errors.New("invalid proposal action")
+	}
+
+	for _, m := range members {
+		if m.ClientID != clientID.String() {
+			continue
+		}
+
+		return m, action, content, nil
+	}
+
+	return nil, action, content, nil
 }

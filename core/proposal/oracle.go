@@ -2,6 +2,7 @@ package proposal
 
 import (
 	"compound/pkg/mtg"
+	"encoding/base64"
 
 	"github.com/gofrs/uuid"
 )
@@ -22,20 +23,25 @@ func (r AddOracleSignerReq) MarshalBinary() (data []byte, err error) {
 		return nil, err
 	}
 
-	return mtg.Encode(user, r.PublicKey)
+	pk, err := base64.StdEncoding.DecodeString(r.PublicKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return mtg.Encode(user, mtg.RawMessage(pk))
 }
 
 // UnmarshalBinary unmarshal bytes
 func (r *AddOracleSignerReq) UnmarshalBinary(data []byte) error {
 	var user uuid.UUID
-	var publicKey string
+	var publicKey mtg.RawMessage
 
 	if _, err := mtg.Scan(data, &user, &publicKey); err != nil {
 		return err
 	}
 
 	r.UserID = user.String()
-	r.PublicKey = publicKey
+	r.PublicKey = base64.StdEncoding.EncodeToString(publicKey)
 
 	return nil
 }

@@ -135,8 +135,8 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 	businessData := w.decodeMemo(output.Memo)
 
 	// handle member proposal action
-	if member, body, err := core.DecodeMemberProposalTransactionAction(businessData, w.system.Members); err == nil {
-		return w.handleProposalAction(ctx, output, member, body)
+	if member, action, body, err := core.DecodeMemberProposalTransactionAction(businessData, w.system.Members); err == nil {
+		return w.handleProposalAction(ctx, output, member, action, body)
 	}
 
 	// handle price provided by dirtoracle
@@ -177,23 +177,12 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 	return w.handleUserAction(ctx, output, actionType, output.Sender, followID.String(), body)
 }
 
-func (w *Payee) handleProposalAction(ctx context.Context, output *core.Output, member *core.Member, body []byte) error {
-	log := logger.FromContext(ctx)
-
-	var traceID uuid.UUID
-	var actionType int
-
-	body, err := mtg.Scan(body, &traceID, &actionType)
-	if err != nil {
-		log.WithError(err).Debugln("scan proposal trace & action failed")
-		return nil
+func (w *Payee) handleProposalAction(ctx context.Context, output *core.Output, member *core.Member, action core.ActionType, body []byte) error {
+	if action == core.ActionTypeProposalVote {
+		return w.handleVoteProposalEvent(ctx, output, member, output.TraceID)
 	}
 
-	if core.ActionType(actionType) == core.ActionTypeProposalVote {
-		return w.handleVoteProposalEvent(ctx, output, member, traceID.String())
-	}
-
-	return w.handleCreateProposalEvent(ctx, output, member, core.ActionType(actionType), traceID.String(), body)
+	return w.handleCreateProposalEvent(ctx, output, member, action, output.TraceID, body)
 }
 
 func (w *Payee) handleUserAction(ctx context.Context, output *core.Output, actionType core.ActionType, userID, followID string, body []byte) error {

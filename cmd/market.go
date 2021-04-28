@@ -47,7 +47,7 @@ var addMarketCmd = &cobra.Command{
 			AssetID:       assetID,
 			CTokenAssetID: ctokenAssetID,
 		}
-		memo, err := mtg.Encode(clientID, traceID, int(core.ActionTypeProposalAddMarket), addMarketReq)
+		memo, err := mtg.Encode(clientID, int(core.ActionTypeProposalAddMarket), addMarketReq)
 		if err != nil {
 			panic(err)
 		}
@@ -132,7 +132,7 @@ var updateMarketCmd = &cobra.Command{
 		br, _ := decimal.NewFromString(flag)
 		updateMarketReq.BaseRate = br
 
-		memo, err := mtg.Encode(clientID, traceID, int(core.ActionTypeProposalUpdateMarket), updateMarketReq)
+		memo, err := mtg.Encode(clientID, int(core.ActionTypeProposalUpdateMarket), updateMarketReq)
 		if err != nil {
 			panic(err)
 		}
@@ -218,7 +218,7 @@ var updateMarketAdvanceCmd = &cobra.Command{
 		k, _ := decimal.NewFromString(flag)
 		updateMarketReq.Kink = k
 
-		memo, err := mtg.Encode(clientID, traceID, int(core.ActionTypeProposalUpdateMarketAdvance), updateMarketReq)
+		memo, err := mtg.Encode(clientID, int(core.ActionTypeProposalUpdateMarketAdvance), updateMarketReq)
 		if err != nil {
 			panic(err)
 		}
@@ -270,7 +270,7 @@ var closeMarketCmd = &cobra.Command{
 		}
 		closeMarketReq.AssetID = asset
 
-		memo, err := mtg.Encode(clientID, traceID, int(core.ActionTypeProposalCloseMarket), closeMarketReq)
+		memo, err := mtg.Encode(clientID, int(core.ActionTypeProposalCloseMarket), closeMarketReq)
 		if err != nil {
 			panic(err)
 		}
@@ -322,7 +322,7 @@ var openMarketCmd = &cobra.Command{
 		}
 		openMarketReq.AssetID = asset
 
-		memo, err := mtg.Encode(clientID, traceID, int(core.ActionTypeProposalOpenMarket), openMarketReq)
+		memo, err := mtg.Encode(clientID, int(core.ActionTypeProposalOpenMarket), openMarketReq)
 		if err != nil {
 			panic(err)
 		}

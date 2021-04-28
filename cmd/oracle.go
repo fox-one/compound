@@ -41,21 +41,25 @@ var addOracleSignerCmd = &cobra.Command{
 			PublicKey: publicKey,
 		}
 
-		memo, err := mtg.Encode(clientID, traceID, int(core.ActionTypeProposalAddOracleSigner), req)
+		memo, err := mtg.Encode(clientID, int(core.ActionTypeProposalAddOracleSigner), req)
 		if err != nil {
 			panic(err)
 		}
 
 		sign := mtg.Sign(memo, system.SignKey)
-		memo = mtg.Pack(memo, sign)
+		signedMemo := mtg.Pack(memo, sign)
 
-		fmt.Println(":", len(memo))
+		memoStr := base64.StdEncoding.EncodeToString(signedMemo)
+		if len(memoStr) > 200 {
+			memoStr = base64.StdEncoding.EncodeToString(memo)
+		}
 
+		fmt.Println("memo length:", len(memoStr))
 		input := mixin.TransferInput{
 			AssetID: system.VoteAsset,
 			Amount:  system.VoteAmount,
 			TraceID: traceID.String(),
-			Memo:    base64.StdEncoding.EncodeToString(memo),
+			Memo:    memoStr,
 		}
 		input.OpponentMultisig.Receivers = system.MemberIDs()
 		input.OpponentMultisig.Threshold = system.Threshold
@@ -96,7 +100,7 @@ var removeOracleSignerCmd = &cobra.Command{
 			UserID: user,
 		}
 
-		memo, err := mtg.Encode(clientID, traceID, int(core.ActionTypeProposalRemoveOracleSigner), req)
+		memo, err := mtg.Encode(clientID, int(core.ActionTypeProposalRemoveOracleSigner), req)
 		if err != nil {
 			panic(err)
 		}

@@ -8,6 +8,7 @@ require (
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
 	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/fox-one/mixin-sdk-go v1.3.5
+	github.com/fox-one/msgpack v1.0.0 // indirect
 	github.com/fox-one/pkg v1.5.5
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/go-chi/chi v4.1.2+incompatible
