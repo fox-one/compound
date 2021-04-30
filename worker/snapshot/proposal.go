@@ -41,7 +41,6 @@ func (w *Payee) handleVoteProposalEvent(ctx context.Context, output *core.Output
 
 	if !passed && !govalidator.IsIn(member.ClientID, p.Votes...) {
 		p.Votes = append(p.Votes, member.ClientID)
-		p.Version = output.ID
 		log.Infof("Proposal Voted by %s", member.ClientID)
 
 		if err := w.proposalService.ProposalApproved(ctx, p, member); err != nil {
