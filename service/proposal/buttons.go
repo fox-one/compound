@@ -5,7 +5,6 @@ import (
 	"compound/core/proposal"
 	"context"
 	"encoding/json"
-	"strings"
 
 	"fmt"
 
@@ -19,28 +18,10 @@ func generateButtons(ctx context.Context, marketStore core.IMarketStore, p *core
 
 	switch p.Action {
 	case core.ActionTypeProposalAddMarket:
-		var action proposal.AddMarketReq
+		var action proposal.MarketReq
 		_ = json.Unmarshal(p.Content, &action)
 		buttons = appendAsset(buttons, "Asset", action.AssetID)
 		buttons = appendAsset(buttons, "CToken", action.CTokenAssetID)
-	case core.ActionTypeProposalUpdateMarket:
-		var action proposal.UpdateMarketReq
-		_ = json.Unmarshal(p.Content, &action)
-		symbol := strings.ToUpper(action.Symbol)
-		market, _, e := marketStore.FindBySymbol(ctx, symbol)
-		if e != nil {
-			return buttons
-		}
-		buttons = appendAsset(buttons, "Asset", market.AssetID)
-	case core.ActionTypeProposalUpdateMarketAdvance:
-		var action proposal.UpdateMarketAdvanceReq
-		_ = json.Unmarshal(p.Content, &action)
-		symbol := strings.ToUpper(action.Symbol)
-		market, _, e := marketStore.FindBySymbol(ctx, symbol)
-		if e != nil {
-			return buttons
-		}
-		buttons = appendAsset(buttons, "Asset", market.AssetID)
 	case core.ActionTypeProposalWithdrawReserves:
 		var action proposal.WithdrawReq
 		_ = json.Unmarshal(p.Content, &action)

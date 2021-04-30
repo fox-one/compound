@@ -12,15 +12,42 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-func (w *Payee) handleUpdateMarketEvent(ctx context.Context, p *core.Proposal, req proposal.UpdateMarketReq, output *core.Output) error {
-	log := logger.FromContext(ctx).WithField("worker", "update-market")
+func (w *Payee) handleMarketEvent(ctx context.Context, p *core.Proposal, req proposal.MarketReq, output *core.Output) error {
+	log := logger.FromContext(ctx).WithField("worker", "add-market")
 
-	market, isRecordNotFound, e := w.marketStore.FindBySymbol(ctx, strings.ToUpper(req.Symbol))
+	log.Infof("asset:%s", req.AssetID)
+	market, isRecordNotFound, e := w.marketStore.Find(ctx, req.AssetID)
 	if e != nil {
 		if isRecordNotFound {
+			market = &core.Market{
+				Symbol:               strings.ToUpper(req.Symbol),
+				AssetID:              req.AssetID,
+				CTokenAssetID:        req.CTokenAssetID,
+				InitExchangeRate:     req.InitExchange,
+				ReserveFactor:        req.ReserveFactor,
+				LiquidationIncentive: req.LiquidationIncentive,
+				BorrowCap:            req.BorrowCap,
+				CollateralFactor:     req.CollateralFactor,
+				CloseFactor:          req.CloseFactor,
+				BaseRate:             req.BaseRate,
+				Multiplier:           req.Multiplier,
+				JumpMultiplier:       req.JumpMultiplier,
+				Kink:                 req.Kink,
+				Status:               core.MarketStatusClose,
+			}
+
+			if e = w.marketStore.Save(ctx, market); e != nil {
+				return e
+			}
+
+			// market transaction
+			marketTransaction := core.BuildMarketUpdateTransaction(ctx, market, foxuuid.Modify(output.TraceID, "update_market"))
+			if e = w.transactionStore.Create(ctx, marketTransaction); e != nil {
+				log.WithError(e).Errorln("create transaction error")
+				return e
+			}
 			return nil
 		}
-
 		return e
 	}
 
@@ -48,35 +75,6 @@ func (w *Payee) handleUpdateMarketEvent(ctx context.Context, p *core.Proposal, r
 
 	if req.BaseRate.GreaterThan(decimal.Zero) && req.BaseRate.LessThan(decimal.NewFromInt(1)) {
 		market.BaseRate = req.BaseRate
-	}
-
-	if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
-		log.Errorln(e)
-		return e
-	}
-
-	marketTransaction := core.BuildMarketUpdateTransaction(ctx, market, foxuuid.Modify(output.TraceID, "update_market"))
-	if e = w.transactionStore.Create(ctx, marketTransaction); e != nil {
-		log.WithError(e).Errorln("create transaction error")
-		return e
-	}
-
-	return nil
-}
-
-func (w *Payee) handleUpdateMarketAdvanceEvent(ctx context.Context, p *core.Proposal, req proposal.UpdateMarketAdvanceReq, output *core.Output) error {
-	log := logger.FromContext(ctx).WithField("worker", "update-market-advance")
-	market, isRecordNotFound, e := w.marketStore.FindBySymbol(ctx, strings.ToUpper(req.Symbol))
-	if e != nil {
-		if isRecordNotFound {
-			return nil
-		}
-
-		return e
-	}
-
-	if e = w.marketService.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
-		return e
 	}
 
 	if req.BorrowCap.GreaterThanOrEqual(decimal.Zero) {

@@ -54,9 +54,9 @@ func toUpdateParams(proposal *core.Proposal) map[string]interface{} {
 	}
 }
 
-func (s *proposalStore) Update(ctx context.Context, proposal *core.Proposal) error {
+func (s *proposalStore) Update(ctx context.Context, proposal *core.Proposal, version int64) error {
 	updates := toUpdateParams(proposal)
-	updates["version"] = proposal.Version + 1
+	updates["version"] = version
 
 	tx := s.db.Update().Model(proposal).Where("version = ?", proposal.Version).Updates(updates)
 	if tx.Error != nil {

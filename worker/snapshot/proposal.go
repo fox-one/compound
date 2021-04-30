@@ -35,12 +35,13 @@ func (w *Payee) handleVoteProposalEvent(ctx context.Context, output *core.Output
 	}
 
 	passed := p.PassedAt.Valid
-	if passed {
+	if passed && p.Version < output.ID {
 		return nil
 	}
 
 	if !passed && !govalidator.IsIn(member.ClientID, p.Votes...) {
 		p.Votes = append(p.Votes, member.ClientID)
+		p.Version = output.ID
 		log.Infof("Proposal Voted by %s", member.ClientID)
 
 		if err := w.proposalService.ProposalApproved(ctx, p, member); err != nil {
@@ -61,7 +62,7 @@ func (w *Payee) handleVoteProposalEvent(ctx context.Context, output *core.Output
 			}
 		}
 
-		if err := w.proposalStore.Update(ctx, p); err != nil {
+		if err := w.proposalStore.Update(ctx, p, output.ID); err != nil {
 			log.WithError(err).Errorln("proposals.Update")
 			return err
 		}
@@ -88,23 +89,9 @@ func (w *Payee) handleCreateProposalEvent(ctx context.Context, output *core.Outp
 
 	switch p.Action {
 	case core.ActionTypeProposalAddMarket:
-		var content proposal.AddMarketReq
+		var content proposal.MarketReq
 		if _, err := mtg.Scan(body, &content); err != nil {
 			log.WithError(err).Errorln("decode proposal AddMarket content error")
-			return nil
-		}
-		p.Content, _ = json.Marshal(content)
-	case core.ActionTypeProposalUpdateMarket:
-		var content proposal.UpdateMarketReq
-		if _, err := mtg.Scan(body, &content); err != nil {
-			log.WithError(err).Errorln("decode proposal UpdateMarket content error")
-			return nil
-		}
-		p.Content, _ = json.Marshal(content)
-	case core.ActionTypeProposalUpdateMarketAdvance:
-		var content proposal.UpdateMarketAdvanceReq
-		if _, err := mtg.Scan(body, &content); err != nil {
-			log.WithError(err).Errorln("decode proposal UpdateMarketAdvance content error")
 			return nil
 		}
 		p.Content, _ = json.Marshal(content)
@@ -178,19 +165,9 @@ func (w *Payee) handleCreateProposalEvent(ctx context.Context, output *core.Outp
 func (w *Payee) handlePassedProposal(ctx context.Context, p *core.Proposal, output *core.Output) error {
 	switch p.Action {
 	case core.ActionTypeProposalAddMarket:
-		var proposalReq proposal.AddMarketReq
+		var proposalReq proposal.MarketReq
 		_ = json.Unmarshal(p.Content, &proposalReq)
-		return w.handleAddMarketEvent(ctx, p, proposalReq, output)
-
-	case core.ActionTypeProposalUpdateMarket:
-		var proposalReq proposal.UpdateMarketReq
-		_ = json.Unmarshal(p.Content, &proposalReq)
-		return w.handleUpdateMarketEvent(ctx, p, proposalReq, output)
-
-	case core.ActionTypeProposalUpdateMarketAdvance:
-		var proposalReq proposal.UpdateMarketAdvanceReq
-		_ = json.Unmarshal(p.Content, &proposalReq)
-		return w.handleUpdateMarketAdvanceEvent(ctx, p, proposalReq, output)
+		return w.handleMarketEvent(ctx, p, proposalReq, output)
 
 	case core.ActionTypeProposalWithdrawReserves:
 		var proposalReq proposal.WithdrawReq
