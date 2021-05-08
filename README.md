@@ -73,7 +73,7 @@ Due to the fluctuation of the market price, the value of a user's loan may excee
 
 ## [Governance](docs/governance.md)
 
-## [Userguide](docs/userguide.md)
+## [Userguide](docs/userguide.pdf)
 
 ## [LICENSE](LICENSE)
 
