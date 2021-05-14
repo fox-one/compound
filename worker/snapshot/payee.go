@@ -151,10 +151,9 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 		return nil
 	}
 
-	var reserveUserID uuid.UUID
 	// transaction trace id as order id, different from output trace id
 	var followID uuid.UUID
-	body, err = mtg.Scan(body, &reserveUserID, &followID)
+	body, err = mtg.Scan(body, &followID)
 	if err != nil {
 		log.WithError(err).Errorln("scan userID and followID error")
 		return nil
