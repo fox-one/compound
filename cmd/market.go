@@ -45,7 +45,7 @@ var addMarketCmd = &cobra.Command{
 		req := proposal.MarketReq{}
 
 		symbol, e := cmd.Flags().GetString("symbol")
-		if e != nil || symbol == "" {
+		if e != nil {
 			panic("invalid symbol")
 		}
 		req.Symbol = symbol
@@ -57,7 +57,7 @@ var addMarketCmd = &cobra.Command{
 		req.AssetID = assetID
 
 		ctokenAssetID, e := cmd.Flags().GetString("ctoken")
-		if e != nil || ctokenAssetID == "" {
+		if e != nil {
 			panic("invalid ctokenAssetID")
 		}
 		req.CTokenAssetID = ctokenAssetID
