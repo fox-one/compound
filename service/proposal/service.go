@@ -35,8 +35,14 @@ type service struct {
 
 func (p *service) ProposalCreated(ctx context.Context, proposal *core.Proposal, by *core.Member) error {
 	buttons := generateButtons(ctx, p.marketStore, proposal)
-	trace, _ := uuid.FromString(proposal.TraceID)
-	uid, _ := uuid.FromString(p.system.ClientID)
+	trace, err := uuid.FromString(proposal.TraceID)
+	if err != nil {
+		return err
+	}
+	uid, err := uuid.FromString(p.system.ClientID)
+	if err != nil {
+		return err
+	}
 	memo, err := mtg.Encode(uid, int(core.ActionTypeProposalVote), trace)
 	if err != nil {
 		return err
@@ -60,7 +66,10 @@ func (p *service) ProposalCreated(ctx context.Context, proposal *core.Proposal, 
 	}
 
 	buttons = appendCode(buttons, "Vote", payment.CodeID)
-	buttonsData, _ := json.Marshal(buttons)
+	buttonsData, err := json.Marshal(buttons)
+	if err != nil {
+		return err
+	}
 
 	post := renderProposal(proposal)
 
@@ -84,7 +93,17 @@ func (p *service) ProposalCreated(ctx context.Context, proposal *core.Proposal, 
 			Data:           base64.StdEncoding.EncodeToString(buttonsData),
 		}
 
-		messages = append(messages, core.BuildMessage(postMsg), core.BuildMessage(buttonMsg))
+		pmsg, err := core.BuildMessage(postMsg)
+		if err != nil {
+			return err
+		}
+		messages = append(messages, pmsg)
+
+		bmsg, err := core.BuildMessage(buttonMsg)
+		if err != nil {
+			return err
+		}
+		messages = append(messages, bmsg)
 	}
 
 	return p.messages.Create(ctx, messages)
@@ -97,7 +116,7 @@ func (p *service) ProposalApproved(ctx context.Context, proposal *core.Proposal,
 	post := renderApprovedBy(proposal, by)
 	for _, admin := range p.system.Admins {
 		quote := uuid.Modify(proposal.TraceID, p.system.ClientID+admin)
-		msg := &mixin.MessageRequest{
+		msgReq := &mixin.MessageRequest{
 			RecipientID:    admin,
 			ConversationID: mixin.UniqueConversationID(p.system.ClientID, admin),
 			MessageID:      uuid.Modify(quote, "Approved By "+by.ClientID),
@@ -106,7 +125,12 @@ func (p *service) ProposalApproved(ctx context.Context, proposal *core.Proposal,
 			QuoteMessageID: quote,
 		}
 
-		messages = append(messages, core.BuildMessage(msg))
+		msg, err := core.BuildMessage(msgReq)
+		if err != nil {
+			return err
+		}
+
+		messages = append(messages, msg)
 	}
 
 	return p.messages.Create(ctx, messages)
@@ -119,7 +143,7 @@ func (p *service) ProposalPassed(ctx context.Context, proposal *core.Proposal) e
 	post := []byte(passedTpl)
 	for _, admin := range p.system.Admins {
 		quote := uuid.Modify(proposal.TraceID, p.system.ClientID+admin)
-		msg := &mixin.MessageRequest{
+		msgReq := &mixin.MessageRequest{
 			RecipientID:    admin,
 			ConversationID: mixin.UniqueConversationID(p.system.ClientID, admin),
 			MessageID:      uuid.Modify(quote, "Proposal Passed"),
@@ -128,7 +152,12 @@ func (p *service) ProposalPassed(ctx context.Context, proposal *core.Proposal) e
 			QuoteMessageID: quote,
 		}
 
-		messages = append(messages, core.BuildMessage(msg))
+		msg, err := core.BuildMessage(msgReq)
+		if err != nil {
+			return err
+		}
+
+		messages = append(messages, msg)
 	}
 
 	return p.messages.Create(ctx, messages)

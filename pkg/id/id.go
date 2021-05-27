@@ -24,7 +24,10 @@ func GenReadableUint64ID() uint64 {
 
 	idStr := strings.ReplaceAll(formattedNow, "-", "") + fmt.Sprintf("%03d", now.Nanosecond()/1000000) + fmt.Sprintf("%02d", rand.Intn(100))
 
-	id, _ := strconv.ParseUint(idStr, 10, 64)
+	id, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		return 0
+	}
 
 	return id
 }
@@ -61,7 +64,10 @@ func Num2Str(id uint64) string {
 
 // Str2Num convert number string to uint64
 func Str2Num(idStr string) uint64 {
-	v, _ := strconv.ParseUint(idStr, 10, 64)
+	v, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		return 0
+	}
 	return v
 }
 

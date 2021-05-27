@@ -76,7 +76,10 @@ var workerCmd = &cobra.Command{
 
 			mux.Mount("/hc", hc.Handle(rootCmd.Version))
 
-			port, _ := cmd.Flags().GetInt("port")
+			port, err := cmd.Flags().GetInt("port")
+			if err != nil {
+				panic(err)
+			}
 			addr := fmt.Sprintf(":%d", port)
 
 			go http.ListenAndServe(addr, mux)

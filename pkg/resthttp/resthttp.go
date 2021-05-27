@@ -64,7 +64,10 @@ func Execute(request *resty.Request, method, url string, body interface{}, resp 
 func ParseResponse(r *resty.Response, obj interface{}) error {
 	//fail
 	if !r.IsSuccess() {
-		json.Unmarshal(r.Body(), obj)
+		err := json.Unmarshal(r.Body(), obj)
+		if err != nil {
+			return err
+		}
 		return fmt.Errorf(string(r.Body()))
 	}
 

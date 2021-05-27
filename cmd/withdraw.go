@@ -25,8 +25,14 @@ var withdrawCmd = &cobra.Command{
 		system := provideSystem()
 		dapp := provideDapp()
 
-		clientID, _ := uuid.FromString(system.ClientID)
-		traceID, _ := uuid.FromString(id.GenTraceID())
+		clientID, err := uuid.FromString(system.ClientID)
+		if err != nil {
+			panic(err)
+		}
+		traceID, err := uuid.FromString(id.GenTraceID())
+		if err != nil {
+			panic(err)
+		}
 
 		opponent, err := cmd.Flags().GetString("opponent")
 		if err != nil {

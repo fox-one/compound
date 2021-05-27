@@ -26,11 +26,23 @@ var addOracleSignerCmd = &cobra.Command{
 		system := provideSystem()
 		dapp := provideDapp()
 
-		clientID, _ := uuid.FromString(system.ClientID)
-		traceID, _ := uuid.FromString(id.GenTraceID())
+		clientID, err := uuid.FromString(system.ClientID)
+		if err != nil {
+			panic(err)
+		}
+		traceID, err := uuid.FromString(id.GenTraceID())
+		if err != nil {
+			panic(err)
+		}
 
-		user, _ := cmd.Flags().GetString("user")
-		publicKey, _ := cmd.Flags().GetString("key")
+		user, err := cmd.Flags().GetString("user")
+		if err != nil {
+			panic(err)
+		}
+		publicKey, err := cmd.Flags().GetString("key")
+		if err != nil {
+			panic(err)
+		}
 
 		if user == "" || publicKey == "" {
 			panic("no user or public key")
@@ -87,10 +99,19 @@ var removeOracleSignerCmd = &cobra.Command{
 		system := provideSystem()
 		dapp := provideDapp()
 
-		clientID, _ := uuid.FromString(system.ClientID)
-		traceID, _ := uuid.FromString(id.GenTraceID())
+		clientID, err := uuid.FromString(system.ClientID)
+		if err != nil {
+			panic(err)
+		}
+		traceID, err := uuid.FromString(id.GenTraceID())
+		if err != nil {
+			panic(err)
+		}
 
-		user, _ := cmd.Flags().GetString("user")
+		user, err := cmd.Flags().GetString("user")
+		if err != nil {
+			panic(err)
+		}
 
 		if user == "" {
 			panic("no user")

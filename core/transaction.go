@@ -145,16 +145,19 @@ func BuildTransactionFromOutput(ctx context.Context, userID, followID string, ac
 }
 
 // BuildTransactionFromTransfer transaction from transfer
-func BuildTransactionFromTransfer(ctx context.Context, transfer *Transfer, snapshotTraceID string) *Transaction {
+func BuildTransactionFromTransfer(ctx context.Context, transfer *Transfer, snapshotTraceID string) (*Transaction, error) {
 	var transferAction TransferAction
 	m := decodeTransferMemo(transfer.Memo)
-	_ = json.Unmarshal(m, &transferAction)
+	err := json.Unmarshal(m, &transferAction)
+	if err != nil {
+		return nil, err
+	}
 
 	userID := ""
 	if len(transfer.Opponents) > 0 {
 		userID = transfer.Opponents[0]
 	}
-	
+
 	transactionExtra := NewTransactionExtra()
 	transactionExtra.Put(TransactionKeyOrigin, transferAction.Origin)
 	if transferAction.Code > 0 {
@@ -175,7 +178,7 @@ func BuildTransactionFromTransfer(ctx context.Context, transfer *Transfer, snaps
 		AssetID:         transfer.AssetID,
 		SnapshotTraceID: snapshotTraceID,
 		Data:            transactionExtra.Format(),
-	}
+	}, nil
 }
 
 func BuildMarketUpdateTransaction(ctx context.Context, market *Market, traceID string) *Transaction {

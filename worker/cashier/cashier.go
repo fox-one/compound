@@ -60,7 +60,10 @@ func (w *Cashier) onWork(ctx context.Context) error {
 	}
 
 	for _, transfer := range transfers {
-		_ = w.handleTransfer(ctx, transfer)
+		err := w.handleTransfer(ctx, transfer)
+		if err != nil {
+			continue
+		}
 	}
 
 	return nil

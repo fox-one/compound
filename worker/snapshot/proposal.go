@@ -93,56 +93,88 @@ func (w *Payee) handleCreateProposalEvent(ctx context.Context, output *core.Outp
 			log.WithError(err).Errorln("decode proposal AddMarket content error")
 			return nil
 		}
-		p.Content, _ = json.Marshal(content)
+		bs, err := json.Marshal(content)
+		if err != nil {
+			return err
+		}
+		p.Content = bs
 	case core.ActionTypeProposalWithdrawReserves:
 		var content proposal.WithdrawReq
 		if _, err := mtg.Scan(body, &content); err != nil {
 			log.WithError(err).Errorln("decode proposal WithdrawReserves content error")
 			return nil
 		}
-		p.Content, _ = json.Marshal(content)
+		bs, err := json.Marshal(content)
+		if err != nil {
+			return err
+		}
+		p.Content = bs
 	case core.ActionTypeProposalCloseMarket:
 		var content proposal.MarketStatusReq
 		if _, err := mtg.Scan(body, &content); err != nil {
 			log.WithError(err).Errorln("decode proposal closeMarket content error")
 			return nil
 		}
-		p.Content, _ = json.Marshal(content)
+		bs, err := json.Marshal(content)
+		if err != nil {
+			return err
+		}
+		p.Content = bs
 	case core.ActionTypeProposalOpenMarket:
 		var content proposal.MarketStatusReq
 		if _, err := mtg.Scan(body, &content); err != nil {
 			log.WithError(err).Errorln("decode proposal openMarket content error")
 			return nil
 		}
-		p.Content, _ = json.Marshal(content)
+		bs, err := json.Marshal(content)
+		if err != nil {
+			return err
+		}
+		p.Content = bs
 	case core.ActionTypeProposalAddScope, core.ActionTypeProposalRemoveScope:
 		var content proposal.ScopeReq
 		if _, err := mtg.Scan(body, &content); err != nil {
 			log.WithError(err).Errorln("decode proposal scopereq content error")
 			return nil
 		}
-		p.Content, _ = json.Marshal(content)
+		bs, err := json.Marshal(content)
+		if err != nil {
+			return err
+		}
+		p.Content = bs
 	case core.ActionTypeProposalAddAllowList, core.ActionTypeProposalRemoveAllowList:
 		var content proposal.AllowListReq
 		if _, err := mtg.Scan(body, &content); err != nil {
 			log.WithError(err).Errorln("decode proposal allowlist content error")
 			return nil
 		}
-		p.Content, _ = json.Marshal(content)
+		bs, err := json.Marshal(content)
+		if err != nil {
+			return err
+		}
+		p.Content = bs
 	case core.ActionTypeProposalAddOracleSigner:
 		var content proposal.AddOracleSignerReq
 		if _, err := mtg.Scan(body, &content); err != nil {
 			log.WithError(err).Errorln("decode proposal add oracle signer content err")
 			return nil
 		}
-		p.Content, _ = json.Marshal(content)
+		bs, err := json.Marshal(content)
+		if err != nil {
+			return err
+		}
+		p.Content = bs
 	case core.ActionTypeProposalRemoveOracleSigner:
 		var content proposal.RemoveOracleSignerReq
 		if _, err := mtg.Scan(body, &content); err != nil {
 			log.WithError(err).Errorln("decode proposal remove oracle signer content err")
 			return nil
 		}
-		p.Content, _ = json.Marshal(content)
+		bs, err := json.Marshal(content)
+		if err != nil {
+			return err
+		}
+		p.Content = bs
 	default:
 		log.Warningln("invalid proposal:", p.Action)
 		return nil
@@ -165,52 +197,82 @@ func (w *Payee) handlePassedProposal(ctx context.Context, p *core.Proposal, outp
 	switch p.Action {
 	case core.ActionTypeProposalAddMarket:
 		var proposalReq proposal.MarketReq
-		_ = json.Unmarshal(p.Content, &proposalReq)
+		err := json.Unmarshal(p.Content, &proposalReq)
+		if err != nil {
+			return err
+		}
 		return w.handleMarketEvent(ctx, p, proposalReq, output)
 
 	case core.ActionTypeProposalWithdrawReserves:
 		var proposalReq proposal.WithdrawReq
-		_ = json.Unmarshal(p.Content, &proposalReq)
+		err := json.Unmarshal(p.Content, &proposalReq)
+		if err != nil {
+			return err
+		}
 		return w.handleWithdrawEvent(ctx, p, proposalReq, output)
 
 	case core.ActionTypeProposalCloseMarket:
 		var req proposal.MarketStatusReq
-		_ = json.Unmarshal(p.Content, &req)
+		err := json.Unmarshal(p.Content, &req)
+		if err != nil {
+			return err
+		}
 		return w.handleCloseMarketEvent(ctx, p, req, output)
 
 	case core.ActionTypeProposalOpenMarket:
 		var req proposal.MarketStatusReq
-		_ = json.Unmarshal(p.Content, &req)
+		err := json.Unmarshal(p.Content, &req)
+		if err != nil {
+			return err
+		}
 		return w.handleOpenMarketEvent(ctx, p, req, output)
 
 	case core.ActionTypeProposalAddScope:
 		var req proposal.ScopeReq
-		_ = json.Unmarshal(p.Content, &req)
+		err := json.Unmarshal(p.Content, &req)
+		if err != nil {
+			return err
+		}
 		return w.handleAddScopeEvent(ctx, p, req, output)
 
 	case core.ActionTypeProposalRemoveScope:
 		var req proposal.ScopeReq
-		_ = json.Unmarshal(p.Content, &req)
+		err := json.Unmarshal(p.Content, &req)
+		if err != nil {
+			return err
+		}
 		return w.handleRemoveScopeEvent(ctx, p, req, output)
 
 	case core.ActionTypeProposalAddAllowList:
 		var req proposal.AllowListReq
-		_ = json.Unmarshal(p.Content, &req)
+		err := json.Unmarshal(p.Content, &req)
+		if err != nil {
+			return err
+		}
 		return w.handleAddAllowListEvent(ctx, p, req, output)
 
 	case core.ActionTypeProposalRemoveAllowList:
 		var req proposal.AllowListReq
-		_ = json.Unmarshal(p.Content, &req)
+		err := json.Unmarshal(p.Content, &req)
+		if err != nil {
+			return err
+		}
 		return w.handleRemoveAllowListEvent(ctx, p, req, output)
 
 	case core.ActionTypeProposalAddOracleSigner:
 		var req proposal.AddOracleSignerReq
-		_ = json.Unmarshal(p.Content, &req)
+		err := json.Unmarshal(p.Content, &req)
+		if err != nil {
+			return err
+		}
 		return w.handleAddOracleSignerEvent(ctx, p, req, output)
 
 	case core.ActionTypeProposalRemoveOracleSigner:
 		var req proposal.RemoveOracleSignerReq
-		_ = json.Unmarshal(p.Content, &req)
+		err := json.Unmarshal(p.Content, &req)
+		if err != nil {
+			return err
+		}
 		return w.handleRemoveOracleSignerEvent(ctx, p, req, output)
 	}
 

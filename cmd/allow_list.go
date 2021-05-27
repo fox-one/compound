@@ -129,8 +129,14 @@ func buildProposalTransfer(cmd *cobra.Command, f BuildMemoFunc) {
 	system := provideSystem()
 	dapp := provideDapp()
 
-	clientID, _ := uuid.FromString(system.ClientID)
-	traceID, _ := uuid.FromString(id.GenTraceID())
+	clientID, err := uuid.FromString(system.ClientID)
+	if err != nil {
+		panic(err)
+	}
+	traceID, err := uuid.FromString(id.GenTraceID())
+	if err != nil {
+		panic(err)
+	}
 
 	memo, err := f(ctx, clientID)
 	if err != nil {

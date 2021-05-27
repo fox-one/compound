@@ -39,8 +39,14 @@ var addMarketCmd = &cobra.Command{
 		system := provideSystem()
 		dapp := provideDapp()
 
-		clientID, _ := uuid.FromString(system.ClientID)
-		traceID, _ := uuid.FromString(id.GenTraceID())
+		clientID, err := uuid.FromString(system.ClientID)
+		if err != nil {
+			panic(err)
+		}
+		traceID, err := uuid.FromString(id.GenTraceID())
+		if err != nil {
+			panic(err)
+		}
 
 		req := proposal.MarketReq{}
 
@@ -73,49 +79,70 @@ var addMarketCmd = &cobra.Command{
 		if e != nil {
 			panic("invalid flag")
 		}
-		rf, _ := decimal.NewFromString(flag)
+		rf, e := decimal.NewFromString(flag)
+		if e != nil {
+			panic(e)
+		}
 		req.ReserveFactor = rf
 
 		flag, e = cmd.Flags().GetString("liquidation_incentive")
 		if e != nil {
 			panic("invalid flag")
 		}
-		li, _ := decimal.NewFromString(flag)
+		li, e := decimal.NewFromString(flag)
+		if e != nil {
+			panic(e)
+		}
 		req.LiquidationIncentive = li
 
 		flag, e = cmd.Flags().GetString("collateral_factor")
 		if e != nil {
 			panic("invalid flag")
 		}
-		cf, _ := decimal.NewFromString(flag)
+		cf, e := decimal.NewFromString(flag)
+		if e != nil {
+			panic(e)
+		}
 		req.CollateralFactor = cf
 
 		flag, e = cmd.Flags().GetString("base_rate")
 		if e != nil {
 			panic("invalid flag")
 		}
-		br, _ := decimal.NewFromString(flag)
+		br, e := decimal.NewFromString(flag)
+		if e != nil {
+			panic(e)
+		}
 		req.BaseRate = br
 
 		flag, e = cmd.Flags().GetString("borrow_cap")
 		if e != nil {
 			panic("invalid flag")
 		}
-		bc, _ := decimal.NewFromString(flag)
+		bc, e := decimal.NewFromString(flag)
+		if e != nil {
+			panic(e)
+		}
 		req.BorrowCap = bc
 
 		flag, e = cmd.Flags().GetString("close_factor")
 		if e != nil {
 			panic("invalid flag")
 		}
-		clf, _ := decimal.NewFromString(flag)
+		clf, e := decimal.NewFromString(flag)
+		if e != nil {
+			panic(e)
+		}
 		req.CloseFactor = clf
 
 		flag, e = cmd.Flags().GetString("multi")
 		if e != nil {
 			panic("invalid flag")
 		}
-		m, _ := decimal.NewFromString(flag)
+		m, e := decimal.NewFromString(flag)
+		if e != nil {
+			panic(e)
+		}
 		req.Multiplier = m
 
 		flag, e = cmd.Flags().GetString("jump_multi")
@@ -123,14 +150,20 @@ var addMarketCmd = &cobra.Command{
 			panic("invalid flag")
 		}
 
-		jm, _ := decimal.NewFromString(flag)
+		jm, e := decimal.NewFromString(flag)
+		if e != nil {
+			panic(e)
+		}
 		req.JumpMultiplier = jm
 
 		flag, e = cmd.Flags().GetString("kink")
 		if e != nil {
 			panic("invalid flag")
 		}
-		k, _ := decimal.NewFromString(flag)
+		k, e := decimal.NewFromString(flag)
+		if e != nil {
+			panic(e)
+		}
 		req.Kink = k
 
 		memo, err := mtg.Encode(clientID, int(core.ActionTypeProposalAddMarket), req)
@@ -181,8 +214,14 @@ var closeMarketCmd = &cobra.Command{
 		system := provideSystem()
 		dapp := provideDapp()
 
-		clientID, _ := uuid.FromString(system.ClientID)
-		traceID, _ := uuid.FromString(id.GenTraceID())
+		clientID, err := uuid.FromString(system.ClientID)
+		if err != nil {
+			panic(err)
+		}
+		traceID, err := uuid.FromString(id.GenTraceID())
+		if err != nil {
+			panic(err)
+		}
 
 		closeMarketReq := proposal.MarketStatusReq{
 			Status: core.MarketStatusClose,
@@ -233,8 +272,14 @@ var openMarketCmd = &cobra.Command{
 		system := provideSystem()
 		dapp := provideDapp()
 
-		clientID, _ := uuid.FromString(system.ClientID)
-		traceID, _ := uuid.FromString(id.GenTraceID())
+		clientID, err := uuid.FromString(system.ClientID)
+		if err != nil {
+			panic(err)
+		}
+		traceID, err := uuid.FromString(id.GenTraceID())
+		if err != nil {
+			panic(err)
+		}
 
 		openMarketReq := proposal.MarketStatusReq{
 			Status: core.MarketStatusOpen,

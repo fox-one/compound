@@ -23,7 +23,7 @@ func (err twirpErr) meta(key string) string {
 
 func (err twirpErr) displayCode() int {
 	m := err.meta(codes.CustomCodeKey)
-	if code, _ := strconv.Atoi(m); code > 0 {
+	if code, err := strconv.Atoi(m); err == nil && code > 0 {
 		return code
 	}
 

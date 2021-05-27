@@ -55,7 +55,10 @@ var serverCmd = &cobra.Command{
 			mux.Mount("/api/v1", rest.Handle(system, marketStore, supplyStore, borrowStore, transactionStore, oracleSignerStore, marketService))
 		}
 
-		port, _ := cmd.Flags().GetInt("port")
+		port, err := cmd.Flags().GetInt("port")
+		if err != nil {
+			panic(err)
+		}
 		addr := fmt.Sprintf(":%d", port)
 
 		server := &http.Server{
@@ -64,7 +67,7 @@ var serverCmd = &cobra.Command{
 		}
 
 		log.Infoln("serve at", addr)
-		err := server.ListenAndServe()
+		err = server.ListenAndServe()
 		if err != http.ErrServerClosed {
 			log.WithError(err).Fatal("server aborted")
 		}

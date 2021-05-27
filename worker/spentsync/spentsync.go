@@ -58,7 +58,10 @@ func (w *SpentSync) onWork(ctx context.Context) error {
 	}
 
 	for _, transfer := range transfers {
-		_ = w.handleTransfer(ctx, transfer)
+		err = w.handleTransfer(ctx, transfer)
+		if err != nil {
+			continue
+		}
 	}
 
 	return nil
@@ -100,7 +103,10 @@ func (w *SpentSync) handleTransfer(ctx context.Context, transfer *core.Transfer)
 		log.WithError(err).Errorln("get snapshot trace id error")
 		return nil
 	}
-	transaction := core.BuildTransactionFromTransfer(ctx, transfer, snapshotTraceID)
+	transaction, err := core.BuildTransactionFromTransfer(ctx, transfer, snapshotTraceID)
+	if err != nil {
+		return err
+	}
 	if err = w.transactionStore.Create(ctx, transaction); err != nil {
 		log.WithError(err).Errorln("create transaction error")
 		return err
@@ -130,22 +136,31 @@ func (w *SpentSync) snapshotTraceID(ctx context.Context, signedTx string) (strin
 		return "", err
 	}
 
-	traceID := w.mixinRawTransactionTraceID(hash.String(), 0)
+	traceID, err := w.mixinRawTransactionTraceID(hash.String(), 0)
+	if err != nil {
+		return "", err
+	}
 	return traceID, nil
 }
 
-func (w *SpentSync) mixinRawTransactionTraceID(hash string, index uint8) string {
+func (w *SpentSync) mixinRawTransactionTraceID(hash string, index uint8) (string, error) {
 	h := md5.New()
-	_, _ = io.WriteString(h, hash)
+	_, err := io.WriteString(h, hash)
+	if err != nil {
+		return "", err
+	}
 	b := new(big.Int).SetInt64(int64(index))
-	h.Write(b.Bytes())
+	_, err = h.Write(b.Bytes())
+	if err != nil {
+		return "", err
+	}
 	s := h.Sum(nil)
 	s[6] = (s[6] & 0x0f) | 0x30
 	s[8] = (s[8] & 0x3f) | 0x80
 	sid, err := uuid.FromBytes(s)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
-	return sid.String()
+	return sid.String(), nil
 }

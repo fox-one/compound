@@ -19,12 +19,18 @@ func generateButtons(ctx context.Context, marketStore core.IMarketStore, p *core
 	switch p.Action {
 	case core.ActionTypeProposalAddMarket:
 		var action proposal.MarketReq
-		_ = json.Unmarshal(p.Content, &action)
+		err := json.Unmarshal(p.Content, &action)
+		if err != nil {
+			return buttons
+		}
 		buttons = appendAsset(buttons, "Asset", action.AssetID)
 		buttons = appendAsset(buttons, "CToken", action.CTokenAssetID)
 	case core.ActionTypeProposalWithdrawReserves:
 		var action proposal.WithdrawReq
-		_ = json.Unmarshal(p.Content, &action)
+		err := json.Unmarshal(p.Content, &action)
+		if err != nil {
+			return buttons
+		}
 		buttons = appendAsset(buttons, "Asset", action.Asset)
 		buttons = appendUser(buttons, "Opponent", action.Opponent)
 	case core.ActionTypeProposalCloseMarket:
@@ -33,7 +39,10 @@ func generateButtons(ctx context.Context, marketStore core.IMarketStore, p *core
 		buttons = appendAsset(buttons, "Asset", action.AssetID)
 	case core.ActionTypeProposalOpenMarket:
 		var action proposal.MarketStatusReq
-		_ = json.Unmarshal(p.Content, &action)
+		err := json.Unmarshal(p.Content, &action)
+		if err != nil {
+			return buttons
+		}
 		buttons = appendAsset(buttons, "Asset", action.AssetID)
 	case core.ActionTypeProposalAddScope:
 	case core.ActionTypeProposalRemoveScope:

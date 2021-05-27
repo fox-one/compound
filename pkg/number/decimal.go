@@ -7,7 +7,10 @@ import (
 )
 
 func Decimal(v string) decimal.Decimal {
-	d, _ := decimal.NewFromString(v)
+	d, err := decimal.NewFromString(v)
+	if err != nil {
+		return decimal.Zero
+	}
 	return d
 }
 

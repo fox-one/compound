@@ -34,11 +34,14 @@ type (
 )
 
 // BuildMessage build message
-func BuildMessage(req *mixin.MessageRequest) *Message {
-	raw, _ := json.Marshal(req)
+func BuildMessage(req *mixin.MessageRequest) (*Message, error) {
+	raw, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
 	return &Message{
 		MessageID: req.MessageID,
 		UserID:    req.RecipientID,
 		Raw:       raw,
-	}
+	}, nil
 }

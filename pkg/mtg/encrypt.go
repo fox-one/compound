@@ -28,7 +28,10 @@ func Decrypt(b []byte, privateKey ed25519.PrivateKey) ([]byte, error) {
 		return nil, err
 	}
 
-	data, _ := ioutil.ReadAll(r)
+	data, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
 	body, err := aes.Decrypt(data, key, iv)
 	if err != nil {
 		return nil, err
@@ -83,7 +86,11 @@ func keyPairsToAesKeyIv(privateKey ed25519.PrivateKey, publicKey ed25519.PublicK
 
 func privateKeyToCurve25519(curve25519Private [32]byte, privateKey ed25519.PrivateKey) {
 	h := sha512.New()
-	h.Write(privateKey.Seed())
+	_, err := h.Write(privateKey.Seed())
+	if err != nil {
+		return
+	}
+
 	digest := h.Sum(nil)
 
 	digest[0] &= 248
