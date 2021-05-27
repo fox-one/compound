@@ -7,8 +7,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-
-	"github.com/oxtoacart/bpool"
 )
 
 // Response internal error msg as hint
@@ -50,58 +48,4 @@ type errorResponse struct {
 	Code int    `json:"code"`
 	Msg  string `json:"msg"`
 	Hint string `json:"hint,omitempty"`
-}
-
-func WrapResponse(wrapData bool) func(http.Handler) http.Handler {
-	bufferPool := bpool.NewSizedBufferPool(64, 16*1024)
-
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			buf := bufferPool.Get()
-			defer bufferPool.Put(buf)
-
-			ww := &wrapResponse{
-				header: http.Header{},
-				buf:    buf,
-			}
-
-			next.ServeHTTP(ww, r)
-
-			if ww.status >= 300 {
-				var (
-					twerr    twirpErr
-					response errorResponse
-				)
-
-				if err := json.NewDecoder(buf).Decode(&twerr); err != nil {
-					response.Code = ww.status
-					response.Msg = http.StatusText(ww.status)
-				} else {
-					response.Code = twerr.displayCode()
-					response.Msg = twerr.displayMsg()
-
-					if ResponseErrorMessageAsHint && response.Msg != twerr.Msg {
-						response.Hint = twerr.Msg
-					}
-				}
-
-				buf.Reset()
-				_ = json.NewEncoder(buf).Encode(response)
-			} else if wrapData && ww.isJsonContent() {
-				r := dataResponse{Data: buf.Bytes()}
-				buf.Reset()
-				_ = json.NewEncoder(buf).Encode(r)
-			}
-
-			// reset content length
-			ww.header.Set("Content-Length", strconv.Itoa(buf.Len()))
-
-			for key := range ww.header {
-				w.Header().Set(key, ww.header.Get(key))
-			}
-
-			w.WriteHeader(ww.status)
-			_, _ = w.Write(buf.Bytes())
-		})
-	}
 }
