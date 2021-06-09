@@ -110,15 +110,6 @@ func (s *walletService) Spend(ctx context.Context, outputs []*core.Output, trans
 
 		// 签名数量达到要求，返回 raw transaction，将异步提交到主网
 		if len(sig.Signers) >= int(sig.Threshold) {
-			tx, err := mixin.TransactionFromRaw(sig.RawTransaction)
-			if err != nil {
-				return nil, err
-			}
-
-			if tx.AggregatedSignature == nil && len(tx.Signatures) == 0 {
-				return nil, fmt.Errorf("generate raw transaction failed, empty signatures")
-			}
-
 			return &core.RawTransaction{
 				TraceID: transfer.TraceID,
 				Data:    sig.RawTransaction,
