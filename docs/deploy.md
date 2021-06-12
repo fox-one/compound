@@ -37,7 +37,7 @@ Put the environment config file named as `config.${ENV}.yaml` in the deploy dire
 
 * Build the program locally：
 ```
-make build-%    //E.g: make build-local
+make build    //E.g: make build-local
 ```
 
 * Build docker image(put the config into the docker image)：
