@@ -24,7 +24,7 @@
 
 ## Deployment
 
-[Makefile](./Makefile)
+All the deploying instructions are in the [Makefile](./Makefile)
 
 Environments：
 
@@ -32,15 +32,15 @@ Environments：
 * test  
 * prod
 
-Put the environment config file named as `config.${ENV}.yaml` in the deploy directory, such as：`config.local.yaml, config.test.yaml, config.prod.yaml`。
+Create the config file named as `config.${ENV}.yaml` according to the [template file](./deploy/../../deploy/config.node.yaml.tpl) and place it in the deploy directory, such as：`config.local.yaml, config.test.yaml, config.prod.yaml`。
 
 
-* Build the program locally：
+* Build the program locally, and the built artifact will be stored at the dir `./builds/`：
 ```
-make build    //E.g: make build-local
+make build    //
 ```
 
-* Build docker image(put the config into the docker image)：
+* Build the docker image(put the config into the docker image)：
   1. Modify the `REPOSITORY_PATH` in Makefile
   2. deploy the image to the docker repository, execute `make deploy-%`, E.g: `make deploy-prod`
 
