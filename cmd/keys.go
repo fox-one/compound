@@ -12,7 +12,7 @@ import (
 // maintain command
 var keysCmd = &cobra.Command{
 	Use:   "keys",
-	Short: "generate ed25519 key pairs",
+	Short: "generate ed25519 or blst key pairs by the flag 'cipher'",
 	Run: func(cmd *cobra.Command, args []string) {
 		cipher, err := cmd.Flags().GetString("cipher")
 		if err != nil {
