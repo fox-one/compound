@@ -30,7 +30,7 @@ cmd:
 ./compound withdraw --opponent xxxx --asset xxxxxxx --amount 10000
 ```
 
-### add-market
+### market
 > Initiate a add market proposal
 
 cmd:
@@ -42,40 +42,6 @@ cmd:
 ./compound add-market --s BTC --a xxxxxx --c yyyyyy
 or
 ./compound am -s BTC -a xxxxx -c yyyyyyy
-```
-
-### update-market
-> Initiate a updating market parameters proposal
-
-cmd:
-
-```
-//-s symbol
-//-ie init_exchange
-//-rf reserve_factor
-//-li liquidation_incentive
-//-cf collateral_factor
-//-br base_rate
-./compound update-market --s BTC --ie 1 --rf 0.1 --li 0.05 --cf 0.75 --br 0.025
-or
-./compound um --s BTC --ie 1 --rf 0.1 --li 0.05 --cf 0.75 --br 0.025
-```
-
-### update-market-advance
-> Initiate a updating market advance parameters proposal
-
-cmd:
-
-```
-//-s symbol
-//-bc borrow_cap
-//-clf close_factor
-//-m multiplier
-//-jm jump_multiplier
-//-k kink
-./compound update-market-advance --s BTC --bc 0 --clf 0.5 --m 0.3 --jm 0.5 --k 0.7
-or
-./compound uma --s BTC --bc 0 --clf 0.5 --m 0.3 --jm 0.5 --k 0.7
 ```
 
 ### close-market
@@ -109,4 +75,12 @@ cmd:
 ```
 $compound allowlist add --user {user_id} --scope {scope}
 $compound allowlist remove --user {user_id} --scope {scope}
+```
+
+### add-oracle-signer
+
+cmd:
+
+```
+$compound add-oracle-signer --user xxx --key
 ```

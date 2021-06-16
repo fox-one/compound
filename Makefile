@@ -25,11 +25,11 @@ build:
 
 docker-build-%: clean-% sync-%
 	@echo "repository path -> ${REPOSITORY_PATH}"
-	docker build -t ${REPOSITORY_PATH}/compound-${ENV}:${VERSION} -f ./deploy/docker/Dockerfile . 
+	docker build -t ${REPOSITORY_PATH}compound-${ENV}:${VERSION} -f ./deploy/docker/Dockerfile . 
 
 .PHONY: aws-login
 aws-login:
 	$(shell aws ecr get-login --no-include-email --region ap-northeast-1)
 
 deploy-%: docker-build-%
-	docker push ${REPOSITORY_PATH}/compound-${ENV}:${VERSION}
+	docker push ${REPOSITORY_PATH}compound-${ENV}:${VERSION}

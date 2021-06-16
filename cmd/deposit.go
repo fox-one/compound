@@ -10,11 +10,11 @@ import (
 )
 
 // governing command for market
-var injectMintTokenCmd = &cobra.Command{
-	Use:     "inject-ctoken",
+var depositCmd = &cobra.Command{
+	Use:     "deposit",
 	Aliases: []string{"ic"},
-	Short:   "inject ctoken for market minting",
-	Long:    "inject ctokens into the market before trading. asset for asset_id, amount for ctoken_amount",
+	Short:   "deposit",
+	Long:    "deposit into the market before trading. asset for asset_id, amount for ctoken_amount",
 	Run: func(cmd *cobra.Command, args []string) {
 		assetID, e := cmd.Flags().GetString("asset")
 		if e != nil || assetID == "" {
@@ -38,7 +38,7 @@ var injectMintTokenCmd = &cobra.Command{
 			AssetID: assetID,
 			Amount:  amountNum,
 			TraceID: id.GenTraceID(),
-			Memo:    "mint ctoken",
+			Memo:    "deposit",
 		}
 		input.OpponentMultisig.Receivers = system.MemberIDs()
 		input.OpponentMultisig.Threshold = system.Threshold
@@ -55,7 +55,7 @@ var injectMintTokenCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(injectMintTokenCmd)
-	injectMintTokenCmd.Flags().StringP("asset", "a", "", "asset id")
-	injectMintTokenCmd.Flags().StringP("amount", "q", "", "amount")
+	rootCmd.AddCommand(depositCmd)
+	depositCmd.Flags().StringP("asset", "a", "", "asset id")
+	depositCmd.Flags().StringP("amount", "q", "", "amount")
 }
