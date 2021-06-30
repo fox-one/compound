@@ -12,6 +12,7 @@ import (
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
+	"github.com/fox-one/pkg/store"
 	"github.com/fox-one/pkg/store/db"
 	"github.com/gofrs/uuid"
 )
@@ -47,7 +48,7 @@ func (w *SpentSync) Run(ctx context.Context) error {
 func (w *SpentSync) onWork(ctx context.Context) error {
 	log := logger.FromContext(ctx)
 
-	transfers, err := w.walletStore.ListNotPassedTransfers(ctx)
+	transfers, err := w.walletStore.ListTransfers(ctx, core.TransferStatusHandled, 100)
 	if err != nil {
 		log.WithError(err).Errorln("wallets.ListNotPassedTransfers")
 		return err
@@ -72,18 +73,16 @@ func (w *SpentSync) handleTransfer(ctx context.Context, transfer *core.Transfer)
 
 	log.Debugf("handle transfer")
 
-	outputs, err := w.walletStore.ListSpentBy(ctx, transfer.AssetID, transfer.TraceID)
+	output, err := w.walletStore.FindSpentBy(ctx, transfer.AssetID, transfer.TraceID)
 	if err != nil {
+		if store.IsErrNotFound(err) {
+			return nil
+		}
+
 		log.WithError(err).Errorln("wallets.ListSpentBy")
 		return err
 	}
 
-	if len(outputs) == 0 {
-		log.Debugln("no outputs spent, skip")
-		return nil
-	}
-
-	output := outputs[0]
 	if output.State != mixin.UTXOStateSpent {
 		log.Debugln("utxo is not spent, skip")
 		return nil

@@ -4,6 +4,7 @@ import (
 	"compound/handler/hc"
 	walletservice "compound/service/wallet"
 	"compound/worker"
+	"compound/worker/assigner"
 	"compound/worker/cashier"
 	"compound/worker/message"
 	"compound/worker/snapshot"
@@ -20,6 +21,8 @@ import (
 	"github.com/rs/cors"
 	"github.com/spf13/cobra"
 )
+
+var cashierConfig cashier.Config
 
 // command for background worker
 var workerCmd = &cobra.Command{
@@ -86,7 +89,8 @@ var workerCmd = &cobra.Command{
 		}
 
 		workers := []worker.Worker{
-			cashier.New(walletStore, walletService, system),
+			cashier.New(walletStore, walletService, system, cashierConfig),
+			assigner.New(walletStore, system),
 			message.New(messageStore, messageService),
 			snapshot.NewPayee(system, dapp, propertyStore, userStore, walletStore, marketStore, supplyStore, borrowStore, proposalStore, transactionStore, oracleSignerStore, proposalService, blockService, marketService, supplyService, borrowService, accountService, allowListService),
 			syncer.New(walletStore, walletService, propertyStore),
@@ -111,4 +115,6 @@ var workerCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(workerCmd)
 	workerCmd.Flags().Int("port", 80, "worker api port")
+	workerCmd.Flags().IntVar(&cashierConfig.Batch, "cashier.batch", 100, "custom batch for worker cashier")
+	workerCmd.Flags().Int64Var(&cashierConfig.Capacity, "cashier.capacity", 10, "custom capacity for worker cashier")
 }

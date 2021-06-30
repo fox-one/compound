@@ -7,8 +7,6 @@ import (
 	"compound/core"
 	"compound/worker"
 
-	"compound/internal/mixinet"
-
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/property"
 )
@@ -55,50 +53,26 @@ func (w *Syncer) onWork(ctx context.Context) error {
 
 	offset := v.Time()
 
-	var (
-		outputs   = make([]*core.Output, 0, 8)
-		positions = make(map[string]int)
-		pos       = 0
-	)
-
-	const Limit = 500
-
-	for {
-		batch, err := w.walletService.Pull(ctx, offset, Limit)
-		if err != nil {
-			log.WithError(err).Errorln("walletz.Pull")
-			return err
-		}
-		for _, u := range batch {
-			offset = u.UpdatedAt
-
-			p, ok := positions[u.TraceID]
-			if ok {
-				outputs[p] = u
-				continue
-			}
-
-			outputs = append(outputs, u)
-			positions[u.TraceID] = pos
-			pos++
-		}
-
-		if len(batch) < Limit {
-			break
-		}
+	const limit = 500
+	outputs, err := w.walletService.Pull(ctx, offset, limit)
+	if err != nil {
+		log.WithError(err).Errorln("walletz.Pull")
+		return err
 	}
 
 	if len(outputs) == 0 {
 		return errors.New("EOF")
 	}
 
-	mixinet.SortOutputs(outputs)
-	if err := w.walletStore.Save(ctx, outputs); err != nil {
+	nextOffset := outputs[len(outputs)-1].UpdatedAt
+	end := len(outputs) < limit
+
+	if err := w.walletStore.Save(ctx, outputs, end); err != nil {
 		log.WithError(err).Errorln("wallets.Save")
 		return err
 	}
 
-	if err := w.property.Save(ctx, checkpointKey, offset); err != nil {
+	if err := w.property.Save(ctx, checkpointKey, nextOffset); err != nil {
 		log.WithError(err).Errorln("property.Save:", checkpointKey)
 		return err
 	}

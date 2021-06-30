@@ -3,15 +3,13 @@ package cashier
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"compound/core"
 	"compound/worker"
 
-	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
-	"github.com/fox-one/pkg/uuid"
-	"github.com/shopspring/decimal"
+	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/semaphore"
 )
 
 // Cashier cashier
@@ -22,6 +20,12 @@ type Cashier struct {
 	walletStore   core.WalletStore
 	walletService core.WalletService
 	system        *core.System
+	cfg           Config
+}
+
+type Config struct {
+	Batch    int   `json:"batch" valid:"required"`
+	Capacity int64 `json:"capacity" valid:"required"`
 }
 
 // New new cashier
@@ -29,11 +33,13 @@ func New(
 	walletStr core.WalletStore,
 	walletSrv core.WalletService,
 	system *core.System,
+	cfg Config,
 ) *Cashier {
 	cashier := Cashier{
 		walletStore:   walletStr,
 		walletService: walletSrv,
 		system:        system,
+		cfg:           cfg,
 	}
 
 	return &cashier
@@ -41,15 +47,20 @@ func New(
 
 // Run run worker
 func (w *Cashier) Run(ctx context.Context) error {
+	f := w.sync
+	if w.cfg.Capacity > 1 {
+		f = w.parallel(w.cfg.Capacity)
+	}
+
 	return w.StartTick(ctx, func(ctx context.Context) error {
-		return w.onWork(ctx)
+		return w.onWork(ctx, f)
 	})
 }
 
-func (w *Cashier) onWork(ctx context.Context) error {
+func (w *Cashier) onWork(ctx context.Context, f func(context.Context, []*core.Transfer) error) error {
 	log := logger.FromContext(ctx).WithField("worker", "cashier")
 
-	transfers, err := w.walletStore.ListPendingTransfers(ctx)
+	transfers, err := w.walletStore.ListTransfers(ctx, core.TransferStatusAssigned, w.cfg.Batch)
 	if err != nil {
 		log.WithError(err).Errorln("list transfers")
 		return err
@@ -59,83 +70,74 @@ func (w *Cashier) onWork(ctx context.Context) error {
 		return errors.New("EOF")
 	}
 
+	return f(ctx, transfers)
+}
+
+func (w *Cashier) sync(ctx context.Context, transfers []*core.Transfer) error {
 	for _, transfer := range transfers {
-		err := w.handleTransfer(ctx, transfer)
-		if err != nil {
-			continue
+		if err := w.handleTransfer(ctx, transfer); err != nil {
+			return err
 		}
 	}
 
 	return nil
 }
 
+func (w *Cashier) parallel(capacity int64) func(ctx context.Context, transfers []*core.Transfer) error {
+	sem := semaphore.NewWeighted(capacity)
+
+	return func(ctx context.Context, transfers []*core.Transfer) error {
+		g := errgroup.Group{}
+
+		for idx := range transfers {
+			transfer := transfers[idx]
+
+			if err := sem.Acquire(ctx, 1); err != nil {
+				return g.Wait()
+			}
+
+			g.Go(func() error {
+				defer sem.Release(1)
+				return w.handleTransfer(ctx, transfer)
+			})
+		}
+
+		return g.Wait()
+	}
+}
+
 func (w *Cashier) handleTransfer(ctx context.Context, transfer *core.Transfer) error {
 	log := logger.FromContext(ctx)
 
-	const limit = 32
-	outputs, err := w.walletStore.ListUnspent(ctx, transfer.AssetID, limit)
+	outputs, err := w.walletStore.ListSpentBy(ctx, transfer.AssetID, transfer.TraceID)
 	if err != nil {
-		log.WithError(err).Errorln("wallets.ListUnspent")
+		log.WithError(err).Errorln("wallets.ListSpentBy")
 		return err
 	}
 
-	var (
-		idx    int
-		sum    decimal.Decimal
-		traces []string
-	)
-
-	for _, output := range outputs {
-		sum = sum.Add(output.Amount)
-		traces = append(traces, output.TraceID)
-		idx++
-
-		if sum.GreaterThanOrEqual(transfer.Amount) {
-			break
-		}
+	if len(outputs) == 0 {
+		log.Errorln("cannot spent transfer with empty outputs")
+		return nil
 	}
 
-	outputs = outputs[:idx]
-
-	if sum.LessThan(transfer.Amount) {
-		// merge outputs
-		if len(outputs) == limit {
-			traceID := uuid.Modify(transfer.TraceID, mixin.HashMembers(traces))
-			merge := &core.Transfer{
-				TraceID:   traceID,
-				AssetID:   transfer.AssetID,
-				Amount:    sum,
-				Opponents: w.system.MemberIDs(),
-				Threshold: w.system.Threshold,
-				Memo:      fmt.Sprintf("merge for %s", transfer.TraceID),
-			}
-
-			return w.spent(ctx, outputs, merge)
-		}
-
-		err := errors.New("insufficient balance")
-		log.WithError(err).Errorln("handle transfer", transfer.ID)
-		return err
-	}
-
-	return w.spent(ctx, outputs, transfer)
+	return w.spend(ctx, outputs, transfer)
 }
 
-func (w *Cashier) spent(ctx context.Context, outputs []*core.Output, transfer *core.Transfer) error {
+func (w *Cashier) spend(ctx context.Context, outputs []*core.Output, transfer *core.Transfer) error {
 	if tx, err := w.walletService.Spend(ctx, outputs, transfer); err != nil {
-		logger.FromContext(ctx).WithError(err).Errorln("walletz.Spent")
+		logger.FromContext(ctx).WithError(err).Errorln("walletz.Spend")
 		return err
 	} else if tx != nil {
-		// 签名收集完成，需要提交至主网
-		// 此时将该上链 tx 存储至数据库，等待 tx sender worker 完成上链
+		// signature completed, prepare to send this tx to mixin mainnet
 		if err := w.walletStore.CreateRawTransaction(ctx, tx); err != nil {
 			logger.FromContext(ctx).WithError(err).Errorln("wallets.CreateRawTransaction")
 			return err
 		}
 	}
 
-	if err := w.walletStore.Spent(ctx, outputs, transfer); err != nil {
-		logger.FromContext(ctx).WithError(err).Errorln("wallets.Spent")
+	transfer.Handled = true
+	if err := w.walletStore.UpdateTransfer(ctx, transfer); err != nil {
+		logger.FromContext(ctx).WithError(err).Errorln("wallets.UpdateTransfer")
 		return err
 	}
 

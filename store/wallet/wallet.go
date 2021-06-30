@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"sort"
+	"sync"
+	"sync/atomic"
 
 	"compound/core"
 
 	"github.com/fox-one/mixin-sdk-go"
+	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/store/db"
 	"github.com/jinzhu/gorm"
 )
@@ -66,17 +69,21 @@ func New(db *db.DB) core.WalletStore {
 }
 
 type walletStore struct {
-	db *db.DB
+	db          *db.DB
+	once        sync.Once
+	rawOutputID int64
 }
 
-func afterFindOutput(output *core.Output) {
+func afterFindOutput(output *core.Output) *core.Output {
 	var utxo mixin.MultisigUTXO
 	if err := json.Unmarshal(output.Data, &utxo); err == nil {
 		output.UTXO = &utxo
 	}
+
+	return output
 }
 
-func save(db *db.DB, output *core.Output) error {
+func save(db *db.DB, output *core.Output, ack bool) error {
 	tx := db.Update().Model(output).Where("trace_id = ?", output.TraceID).Updates(map[string]interface{}{
 		"data":    output.Data,
 		"state":   output.State,
@@ -87,22 +94,48 @@ func save(db *db.DB, output *core.Output) error {
 	}
 
 	if tx.RowsAffected == 0 {
-		return tx.Update().Create(output).Error
+		if ack {
+			return db.Update().Create(output).Error
+		}
+
+		return saveRawOutput(db, output)
 	}
 
 	return nil
 }
 
-func (s *walletStore) Save(_ context.Context, outputs []*core.Output) error {
-	return s.db.Tx(func(tx *db.DB) error {
+func (s *walletStore) Save(ctx context.Context, outputs []*core.Output, end bool) error {
+	s.once.Do(func() {
+		go func() {
+			err := s.runSync(ctx)
+			logger.FromContext(ctx).WithError(err).Infoln("runSync end")
+		}()
+	})
+
+	if err := s.db.Tx(func(tx *db.DB) error {
 		for _, utxo := range outputs {
-			if err := save(tx, utxo); err != nil {
+			if err := save(tx, utxo, false); err != nil {
 				return err
 			}
 		}
 
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+
+	if end {
+		id, err := findLastRawOutputID(s.db)
+		if err != nil {
+			return err
+		}
+
+		if id > 0 {
+			atomic.StoreInt64(&s.rawOutputID, id)
+		}
+	}
+
+	return nil
 }
 
 func (s *walletStore) List(_ context.Context, fromID int64, limit int) ([]*core.Output, error) {
@@ -120,6 +153,15 @@ func (s *walletStore) List(_ context.Context, fromID int64, limit int) ([]*core.
 	}
 
 	return outputs, nil
+}
+
+func (s *walletStore) FindSpentBy(ctx context.Context, assetID, spentBy string) (*core.Output, error) {
+	var output core.Output
+	if err := s.db.View().Where("asset_id = ? AND spent_by = ?", assetID, spentBy).Take(&output).Error; err != nil {
+		return nil, err
+	}
+
+	return afterFindOutput(&output), nil
 }
 
 func (s *walletStore) ListSpentBy(ctx context.Context, assetID string, spentBy string) ([]*core.Output, error) {
@@ -179,8 +221,9 @@ func (s *walletStore) CreateTransfers(_ context.Context, transfers []*core.Trans
 
 func updateTransfer(db *db.DB, transfer *core.Transfer) error {
 	return db.Update().Model(transfer).Updates(map[string]interface{}{
-		"handled": transfer.Handled,
-		"passed":  transfer.Passed,
+		"assigned": transfer.Assigned,
+		"handled":  transfer.Handled,
+		"passed":   transfer.Passed,
 	}).Error
 }
 
@@ -188,47 +231,22 @@ func (s *walletStore) UpdateTransfer(ctx context.Context, transfer *core.Transfe
 	return updateTransfer(s.db, transfer)
 }
 
-func (s *walletStore) ListPendingTransfers(_ context.Context) ([]*core.Transfer, error) {
+func (s *walletStore) ListTransfers(ctx context.Context, status core.TransferStatus, limit int) ([]*core.Transfer, error) {
+	query := s.db.View().Limit(limit).Order("id")
+
+	switch status {
+	case core.TransferStatusPending:
+		query = query.Where("handled = ? AND assigned = ?", 0, 0)
+	case core.TransferStatusAssigned:
+		query = query.Where("handled = ? AND assigned = ?", 0, 1)
+	case core.TransferStatusHandled:
+		query = query.Where("handled = ? AND passed = ?", 1, 0)
+	default:
+		query = query.Where("handled = ? AND passed = ?", 1, 1)
+	}
+
 	var transfers []*core.Transfer
-	if err := s.db.View().
-		Where("handled = ?", 0).
-		Limit(128).
-		Order("id").
-		Find(&transfers).Error; err != nil {
-		return nil, err
-	}
-
-	// filter by asset id
-	filter := make(map[string]bool)
-	var idx int
-
-	for _, t := range transfers {
-		if filter[t.AssetID] {
-			continue
-		}
-
-		transfers[idx] = t
-		filter[t.AssetID] = true
-		idx++
-	}
-
-	transfers = transfers[:idx]
-
-	for _, t := range transfers {
-		afterFindTransfer(t)
-	}
-
-	return transfers, nil
-}
-
-func (s *walletStore) ListNotPassedTransfers(ctx context.Context) ([]*core.Transfer, error) {
-	var transfers []*core.Transfer
-
-	if err := s.db.View().
-		Where("handled = ? AND passed = ?", 1, 0).
-		Limit(128).
-		Order("id").
-		Find(&transfers).Error; err != nil {
+	if err := query.Find(&transfers).Error; err != nil {
 		return nil, err
 	}
 
@@ -239,17 +257,20 @@ func (s *walletStore) ListNotPassedTransfers(ctx context.Context) ([]*core.Trans
 	return transfers, nil
 }
 
-func (s *walletStore) Spent(_ context.Context, outputs []*core.Output, transfer *core.Transfer) error {
+func (s *walletStore) Assign(_ context.Context, outputs []*core.Output, transfer *core.Transfer) error {
+	ids := make([]int64, 0, len(outputs))
+	for _, output := range outputs {
+		ids = append(ids, output.ID)
+	}
+
 	return s.db.Tx(func(tx *db.DB) error {
-		for _, output := range outputs {
-			if err := tx.Update().Model(output).Updates(map[string]interface{}{
-				"spent_by": transfer.TraceID,
-			}).Error; err != nil {
-				return err
-			}
+		if err := tx.Update().Model(core.Output{}).
+			Where("id IN (?)", ids).
+			Update("spent_by", transfer.TraceID).Error; err != nil {
+			return err
 		}
 
-		transfer.Handled = true
+		transfer.Assigned = true
 		if transfer.ID > 0 {
 			if err := updateTransfer(tx, transfer); err != nil {
 				return err
@@ -278,4 +299,22 @@ func (s *walletStore) ListPendingRawTransactions(_ context.Context, limit int) (
 
 func (s *walletStore) ExpireRawTransaction(_ context.Context, tx *core.RawTransaction) error {
 	return s.db.Update().Model(tx).Where("id = ?", tx.ID).Delete(tx).Error
+}
+
+func (s *walletStore) CountOutputs(ctx context.Context) (int64, error) {
+	var output core.Output
+	if err := s.db.View().Select("id").Last(&output).Error; err != nil && !db.IsErrorNotFound(err) {
+		return 0, err
+	}
+
+	return output.ID, nil
+}
+
+func (s *walletStore) CountUnhandledTransfers(ctx context.Context) (int64, error) {
+	var count int64
+	if err := s.db.View().Model(core.Transfer{}).Where("handled = ?", 0).Count(&count).Error; err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }
