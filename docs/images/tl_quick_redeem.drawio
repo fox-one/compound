@@ -1,0 +1,117 @@
+<mxfile>
+    <diagram id="zN3t4215w26S1fiOfYXn" name="Page-1">
+        <mxGraphModel dx="1131" dy="956" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="2" value="Wallet(Mixin messenger)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="40" width="100" height="730" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;" vertex="1" parent="2">
+                    <mxGeometry x="50" y="70" width="10" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="4" value="Pay gas(carring action data in memo), e.g: pay CNB" style="html=1;verticalAlign=bottom;endArrow=block;" edge="1" parent="2" target="7">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="70" y="80" as="sourcePoint"/>
+                        <mxPoint x="150" y="80" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="5" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;strokeColor=#FFFFFF;fillColor=#2A2A2A;" vertex="1" parent="2">
+                    <mxGeometry x="45" y="440" width="10" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="6" value="sync wallet state" style="html=1;verticalAlign=bottom;endArrow=block;" edge="1" parent="2" target="7">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="50" y="450" as="sourcePoint"/>
+                        <mxPoint x="130" y="450" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="7" value="Mixin Network" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;" vertex="1" parent="1">
+                    <mxGeometry x="700" y="40" width="100" height="730" as="geometry"/>
+                </mxCell>
+                <mxCell id="8" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;" vertex="1" parent="7">
+                    <mxGeometry x="45" y="70" width="10" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="9" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;" vertex="1" parent="7">
+                    <mxGeometry x="45" y="335" width="10" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="10" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;strokeColor=#FFFFFF;fillColor=#2A2A2A;" vertex="1" parent="7">
+                    <mxGeometry x="45" y="120" width="10" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="11" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;strokeColor=#FFFFFF;fillColor=#2A2A2A;" vertex="1" parent="7">
+                    <mxGeometry x="45" y="430" width="10" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="12" value="Compound" style="swimlane;" vertex="1" parent="1">
+                    <mxGeometry x="190" y="10" width="460" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="13" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;" vertex="1" parent="12">
+                    <mxGeometry x="220" y="260" width="10" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="14" value="transfer ETH to user" style="html=1;verticalAlign=bottom;endArrow=block;" edge="1" parent="12">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="235" y="320" as="sourcePoint"/>
+                        <mxPoint x="379.5" y="320" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="15" value="Payee" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;" vertex="1" parent="1">
+                    <mxGeometry x="220" y="40" width="100" height="730" as="geometry"/>
+                </mxCell>
+                <mxCell id="16" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;" vertex="1" parent="15">
+                    <mxGeometry x="45" y="200" width="10" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="17" value="dispatch" style="html=1;verticalAlign=bottom;endArrow=block;" edge="1" parent="15" source="15">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="70" y="230" as="sourcePoint"/>
+                        <mxPoint x="180" y="230" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="18" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;fillColor=#2A2A2A;strokeColor=#FFFFFF;" vertex="1" parent="15">
+                    <mxGeometry x="45" y="120" width="10" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="19" value="pull outputs" style="html=1;verticalAlign=bottom;endArrow=block;" edge="1" parent="15">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="60" y="130" as="sourcePoint"/>
+                        <mxPoint x="520" y="130" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="20" value="Cashier" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;" vertex="1" parent="1">
+                    <mxGeometry x="520" y="40" width="100" height="730" as="geometry"/>
+                </mxCell>
+                <mxCell id="21" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;" vertex="1" parent="20">
+                    <mxGeometry x="45" y="270" width="10" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="22" value="transfer to Mixin network" style="html=1;verticalAlign=bottom;endArrow=block;" edge="1" parent="20">
+                    <mxGeometry width="80" relative="1" as="geometry">
+                        <mxPoint x="70" y="340" as="sourcePoint"/>
+                        <mxPoint x="229.5" y="340" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="23" value="Supply Action Processor" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;" vertex="1" parent="1">
+                    <mxGeometry x="370" y="40" width="100" height="730" as="geometry"/>
+                </mxCell>
+                <mxCell id="24" value="process supply business" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;" edge="1" parent="23">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="50" y="230" as="sourcePoint"/>
+                        <Array as="points">
+                            <mxPoint x="80" y="230"/>
+                            <mxPoint x="80" y="260"/>
+                            <mxPoint x="55" y="260"/>
+                        </Array>
+                        <mxPoint x="50" y="260" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="25" value="return" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;" edge="1" parent="1" source="7" target="18">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="570" y="210" as="sourcePoint"/>
+                        <mxPoint x="490" y="210" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="26" value="return" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;endSize=8;exitX=0.5;exitY=0.875;exitDx=0;exitDy=0;exitPerimeter=0;" edge="1" parent="1" source="11" target="2">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="470" y="560" as="sourcePoint"/>
+                        <mxPoint x="390" y="560" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
