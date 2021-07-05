@@ -46,6 +46,14 @@ In MTG system, There are two main roles, one is `Payee`, and the another is `cas
 * `Repay`, Suppose users repay `USDT`, means that users pay `USDT` and the users' debt will be reduced
   ![](images/tl_repay.png)
 
+* `quick_pledge`, Suppose users supply the underlying token `ETH` and no equity token `cETH` returns to users
+  ![](images/tl_quick_pledge.png)
+* `qick_redeem`, Suppose users redeem `ETH`, users only pay some gas `CNB`, and will get the underlying token `ETH` back
+  ![](images/tl_quick_redeem.png)
+* `quick_borrow`, Suppose users can supply `ETH` or `cETH` and can borrow `USDT` directory
+  ![](images/tl_quick_borrow.png)
+  
+
 * `Liquidation`, Suppose User A has Pledged `ETH` and Borrowed `USDT`, once The liquidity of user A's account less than or equal zero, it can be liquidated by other users
   ![](images/tl_liquidation.png)
 
