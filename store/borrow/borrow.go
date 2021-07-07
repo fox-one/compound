@@ -38,13 +38,16 @@ func (s *borrowStore) Save(ctx context.Context, borrow *core.Borrow) error {
 	return nil
 }
 
-func (s *borrowStore) Find(ctx context.Context, userID string, assetID string) (*core.Borrow, bool, error) {
+func (s *borrowStore) Find(ctx context.Context, userID string, assetID string) (*core.Borrow, error) {
 	var borrow core.Borrow
 	if e := s.db.View().Where("user_id=? and asset_id=?", userID, assetID).First(&borrow).Error; e != nil {
-		return nil, gorm.IsRecordNotFoundError(e), e
+		if gorm.IsRecordNotFoundError(e) {
+			return &core.Borrow{}, nil
+		}
+		return nil, e
 	}
 
-	return &borrow, false, nil
+	return &borrow, nil
 }
 
 func (s *borrowStore) FindByUser(ctx context.Context, userID string) ([]*core.Borrow, error) {

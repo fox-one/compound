@@ -30,51 +30,79 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 	borrowAssetID := borrowAsset.String()
 
 	// check supply market
-	isSupplyCToken := false
-	supplyMarket, isRecordNotFound, e := w.marketStore.Find(ctx, supplyAssetID)
-	if isRecordNotFound {
-		supplyMarket, isRecordNotFound, e = w.marketStore.FindByCToken(ctx, supplyAssetID)
-		if isRecordNotFound {
-			log.Errorln("market not found")
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrMarketNotFound)
-		}
+	isSupplyCToken, e := w.isSupplyCToken(ctx, supplyAssetID)
+	if e != nil {
+		return e
+	}
+
+	tx, e := w.transactionStore.FindByTraceID(ctx, output.TraceID)
+	if e != nil {
+		return e
+	}
+
+	if tx.ID == 0 {
+		supplyMarket, e := w.marketStore.Find(ctx, supplyAssetID)
 		if e != nil {
 			log.WithError(e).Errorln("find market error")
 			return e
 		}
+		if supplyMarket.ID == 0 {
+			supplyMarket, e = w.marketStore.FindByCToken(ctx, supplyAssetID)
+			if e != nil {
+				return e
+			}
+		}
 
-		isSupplyCToken = true
+		borrowMarket, e := w.marketStore.Find(ctx, borrowAssetID)
+		if e != nil {
+			return e
+		}
+
+		supply, e := w.supplyStore.Find(ctx, userID, supplyMarket.CTokenAssetID)
+		if e != nil {
+			return e
+		}
+
+		borrow, e := w.borrowStore.Find(ctx, userID, borrowMarket.AssetID)
+		if e != nil {
+			return e
+		}
+
+		cs := core.NewContextSnapshot(supply, borrow, supplyMarket, borrowMarket)
+		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeQuickBorrow, output, cs)
+		if err := w.transactionStore.Create(ctx, tx); err != nil {
+			return err
+		}
 	}
 
+	contextSnapshot, e := tx.UnmarshalContextSnapshot()
 	if e != nil {
-		log.WithError(e).Errorln("find market error")
 		return e
 	}
 
+	// check supply market
+	supplyMarket := contextSnapshot.SupplyMarket
+	if supplyMarket == nil || supplyMarket.ID == 0 {
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrMarketNotFound)
+	}
+
 	if w.marketService.IsMarketClosed(ctx, supplyMarket) {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrMarketClosed)
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrMarketClosed)
 	}
 
 	// check collateral
 	if supplyMarket.CollateralFactor.LessThanOrEqual(decimal.Zero) {
 		log.Errorln(errors.New("pledge disallowed"))
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrPledgeNotAllowed)
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrPledgeNotAllowed)
 	}
 
 	// check borrow market
-	borrowMarket, isRecordNotFound, e := w.marketStore.Find(ctx, borrowAssetID)
-	if isRecordNotFound {
-		log.Warningln("market not found, refund")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrMarketNotFound)
+	borrowMarket := contextSnapshot.BorrowMarket
+	if borrowMarket == nil || borrowMarket.ID == 0 {
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrMarketNotFound)
 	}
-
-	if e != nil {
-		log.Errorln("query market error:", e)
-		return e
-	}
-
 	if w.marketService.IsMarketClosed(ctx, borrowMarket) {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrMarketClosed)
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrMarketClosed)
 	}
 
 	// supply market accrue interest
@@ -91,19 +119,19 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 	// check borrow ability
 	if borrowAmount.LessThanOrEqual(decimal.Zero) {
 		log.Errorln("invalid borrow amount")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrBorrowNotAllowed)
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrBorrowNotAllowed)
 	}
 
 	// check borrow cap
 	borrowableSupplies := borrowMarket.TotalCash.Sub(borrowMarket.Reserves)
 	if borrowableSupplies.LessThan(borrowMarket.BorrowCap) {
 		log.Errorln("insufficient market cash")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrBorrowNotAllowed)
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrBorrowNotAllowed)
 	}
 
 	if borrowAmount.GreaterThan(borrowableSupplies.Sub(borrowMarket.BorrowCap)) {
 		log.Errorln("insufficient market cash")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrBorrowNotAllowed)
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrBorrowNotAllowed)
 	}
 
 	// check liquidity
@@ -123,7 +151,7 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 	borrowValue := borrowAmount.Mul(borrowMarket.Price)
 	if borrowValue.GreaterThan(liquidity) {
 		log.Errorln("insufficient liquidity")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrBorrowNotAllowed)
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrBorrowNotAllowed)
 	}
 
 	// supply
@@ -166,20 +194,16 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 	}
 
 	// update pledge data
-	supply, isRecordNotFound, e := w.supplyStore.Find(ctx, userID, supplyMarket.CTokenAssetID)
-	if e != nil {
-		if isRecordNotFound {
-			//not exists, create
-			supply = &core.Supply{
-				UserID:        userID,
-				CTokenAssetID: supplyMarket.CTokenAssetID,
-				Collaterals:   ctokens,
-			}
-			if e = w.supplyStore.Save(ctx, supply); e != nil {
-				log.Errorln(e)
-				return e
-			}
-		} else {
+	supply := contextSnapshot.Supply
+	if supply == nil || supply.ID == 0 {
+		//not exists, create
+		supply = &core.Supply{
+			UserID:        userID,
+			CTokenAssetID: supplyMarket.CTokenAssetID,
+			Collaterals:   ctokens,
+			Version:       output.ID,
+		}
+		if e = w.supplyStore.Save(ctx, supply); e != nil {
 			log.Errorln(e)
 			return e
 		}
@@ -213,33 +237,28 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 		return e
 	}
 
-	borrow, isRecordNotFound, e := w.borrowStore.Find(ctx, userID, borrowMarket.AssetID)
-	if e != nil {
-		if isRecordNotFound {
-			//new borrow record
-			borrow = &core.Borrow{
-				UserID:        userID,
-				AssetID:       borrowMarket.AssetID,
-				Principal:     borrowAmount,
-				InterestIndex: borrowMarket.BorrowIndex}
+	borrow := contextSnapshot.Borrow
+	if borrow == nil || borrow.ID == 0 {
+		//new borrow record
+		borrow = &core.Borrow{
+			UserID:        userID,
+			AssetID:       borrowMarket.AssetID,
+			Principal:     borrowAmount,
+			InterestIndex: borrowMarket.BorrowIndex,
+			Version:       output.ID}
 
-			if e = w.borrowStore.Save(ctx, borrow); e != nil {
-				log.Errorln(e)
-				return e
-			}
-		} else {
+		if e = w.borrowStore.Save(ctx, borrow); e != nil {
 			log.Errorln(e)
 			return e
 		}
 	} else {
 		//update borrow account
-		borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, borrowMarket)
-		if e != nil {
-			log.Errorln(e)
-			return e
-		}
-
 		if output.ID > borrow.Version {
+			borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, borrowMarket)
+			if e != nil {
+				log.Errorln(e)
+				return e
+			}
 			newBorrowBalance := borrowBalance.Add(borrowAmount)
 			borrow.Principal = newBorrowBalance.Truncate(16)
 			borrow.InterestIndex = borrowMarket.BorrowIndex.Truncate(16)
@@ -266,8 +285,10 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 		Principal:     borrow.Principal,
 		InterestIndex: borrow.InterestIndex,
 	})
-	transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeQuickBorrow, output, extra)
-	if e = w.transactionStore.Create(ctx, transaction); e != nil {
+
+	tx.SetExtraData(extra)
+	tx.Status = core.TransactionStatusComplete
+	if e = w.transactionStore.Update(ctx, tx); e != nil {
 		log.WithError(e).Errorln("create transaction error")
 		return e
 	}
@@ -278,4 +299,23 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 		FollowID: followID,
 	}
 	return w.transferOut(ctx, userID, followID, output.TraceID, borrowAssetID, borrowAmount, &transferAction)
+}
+
+func (w *Payee) isSupplyCToken(ctx context.Context, supplyAssetID string) (bool, error) {
+	isSupplyCToken := false
+
+	supplyMarket, e := w.marketStore.Find(ctx, supplyAssetID)
+	if e != nil {
+		return isSupplyCToken, e
+	}
+	if supplyMarket.ID == 0 {
+		_, e := w.marketStore.FindByCToken(ctx, supplyAssetID)
+		if e != nil {
+			return isSupplyCToken, e
+		}
+
+		isSupplyCToken = true
+	}
+
+	return isSupplyCToken, nil
 }

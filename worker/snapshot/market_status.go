@@ -12,13 +12,13 @@ import (
 func (w *Payee) handleOpenMarketEvent(ctx context.Context, p *core.Proposal, req proposal.MarketStatusReq, output *core.Output) error {
 	log := logger.FromContext(ctx).WithField("worker", "open-market")
 
-	market, isRecordNotFound, e := w.marketStore.Find(ctx, req.AssetID)
+	market, e := w.marketStore.Find(ctx, req.AssetID)
 	if e != nil {
-		if isRecordNotFound {
-			return nil
-		}
-
 		return e
+	}
+
+	if market.ID == 0 {
+		return nil
 	}
 
 	if e = w.marketService.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
@@ -44,13 +44,13 @@ func (w *Payee) handleOpenMarketEvent(ctx context.Context, p *core.Proposal, req
 func (w *Payee) handleCloseMarketEvent(ctx context.Context, p *core.Proposal, req proposal.MarketStatusReq, output *core.Output) error {
 	log := logger.FromContext(ctx).WithField("worker", "close-market")
 
-	market, isRecordNotFound, e := w.marketStore.Find(ctx, req.AssetID)
+	market, e := w.marketStore.Find(ctx, req.AssetID)
 	if e != nil {
-		if isRecordNotFound {
-			return nil
-		}
-
 		return e
+	}
+
+	if market.ID == 0 {
+		return nil
 	}
 
 	if e = w.marketService.AccrueInterest(ctx, market, output.CreatedAt); e != nil {

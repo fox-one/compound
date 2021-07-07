@@ -15,15 +15,13 @@ func (w *Payee) handleWithdrawEvent(ctx context.Context, p *core.Proposal, req p
 	amount := req.Amount.Truncate(8)
 
 	// check the market
-	market, isRecordNotFound, e := w.marketStore.Find(ctx, req.Asset)
-	if isRecordNotFound {
+	market, e := w.marketStore.Find(ctx, req.Asset)
+	if e != nil {
+		return e
+	}
+	if market.ID == 0 {
 		log.Errorln(errors.New("invalid market"))
 		return nil
-	}
-
-	if e != nil {
-		log.WithError(e).Errorln("find market error")
-		return e
 	}
 
 	// check the amount
@@ -32,13 +30,15 @@ func (w *Payee) handleWithdrawEvent(ctx context.Context, p *core.Proposal, req p
 		return nil
 	}
 
-	// update market total_cash and reserves
-	market.TotalCash = market.TotalCash.Sub(amount)
-	market.Reserves = market.Reserves.Sub(amount)
+	if output.ID > market.Version {
+		// update market total_cash and reserves
+		market.TotalCash = market.TotalCash.Sub(amount)
+		market.Reserves = market.Reserves.Sub(amount)
 
-	if err := w.marketStore.Update(ctx, market, output.ID); err != nil {
-		log.WithError(err).Errorln("update market error")
-		return err
+		if err := w.marketStore.Update(ctx, market, output.ID); err != nil {
+			log.WithError(err).Errorln("update market error")
+			return err
+		}
 	}
 
 	// market transaction

@@ -25,38 +25,57 @@ func (w *Payee) handleQuickRedeemEvent(ctx context.Context, output *core.Output,
 	log.Infof("ctokenAssetID:%s, amount:%s", ctokenAsset.String(), redeemTokens)
 	redeemTokens = redeemTokens.Truncate(8)
 	ctokenAssetID := ctokenAsset.String()
-	market, isRecordNotFound, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
-	if isRecordNotFound {
-		log.Warningln("market not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrMarketNotFound)
-	}
+
+	tx, e := w.transactionStore.FindByTraceID(ctx, output.TraceID)
 	if e != nil {
-		log.WithError(e).Errorln("find market error")
 		return e
+	}
+
+	if tx.ID == 0 {
+		supplyMarket, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
+		if e != nil {
+			log.WithError(e).Errorln("find market error")
+			return e
+		}
+
+		supply, e := w.supplyStore.Find(ctx, userID, supplyMarket.CTokenAssetID)
+		if e != nil {
+			return e
+		}
+
+		cs := core.NewContextSnapshot(supply, nil, supplyMarket, nil)
+		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeQuickRedeem, output, cs)
+		if err := w.transactionStore.Create(ctx, tx); err != nil {
+			return err
+		}
+	}
+
+	contextSnapshot, e := tx.UnmarshalContextSnapshot()
+	if e != nil {
+		return e
+	}
+
+	market := contextSnapshot.SupplyMarket
+	if market == nil || market.ID == 0 {
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrMarketNotFound)
+	}
+
+	supply := contextSnapshot.Supply
+	if supply == nil || market.ID == 0 {
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrSupplyNotFound)
 	}
 
 	if w.marketService.IsMarketClosed(ctx, market) {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrMarketClosed)
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrMarketClosed)
 	}
 
 	if redeemTokens.GreaterThan(market.CTokens) {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrRedeemNotAllowed)
-	}
-
-	// supply
-	supply, isRecordNotFound, e := w.supplyStore.Find(ctx, userID, market.CTokenAssetID)
-	if isRecordNotFound {
-		log.Warningln("supply not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrSupplyNotFound)
-	}
-	if e != nil {
-		log.WithError(e).Errorln("find supply error")
-		return e
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrRedeemNotAllowed)
 	}
 
 	if redeemTokens.GreaterThan(supply.Collaterals) {
 		log.Errorln(errors.New("insufficient collaterals"))
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrInsufficientCollaterals)
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrInsufficientCollaterals)
 	}
 
 	//accrue interest
@@ -67,7 +86,7 @@ func (w *Payee) handleQuickRedeemEvent(ctx context.Context, output *core.Output,
 
 	// check redeem allowed
 	if allowed := w.supplyService.RedeemAllowed(ctx, redeemTokens, market); !allowed {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrRedeemNotAllowed)
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrRedeemNotAllowed)
 	}
 
 	// check liqudity
@@ -86,7 +105,7 @@ func (w *Payee) handleQuickRedeemEvent(ctx context.Context, output *core.Output,
 	unpledgedTokenLiquidity := redeemTokens.Mul(exchangeRate).Mul(market.CollateralFactor).Mul(price)
 	if unpledgedTokenLiquidity.GreaterThan(liquidity) {
 		log.Errorln(errors.New("insufficient liquidity"))
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrInsufficientLiquidity)
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrInsufficientLiquidity)
 	}
 
 	// update supply
@@ -127,8 +146,10 @@ func (w *Payee) handleQuickRedeemEvent(ctx context.Context, output *core.Output,
 		CTokenAssetID: supply.CTokenAssetID,
 		Collaterals:   supply.Collaterals,
 	})
-	transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeQuickRedeem, output, &extra)
-	if e = w.transactionStore.Create(ctx, transaction); e != nil {
+
+	tx.SetExtraData(extra)
+	tx.Status = core.TransactionStatusComplete
+	if e = w.transactionStore.Update(ctx, tx); e != nil {
 		log.WithError(e).Errorln("create transaction error")
 		return e
 	}

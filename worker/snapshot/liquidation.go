@@ -60,26 +60,62 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 
 	log.Infof("seizedUser:%s, seizedAsset:%s, payAsset:%s, payAmount:%s", seizedUserID, seizedCTokenAssetID, userPayAssetID, userPayAmount)
 
-	// supply market
-	supplyMarket, isRecordNotFound, e := w.marketStore.FindByCToken(ctx, seizedCTokenAssetID)
-	if isRecordNotFound {
-		log.Warningln("supply market not found")
-		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrMarketNotFound)
-	}
+	tx, e := w.transactionStore.FindByTraceID(ctx, output.TraceID)
 	if e != nil {
-		log.WithError(e).Errorln("find supply market error")
 		return e
 	}
 
-	// borrow market
-	borrowMarket, isRecordNotFound, e := w.marketStore.Find(ctx, userPayAssetID)
-	if isRecordNotFound {
-		log.Warningln("borrow market not found")
-		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrMarketNotFound)
+	if tx.ID == 0 {
+		supplyMarket, e := w.marketStore.FindByCToken(ctx, seizedCTokenAssetID)
+		if e != nil {
+			return e
+		}
+
+		borrowMarket, e := w.marketStore.Find(ctx, userPayAssetID)
+		if e != nil {
+			return e
+		}
+
+		supply, e := w.supplyStore.Find(ctx, seizedUserID, supplyMarket.CTokenAssetID)
+		if e != nil {
+			return e
+		}
+
+		borrow, e := w.borrowStore.Find(ctx, seizedUserID, borrowMarket.AssetID)
+		if e != nil {
+			return e
+		}
+
+		cs := core.NewContextSnapshot(supply, borrow, supplyMarket, borrowMarket)
+		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeLiquidate, output, cs)
+		if err := w.transactionStore.Create(ctx, tx); err != nil {
+			return err
+		}
 	}
+
+	contextSnapshot, e := tx.UnmarshalContextSnapshot()
 	if e != nil {
-		log.WithError(e).Errorln("find borrow market error")
 		return e
+	}
+
+	supplyMarket := contextSnapshot.SupplyMarket
+	if supplyMarket == nil || supplyMarket.ID == 0 {
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeLiquidate, core.ErrMarketNotFound)
+	}
+
+	borrowMarket := contextSnapshot.BorrowMarket
+	if borrowMarket == nil || borrowMarket.ID == 0 {
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeLiquidate, core.ErrMarketNotFound)
+	}
+
+	supply := contextSnapshot.Supply
+	if supply == nil || supply.ID == 0 {
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeLiquidate, core.ErrSupplyNotFound)
+	}
+
+	borrow := contextSnapshot.Borrow
+	if borrow == nil || borrow.ID == 0 {
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeLiquidate, core.ErrBorrowNotFound)
 	}
 
 	//supply market accrue interest
@@ -100,29 +136,6 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 		return e
 	}
 
-	// supply
-	supply, isRecordNotFound, e := w.supplyStore.Find(ctx, seizedUserID, supplyMarket.CTokenAssetID)
-	if isRecordNotFound {
-		log.Warningln("supply not found")
-		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrSupplyNotFound)
-	}
-
-	if e != nil {
-		log.WithError(e).Errorln("find supply error")
-		return e
-	}
-
-	// borrow
-	borrow, isRecordNotFound, e := w.borrowStore.Find(ctx, seizedUserID, borrowMarket.AssetID)
-	if isRecordNotFound {
-		log.Warningln("borrow not found")
-		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrBorrowNotFound)
-	}
-	if e != nil {
-		log.WithError(e).Errorln("find borrow error")
-		return e
-	}
-
 	borrowPrice := borrowMarket.Price
 	if borrowPrice.LessThanOrEqual(decimal.Zero) {
 		log.Errorln(e)
@@ -137,7 +150,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 
 	// refund to liquidator if seize not allowed
 	if !w.accountService.SeizeTokenAllowed(ctx, supply, borrow, output.CreatedAt) {
-		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrSeizeNotAllowed)
+		return w.abortTransaction(ctx, tx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrSeizeNotAllowed)
 	}
 
 	borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, borrowMarket)
@@ -245,8 +258,9 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 	})
 
 	// liquidation transaction
-	transaction := core.BuildTransactionFromOutput(ctx, liquidator, followID, core.ActionTypeLiquidate, output, &extra)
-	if e = w.transactionStore.Create(ctx, transaction); e != nil {
+	tx.SetExtraData(extra)
+	tx.Status = core.TransactionStatusComplete
+	if e = w.transactionStore.Update(ctx, tx); e != nil {
 		log.WithError(e).Errorln("create transaction error")
 		return e
 	}

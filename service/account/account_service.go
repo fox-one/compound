@@ -46,8 +46,12 @@ func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID s
 	}
 	supplyValue := decimal.Zero
 	for _, supply := range supplies {
-		market, _, e := s.marketStore.FindByCToken(ctx, supply.CTokenAssetID)
+		market, e := s.marketStore.FindByCToken(ctx, supply.CTokenAssetID)
 		if e != nil {
+			continue
+		}
+
+		if market.ID == 0 {
 			continue
 		}
 
@@ -68,10 +72,15 @@ func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID s
 	borrowValue := decimal.Zero
 
 	for _, borrow := range borrows {
-		market, _, e := s.marketStore.Find(ctx, borrow.AssetID)
+		market, e := s.marketStore.Find(ctx, borrow.AssetID)
 		if e != nil {
 			continue
 		}
+
+		if market.ID == 0 {
+			continue
+		}
+
 		price := market.Price
 
 		borrowBalance, e := borrow.Balance(ctx, market)
@@ -113,9 +122,13 @@ func (s *accountService) MaxSeize(ctx context.Context, supply *core.Supply, borr
 		return decimal.Zero, errors.New("different user bettween supply and borrow")
 	}
 
-	supplyMarket, _, e := s.marketStore.FindByCToken(ctx, supply.CTokenAssetID)
+	supplyMarket, e := s.marketStore.FindByCToken(ctx, supply.CTokenAssetID)
 	if e != nil {
 		return decimal.Zero, e
+	}
+
+	if supplyMarket.ID == 0 {
+		return decimal.Zero, errors.New("no market")
 	}
 
 	exchangeRate, e := s.marketService.CurExchangeRate(ctx, supplyMarket)
@@ -126,10 +139,14 @@ func (s *accountService) MaxSeize(ctx context.Context, supply *core.Supply, borr
 	maxSeize := supply.Collaterals.Mul(exchangeRate).Mul(supplyMarket.CloseFactor)
 
 	supplyPrice := supplyMarket.Price
-	borrowMarket, _, e := s.marketStore.Find(ctx, borrow.AssetID)
+	borrowMarket, e := s.marketStore.Find(ctx, borrow.AssetID)
 	if e != nil {
 		return decimal.Zero, e
 	}
+	if borrowMarket.ID == 0 {
+		return decimal.Zero, errors.New("no market")
+	}
+
 	borrowPrice := borrowMarket.Price
 	seizePrice := supplyPrice.Sub(supplyPrice.Mul(supplyMarket.LiquidationIncentive))
 	seizeValue := maxSeize.Mul(seizePrice)

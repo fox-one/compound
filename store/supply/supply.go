@@ -38,13 +38,18 @@ func (s *supplyStore) Save(ctx context.Context, supply *core.Supply) error {
 
 	return nil
 }
-func (s *supplyStore) Find(ctx context.Context, userID string, ctokenAssetID string) (*core.Supply, bool, error) {
+
+func (s *supplyStore) Find(ctx context.Context, userID string, ctokenAssetID string) (*core.Supply, error) {
 	var supply core.Supply
 	if e := s.db.View().Where("user_id=? and c_token_asset_id=?", userID, ctokenAssetID).First(&supply).Error; e != nil {
-		return nil, gorm.IsRecordNotFoundError(e), e
+		if gorm.IsRecordNotFoundError(e) {
+			return &core.Supply{}, nil
+		}
+
+		return nil, e
 	}
 
-	return &supply, false, nil
+	return &supply, nil
 }
 
 func (s *supplyStore) FindByUser(ctx context.Context, userID string) ([]*core.Supply, error) {

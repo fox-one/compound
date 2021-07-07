@@ -15,19 +15,37 @@ func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, user
 
 	log.Infof("ctokenAssetID:%s, amount:%s", ctokenAssetID, output.Amount)
 
-	market, isRecordNotFound, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
-	if isRecordNotFound {
-		log.Warningln("market not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrMarketNotFound)
-	}
-
+	tx, e := w.transactionStore.FindByTraceID(ctx, output.TraceID)
 	if e != nil {
-		log.WithError(e).Errorln("find market error")
 		return e
 	}
 
+	if tx.ID == 0 {
+		supplyMarket, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
+		if e != nil {
+			log.WithError(e).Errorln("find supply market error")
+			return e
+		}
+
+		cs := core.NewContextSnapshot(nil, nil, supplyMarket, nil)
+		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeRedeem, output, cs)
+		if err := w.transactionStore.Create(ctx, tx); err != nil {
+			return err
+		}
+	}
+
+	contextSnapshot, e := tx.UnmarshalContextSnapshot()
+	if e != nil {
+		return e
+	}
+
+	market := contextSnapshot.SupplyMarket
+	if market == nil || market.ID == 0 {
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeRedeem, core.ErrMarketNotFound)
+	}
+
 	if w.marketService.IsMarketClosed(ctx, market) {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrMarketClosed)
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeRedeem, core.ErrMarketClosed)
 	}
 
 	//accrue interest
@@ -38,13 +56,12 @@ func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, user
 
 	redeemTokens := output.Amount
 	if redeemTokens.GreaterThan(market.CTokens) {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrRedeemNotAllowed)
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeRedeem, core.ErrRedeemNotAllowed)
 	}
 
 	// check redeem allowed
-	allowed := w.supplyService.RedeemAllowed(ctx, redeemTokens, market)
-	if !allowed {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrRedeemNotAllowed)
+	if allowed := w.supplyService.RedeemAllowed(ctx, redeemTokens, market); !allowed {
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeRedeem, core.ErrRedeemNotAllowed)
 	}
 
 	// transfer asset to user
@@ -76,8 +93,9 @@ func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, user
 	extra := core.NewTransactionExtra()
 	extra.Put(core.TransactionKeyAssetID, market.AssetID)
 	extra.Put(core.TransactionKeyAmount, amount)
-	transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeRedeem, output, &extra)
-	if e = w.transactionStore.Create(ctx, transaction); e != nil {
+	tx.SetExtraData(extra)
+	tx.Status = core.TransactionStatusComplete
+	if e = w.transactionStore.Update(ctx, tx); e != nil {
 		log.WithError(e).Errorln("create transaction error")
 		return e
 	}

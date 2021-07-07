@@ -246,3 +246,11 @@ func (w *Payee) decodeMemo(memo string) []byte {
 
 	return []byte(memo)
 }
+
+func (w *Payee) abortTransaction(ctx context.Context, tx *core.Transaction, output *core.Output, userID, followID string, action core.ActionType, errCode core.ErrorCode) error {
+	tx.Status = core.TransactionStatusAbort
+	if err := w.transactionStore.Update(ctx, tx); err != nil {
+		return err
+	}
+	return w.handleRefundEvent(ctx, output, userID, followID, action, errCode)
+}

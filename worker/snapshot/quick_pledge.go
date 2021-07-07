@@ -18,23 +18,47 @@ func (w *Payee) handleQuickPledgeEvent(ctx context.Context, output *core.Output,
 	supplyAmount := output.Amount
 	assetID := output.AssetID
 
-	market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)
-	if isRecordNotFound {
-		log.Warningln("market not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrMarketNotFound)
-	}
+	tx, e := w.transactionStore.FindByTraceID(ctx, output.TraceID)
 	if e != nil {
-		log.WithError(e).Errorln("find market error")
 		return e
 	}
 
+	if tx.ID == 0 {
+		supplyMarket, e := w.marketStore.Find(ctx, assetID)
+		if e != nil {
+			log.WithError(e).Errorln("find market error")
+			return e
+		}
+
+		supply, e := w.supplyStore.Find(ctx, userID, supplyMarket.CTokenAssetID)
+		if e != nil {
+			return e
+		}
+
+		cs := core.NewContextSnapshot(supply, nil, supplyMarket, nil)
+		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeQuickPledge, output, cs)
+		if err := w.transactionStore.Create(ctx, tx); err != nil {
+			return err
+		}
+	}
+
+	contextSnapshot, e := tx.UnmarshalContextSnapshot()
+	if e != nil {
+		return e
+	}
+
+	market := contextSnapshot.SupplyMarket
+	if market == nil || market.ID == 0 {
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrMarketNotFound)
+	}
+
 	if w.marketService.IsMarketClosed(ctx, market) {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrMarketClosed)
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrMarketClosed)
 	}
 
 	if market.CollateralFactor.LessThanOrEqual(decimal.Zero) {
 		log.Errorln(errors.New("pledge disallowed"))
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrPledgeNotAllowed)
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrPledgeNotAllowed)
 	}
 
 	//accrue interest
@@ -51,7 +75,7 @@ func (w *Payee) handleQuickPledgeEvent(ctx context.Context, output *core.Output,
 
 	ctokens := supplyAmount.Div(exchangeRate).Truncate(8)
 	if ctokens.LessThan(decimal.NewFromFloat(0.00000001)) {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrInvalidAmount)
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrInvalidAmount)
 	}
 
 	//update maket
@@ -72,20 +96,16 @@ func (w *Payee) handleQuickPledgeEvent(ctx context.Context, output *core.Output,
 	}
 
 	// pledge
-	supply, isRecordNotFound, e := w.supplyStore.Find(ctx, userID, market.CTokenAssetID)
-	if e != nil {
-		if isRecordNotFound {
-			//not exists, create
-			supply = &core.Supply{
-				UserID:        userID,
-				CTokenAssetID: market.CTokenAssetID,
-				Collaterals:   ctokens,
-			}
-			if e = w.supplyStore.Save(ctx, supply); e != nil {
-				log.Errorln(e)
-				return e
-			}
-		} else {
+	supply := contextSnapshot.Supply
+	if supply == nil || supply.ID == 0 {
+		//not exists, create
+		supply = &core.Supply{
+			UserID:        userID,
+			CTokenAssetID: market.CTokenAssetID,
+			Collaterals:   ctokens,
+			Version:       output.ID,
+		}
+		if e = w.supplyStore.Save(ctx, supply); e != nil {
 			log.Errorln(e)
 			return e
 		}
@@ -110,8 +130,10 @@ func (w *Payee) handleQuickPledgeEvent(ctx context.Context, output *core.Output,
 		CTokenAssetID: supply.CTokenAssetID,
 		Collaterals:   supply.Collaterals,
 	})
-	transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeQuickPledge, output, extra)
-	if e = w.transactionStore.Create(ctx, transaction); e != nil {
+
+	tx.SetExtraData(extra)
+	tx.Status = core.TransactionStatusComplete
+	if e = w.transactionStore.Update(ctx, tx); e != nil {
 		log.WithError(e).Errorln("create transaction error")
 		return e
 	}

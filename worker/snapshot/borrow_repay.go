@@ -18,33 +18,65 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 	assetID := output.AssetID
 
 	log.Infoln(":asset:", output.AssetID, "amount:", repayAmount)
-	market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)
-	if isRecordNotFound {
-		log.Warningln("market not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRepay, core.ErrMarketNotFound)
-	}
 
+	tx, e := w.transactionStore.FindByTraceID(ctx, output.TraceID)
 	if e != nil {
-		log.WithError(e).Errorln("find market error")
 		return e
 	}
 
+	if tx.ID == 0 {
+		market, e := w.marketStore.Find(ctx, assetID)
+		if e != nil {
+			log.WithError(e).Errorln("find market error")
+			return e
+		}
+
+		borrow, e := w.borrowStore.Find(ctx, userID, market.AssetID)
+		if e != nil {
+			log.Errorln(e)
+			return e
+		}
+
+		cs := core.NewContextSnapshot(nil, borrow, nil, market)
+		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeRepay, output, cs)
+		if err := w.transactionStore.Create(ctx, tx); err != nil {
+			return err
+		}
+	}
+
+	contextSnapshot, e := tx.UnmarshalContextSnapshot()
+	if e != nil {
+		return e
+	}
+
+	market := contextSnapshot.BorrowMarket
+	if market == nil || market.ID == 0 {
+		tx.Status = core.TransactionStatusAbort
+		if err := w.transactionStore.Update(ctx, tx); err != nil {
+			return err
+		}
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeRepay, core.ErrMarketNotFound)
+	}
+
+	borrow := contextSnapshot.Borrow
+	if borrow == nil || borrow.ID == 0 {
+		tx.Status = core.TransactionStatusAbort
+		if err := w.transactionStore.Update(ctx, tx); err != nil {
+			return err
+		}
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeRepay, core.ErrBorrowNotFound)
+	}
+
 	if w.marketService.IsMarketClosed(ctx, market) {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRepay, core.ErrMarketClosed)
+		tx.Status = core.TransactionStatusAbort
+		if err := w.transactionStore.Update(ctx, tx); err != nil {
+			return err
+		}
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeRepay, core.ErrMarketClosed)
 	}
 
 	//update interest
 	if e = w.marketService.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
-		log.Errorln(e)
-		return e
-	}
-
-	borrow, isRecordNotFound, e := w.borrowStore.Find(ctx, userID, market.AssetID)
-	if isRecordNotFound {
-		log.Warningln("borrow not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRepay, core.ErrBorrowNotFound)
-	}
-	if e != nil {
 		log.Errorln(e)
 		return e
 	}
@@ -90,7 +122,7 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 		return e
 	}
 
-	// add transaction
+	// borrow transaction
 	extra := core.NewTransactionExtra()
 	extra.Put(core.TransactionKeyBorrow, core.ExtraBorrow{
 		UserID:        borrow.UserID,
@@ -98,9 +130,10 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 		Principal:     borrow.Principal,
 		InterestIndex: borrow.InterestIndex,
 	})
-	transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeRepay, output, extra)
-	if e = w.transactionStore.Create(ctx, transaction); e != nil {
-		log.WithError(e).Errorln("create transaction error")
+	tx.SetExtraData(extra)
+	tx.Status = core.TransactionStatusComplete
+	if e = w.transactionStore.Update(ctx, tx); e != nil {
+		log.WithError(e).Errorln("update transaction error")
 		return e
 	}
 

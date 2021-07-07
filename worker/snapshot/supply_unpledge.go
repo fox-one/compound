@@ -26,33 +26,53 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 	log.Infof("ctokenAssetID:%s, amount:%s", ctokenAsset.String(), unpledgedAmount)
 	unpledgedAmount = unpledgedAmount.Truncate(8)
 	ctokenAssetID := ctokenAsset.String()
-	market, isRecordNotFound, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
-	if isRecordNotFound {
-		log.Warningln("market not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeUnpledge, core.ErrMarketNotFound)
-	}
+
+	tx, e := w.transactionStore.FindByTraceID(ctx, output.TraceID)
 	if e != nil {
-		log.WithError(e).Errorln("find market error")
 		return e
+	}
+
+	if tx.ID == 0 {
+		supplyMarket, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
+		if e != nil {
+			log.WithError(e).Errorln("find supply market error")
+			return e
+		}
+
+		supply, e := w.supplyStore.Find(ctx, userID, ctokenAssetID)
+		if e != nil {
+			return e
+		}
+
+		cs := core.NewContextSnapshot(supply, nil, supplyMarket, nil)
+		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeUnpledge, output, cs)
+		if err := w.transactionStore.Create(ctx, tx); err != nil {
+			return err
+		}
+	}
+
+	contextSnapshot, e := tx.UnmarshalContextSnapshot()
+	if e != nil {
+		return e
+	}
+
+	market := contextSnapshot.BorrowMarket
+	if market == nil || market.ID == 0 {
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeUnpledge, core.ErrMarketNotFound)
+	}
+
+	supply := contextSnapshot.Supply
+	if supply == nil || supply.ID == 0 {
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeUnpledge, core.ErrSupplyNotFound)
 	}
 
 	if w.marketService.IsMarketClosed(ctx, market) {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeUnpledge, core.ErrMarketClosed)
-	}
-
-	supply, isRecordNotFound, e := w.supplyStore.Find(ctx, userID, market.CTokenAssetID)
-	if isRecordNotFound {
-		log.Warningln("supply not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeUnpledge, core.ErrSupplyNotFound)
-	}
-	if e != nil {
-		log.WithError(e).Errorln("find supply error")
-		return e
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeUnpledge, core.ErrMarketClosed)
 	}
 
 	if unpledgedAmount.GreaterThan(supply.Collaterals) {
 		log.Errorln(errors.New("insufficient collaterals"))
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeUnpledge, core.ErrInsufficientCollaterals)
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeUnpledge, core.ErrInsufficientCollaterals)
 	}
 
 	//accrue interest
@@ -109,8 +129,10 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 		CTokenAssetID: supply.CTokenAssetID,
 		Collaterals:   supply.Collaterals,
 	})
-	transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeUnpledge, output, &extra)
-	if e = w.transactionStore.Create(ctx, transaction); e != nil {
+
+	tx.SetExtraData(extra)
+	tx.Status = core.TransactionStatusComplete
+	if e = w.transactionStore.Update(ctx, tx); e != nil {
 		log.WithError(e).Errorln("create transaction error")
 		return e
 	}

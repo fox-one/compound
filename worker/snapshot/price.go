@@ -14,14 +14,15 @@ import (
 func (w *Payee) handlePriceEvent(ctx context.Context, output *core.Output, priceData *core.PriceData) error {
 	log := logger.FromContext(ctx).WithField("worker", "handle_dirt_price_event")
 
-	market, isRecordNotFound, e := w.marketStore.Find(ctx, priceData.AssetID)
-	if isRecordNotFound {
-		return nil
-	}
-
+	market, e := w.marketStore.Find(ctx, priceData.AssetID)
 	if e != nil {
 		return e
 	}
+
+	if market.ID == 0 {
+		return nil
+	}
+
 	// accrue interest
 	if e = w.marketService.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
 		return e

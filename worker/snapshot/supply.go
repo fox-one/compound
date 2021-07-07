@@ -16,18 +16,37 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 	supplyAmount := output.Amount
 	assetID := output.AssetID
 
-	market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)
-	if isRecordNotFound {
-		log.Warningln("market not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeSupply, core.ErrMarketNotFound)
-	}
+	tx, e := w.transactionStore.FindByTraceID(ctx, output.TraceID)
 	if e != nil {
-		log.WithError(e).Errorln("find market error")
 		return e
 	}
 
+	if tx.ID == 0 {
+		supplyMarket, e := w.marketStore.Find(ctx, assetID)
+		if e != nil {
+			log.WithError(e).Errorln("find market error")
+			return e
+		}
+
+		cs := core.NewContextSnapshot(nil, nil, supplyMarket, nil)
+		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeSupply, output, cs)
+		if err := w.transactionStore.Create(ctx, tx); err != nil {
+			return err
+		}
+	}
+
+	contextSnapshot, e := tx.UnmarshalContextSnapshot()
+	if e != nil {
+		return e
+	}
+
+	market := contextSnapshot.SupplyMarket
+	if market == nil || market.ID == 0 {
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeSupply, core.ErrMarketNotFound)
+	}
+
 	if w.marketService.IsMarketClosed(ctx, market) {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeSupply, core.ErrMarketClosed)
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeSupply, core.ErrMarketClosed)
 	}
 
 	//accrue interest
@@ -44,7 +63,7 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 
 	ctokens := supplyAmount.Div(exchangeRate).Truncate(8)
 	if ctokens.LessThan(decimal.NewFromFloat(0.00000001)) {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeSupply, core.ErrInvalidAmount)
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeSupply, core.ErrInvalidAmount)
 	}
 
 	//update maket
@@ -69,8 +88,9 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 	extra.Put(core.TransactionKeyCTokenAssetID, market.CTokenAssetID)
 	extra.Put(core.TransactionKeyAmount, ctokens)
 
-	transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeSupply, output, &extra)
-	if e = w.transactionStore.Create(ctx, transaction); e != nil {
+	tx.SetExtraData(extra)
+	tx.Status = core.TransactionStatusComplete
+	if e = w.transactionStore.Update(ctx, tx); e != nil {
 		log.WithError(e).Errorln("create transaction error")
 		return e
 	}

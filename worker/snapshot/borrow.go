@@ -25,19 +25,44 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 	borrowAmount = borrowAmount.Truncate(8)
 	assetID := asset.String()
 	log.Infoln("borrow, asset:", assetID, ":amount:", borrowAmount)
-	market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)
-	if isRecordNotFound {
-		log.Warningln("market not found, refund")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeBorrow, core.ErrMarketNotFound)
-	}
 
+	tx, e := w.transactionStore.FindByTraceID(ctx, output.TraceID)
 	if e != nil {
-		log.Errorln("query market error:", e)
 		return e
 	}
 
+	if tx.ID == 0 {
+		market, e := w.marketStore.Find(ctx, assetID)
+		if e != nil {
+			log.WithError(e).Errorln("find market error")
+			return e
+		}
+
+		borrow, e := w.borrowStore.Find(ctx, userID, market.AssetID)
+		if e != nil {
+			log.Errorln(e)
+			return e
+		}
+
+		cs := core.NewContextSnapshot(nil, borrow, nil, market)
+		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeBorrow, output, cs)
+		if err := w.transactionStore.Create(ctx, tx); err != nil {
+			return err
+		}
+	}
+
+	contextSnapshot, e := tx.UnmarshalContextSnapshot()
+	if e != nil {
+		return e
+	}
+
+	market := contextSnapshot.BorrowMarket
+	if market == nil || market.ID == 0 {
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeBorrow, core.ErrMarketNotFound)
+	}
+
 	if w.marketService.IsMarketClosed(ctx, market) {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeBorrow, core.ErrMarketClosed)
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeBorrow, core.ErrMarketClosed)
 	}
 
 	// accrue interest
@@ -47,7 +72,7 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 
 	if !w.borrowService.BorrowAllowed(ctx, borrowAmount, userID, market, output.CreatedAt) {
 		log.Errorln("borrow not allowed")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeBorrow, core.ErrBorrowNotAllowed)
+		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeBorrow, core.ErrBorrowNotAllowed)
 	}
 
 	if output.ID > market.Version {
@@ -67,33 +92,28 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 		return e
 	}
 
-	borrow, isRecordNotFound, e := w.borrowStore.Find(ctx, userID, market.AssetID)
-	if e != nil {
-		if isRecordNotFound {
-			//new borrow record
-			borrow = &core.Borrow{
-				UserID:        userID,
-				AssetID:       market.AssetID,
-				Principal:     borrowAmount,
-				InterestIndex: market.BorrowIndex}
+	borrow := contextSnapshot.Borrow
+	if borrow == nil || borrow.ID == 0 {
+		//new borrow record
+		borrow = &core.Borrow{
+			UserID:        userID,
+			AssetID:       market.AssetID,
+			Principal:     borrowAmount,
+			InterestIndex: market.BorrowIndex,
+			Version:       output.ID}
 
-			if e = w.borrowStore.Save(ctx, borrow); e != nil {
-				log.Errorln(e)
-				return e
-			}
-		} else {
+		if e = w.borrowStore.Save(ctx, borrow); e != nil {
 			log.Errorln(e)
 			return e
 		}
 	} else {
 		//update borrow account
-		borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, market)
-		if e != nil {
-			log.Errorln(e)
-			return e
-		}
-
 		if output.ID > borrow.Version {
+			borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, market)
+			if e != nil {
+				log.Errorln(e)
+				return e
+			}
 			newBorrowBalance := borrowBalance.Add(borrowAmount)
 			borrow.Principal = newBorrowBalance.Truncate(16)
 			borrow.InterestIndex = market.BorrowIndex.Truncate(16)
@@ -115,8 +135,9 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 		Principal:     borrow.Principal,
 		InterestIndex: borrow.InterestIndex,
 	})
-	transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeBorrow, output, &extra)
-	if e = w.transactionStore.Create(ctx, transaction); e != nil {
+	tx.SetExtraData(extra)
+	tx.Status = core.TransactionStatusComplete
+	if e = w.transactionStore.Update(ctx, tx); e != nil {
 		log.WithError(e).Errorln("create transaction error")
 		return e
 	}
