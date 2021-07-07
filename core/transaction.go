@@ -98,6 +98,7 @@ type ExtraSupply struct {
 type ExtraBorrow struct {
 	UserID        string          `json:"user_id"`
 	AssetID       string          `json:"asset_id"`
+	Amount        decimal.Decimal `json:"amount"`
 	Principal     decimal.Decimal `json:"principal"`
 	InterestIndex decimal.Decimal `json:"interest_index"`
 }
