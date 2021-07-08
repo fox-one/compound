@@ -6,7 +6,6 @@ import (
 	"errors"
 
 	"github.com/fox-one/pkg/logger"
-	"github.com/fox-one/pkg/uuid"
 	"github.com/shopspring/decimal"
 )
 
@@ -18,47 +17,27 @@ func (w *Payee) handleQuickPledgeEvent(ctx context.Context, output *core.Output,
 	supplyAmount := output.Amount
 	assetID := output.AssetID
 
-	tx, e := w.transactionStore.FindByTraceID(ctx, output.TraceID)
+	market, e := w.marketStore.Find(ctx, assetID)
 	if e != nil {
 		return e
 	}
 
-	if tx.ID == 0 {
-		supplyMarket, e := w.marketStore.Find(ctx, assetID)
-		if e != nil {
-			log.WithError(e).Errorln("find market error")
-			return e
-		}
-
-		supply, e := w.supplyStore.Find(ctx, userID, supplyMarket.CTokenAssetID)
-		if e != nil {
-			return e
-		}
-
-		cs := core.NewContextSnapshot(supply, nil, supplyMarket, nil)
-		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeQuickPledge, output, cs)
-		if err := w.transactionStore.Create(ctx, tx); err != nil {
-			return err
-		}
-	}
-
-	contextSnapshot, e := tx.UnmarshalContextSnapshot()
-	if e != nil {
-		return e
-	}
-
-	market := contextSnapshot.SupplyMarket
-	if market == nil || market.ID == 0 {
-		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrMarketNotFound)
+	if market.ID == 0 {
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrMarketNotFound)
 	}
 
 	if w.marketService.IsMarketClosed(ctx, market) {
-		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrMarketClosed)
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrMarketClosed)
 	}
 
 	if market.CollateralFactor.LessThanOrEqual(decimal.Zero) {
 		log.Errorln(errors.New("pledge disallowed"))
-		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrPledgeNotAllowed)
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrPledgeNotAllowed)
+	}
+
+	supply, e := w.supplyStore.Find(ctx, userID, market.CTokenAssetID)
+	if e != nil {
+		return e
 	}
 
 	//accrue interest
@@ -67,42 +46,59 @@ func (w *Payee) handleQuickPledgeEvent(ctx context.Context, output *core.Output,
 		return e
 	}
 
-	exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
+	tx, e := w.transactionStore.FindByTraceID(ctx, output.TraceID)
 	if e != nil {
-		log.Errorln(e)
 		return e
 	}
 
-	ctokens := supplyAmount.Div(exchangeRate).Truncate(8)
-	if ctokens.LessThan(decimal.NewFromFloat(0.00000001)) {
-		return w.abortTransaction(ctx, tx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrInvalidAmount)
-	}
-
-	//update maket
-	if output.ID > market.Version {
-		market.CTokens = market.CTokens.Add(ctokens).Truncate(16)
-		market.TotalCash = market.TotalCash.Add(supplyAmount).Truncate(16)
-		if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
+	if tx.ID == 0 {
+		exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
+		if e != nil {
 			log.Errorln(e)
 			return e
 		}
+
+		ctokens := supplyAmount.Div(exchangeRate).Truncate(8)
+		if ctokens.LessThan(decimal.NewFromFloat(0.00000001)) {
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrInvalidAmount)
+		}
+
+		newCollaterals := decimal.Zero
+		if supply.ID == 0 {
+			newCollaterals = ctokens
+		} else {
+			newCollaterals = supply.Collaterals.Add(ctokens).Truncate(16)
+		}
+
+		extra := core.NewTransactionExtra()
+		extra.Put(core.TransactionKeyCTokenAssetID, market.CTokenAssetID)
+		extra.Put(core.TransactionKeyAmount, ctokens)
+		extra.Put(core.TransactionKeySupply, core.ExtraSupply{
+			UserID:        userID,
+			CTokenAssetID: market.CTokenAssetID,
+			Collaterals:   newCollaterals,
+		})
+
+		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeQuickPledge, output, extra)
+		if err := w.transactionStore.Create(ctx, tx); err != nil {
+			return err
+		}
 	}
 
-	// market transaction
-	marketTransaction := core.BuildMarketUpdateTransaction(ctx, market, uuid.Modify(output.TraceID, "update_market"))
-	if e = w.transactionStore.Create(ctx, marketTransaction); e != nil {
-		log.WithError(e).Errorln("create transaction error")
-		return e
+	var extra struct {
+		CTokens decimal.Decimal `json:"amount"`
+	}
+	if err := tx.UnmarshalExtraData(&extra); err != nil {
+		return err
 	}
 
 	// pledge
-	supply := contextSnapshot.Supply
-	if supply == nil || supply.ID == 0 {
+	if supply.ID == 0 {
 		//not exists, create
 		supply = &core.Supply{
 			UserID:        userID,
 			CTokenAssetID: market.CTokenAssetID,
-			Collaterals:   ctokens,
+			Collaterals:   extra.CTokens,
 			Version:       output.ID,
 		}
 		if e = w.supplyStore.Save(ctx, supply); e != nil {
@@ -112,7 +108,7 @@ func (w *Payee) handleQuickPledgeEvent(ctx context.Context, output *core.Output,
 	} else {
 		//exists, update supply
 		if output.ID > supply.Version {
-			supply.Collaterals = supply.Collaterals.Add(ctokens).Truncate(16)
+			supply.Collaterals = supply.Collaterals.Add(extra.CTokens).Truncate(16)
 			e = w.supplyStore.Update(ctx, supply, output.ID)
 			if e != nil {
 				log.Errorln(e)
@@ -121,21 +117,14 @@ func (w *Payee) handleQuickPledgeEvent(ctx context.Context, output *core.Output,
 		}
 	}
 
-	// pledge transaction
-	extra := core.NewTransactionExtra()
-	extra.Put(core.TransactionKeyCTokenAssetID, market.CTokenAssetID)
-	extra.Put(core.TransactionKeyAmount, ctokens)
-	extra.Put(core.TransactionKeySupply, core.ExtraSupply{
-		UserID:        supply.UserID,
-		CTokenAssetID: supply.CTokenAssetID,
-		Collaterals:   supply.Collaterals,
-	})
-
-	tx.SetExtraData(extra)
-	tx.Status = core.TransactionStatusComplete
-	if e = w.transactionStore.Update(ctx, tx); e != nil {
-		log.WithError(e).Errorln("create transaction error")
-		return e
+	//update maket
+	if output.ID > market.Version {
+		market.CTokens = market.CTokens.Add(extra.CTokens).Truncate(16)
+		market.TotalCash = market.TotalCash.Add(supplyAmount).Truncate(16)
+		if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
+			log.Errorln(e)
+			return e
+		}
 	}
 
 	return nil

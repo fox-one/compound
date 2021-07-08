@@ -49,9 +49,7 @@ func (s *transactionStore) FindByTraceID(ctx context.Context, traceID string) (*
 }
 
 func (s *transactionStore) Update(ctx context.Context, transaction *core.Transaction) error {
-	version := transaction.Version
-	transaction.Version = version + 1
-	return s.db.Update().Model(core.Transaction{}).Where("trace_id=? and version=?", transaction.TraceID, version).Updates(transaction).Error
+	return s.db.Update().Model(core.Transaction{}).Where("trace_id=?", transaction.TraceID).Updates(transaction).Error
 }
 
 func (s *transactionStore) List(ctx context.Context, offset time.Time, limit int, status core.TransactionStatus) ([]*core.Transaction, error) {

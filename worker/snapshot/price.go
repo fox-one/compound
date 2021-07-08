@@ -7,7 +7,6 @@ import (
 	"errors"
 
 	"github.com/fox-one/pkg/logger"
-	foxuuid "github.com/fox-one/pkg/uuid"
 	"github.com/pandodao/blst"
 )
 
@@ -36,13 +35,6 @@ func (w *Payee) handlePriceEvent(ctx context.Context, output *core.Output, price
 			log.WithError(e).Errorln("update market price err")
 			return e
 		}
-	}
-
-	// market transaction
-	marketTransaction := core.BuildMarketUpdateTransaction(ctx, market, foxuuid.Modify(output.TraceID, "update_market"))
-	if e = w.transactionStore.Create(ctx, marketTransaction); e != nil {
-		log.WithError(e).Errorln("create transaction error")
-		return e
 	}
 
 	return nil

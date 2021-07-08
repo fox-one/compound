@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/jmoiron/sqlx/types"
@@ -79,6 +80,24 @@ func (t TransactionExtraData) Put(key string, value interface{}) {
 	t[key] = value
 }
 
+func (t TransactionExtraData) GetDecimal(key string) (decimal.Decimal, error) {
+	value, ok := t[key].(string)
+	if !ok {
+		return decimal.Zero, errors.New("type cast error")
+	}
+
+	return decimal.NewFromString(value)
+}
+
+func (t TransactionExtraData) GetString(key string) (string, error) {
+	value, ok := t[key].(string)
+	if !ok {
+		return "", errors.New("type cast error")
+	}
+
+	return value, nil
+}
+
 // Format format as []byte by default
 func (t TransactionExtraData) Format() []byte {
 	bs, e := json.Marshal(t)
@@ -90,16 +109,16 @@ func (t TransactionExtraData) Format() []byte {
 }
 
 type ExtraSupply struct {
-	UserID        string          `json:"user_id"`
-	CTokenAssetID string          `json:"ctoken_asset_id"`
-	Collaterals   decimal.Decimal `json:"collaterals"`
+	UserID        string          `json:"user_id,omitempty"`
+	CTokenAssetID string          `json:"ctoken_asset_id,omitempty"`
+	Collaterals   decimal.Decimal `json:"collaterals,omitempty"`
 }
 
 type ExtraBorrow struct {
-	UserID        string          `json:"user_id"`
-	AssetID       string          `json:"asset_id"`
-	Principal     decimal.Decimal `json:"principal"`
-	InterestIndex decimal.Decimal `json:"interest_index"`
+	UserID        string          `json:"user_id,omitempty"`
+	AssetID       string          `json:"asset_id,omitempty"`
+	Principal     decimal.Decimal `json:"principal,omitempty"`
+	InterestIndex decimal.Decimal `json:"interest_index,omitempty"`
 }
 
 type TransactionStatus int
@@ -112,20 +131,17 @@ const (
 
 // Transaction transaction info
 type Transaction struct {
-	ID              int64             `sql:"PRIMARY_KEY;AUTO_INCREMENT" json:"id,omitempty"`
-	Action          ActionType        `json:"action,omitempty"`
-	TraceID         string            `sql:"size:36;unique_index:idx_transactions_trace_id" json:"trace_id,omitempty"`
-	UserID          string            `sql:"size:36;index:idx_transactions_user_id" json:"user_id,omitempty"`
-	FollowID        string            `sql:"size:36;index:idx_transactions_follow_id" json:"follow_id,omitempty"`
-	SnapshotTraceID string            `sql:"size:36" json:"snapshot_trace_id,omitempty"`
-	AssetID         string            `sql:"size:36;index:idx_transactions_asset_id" json:"asset_id,omitempty"`
-	Amount          decimal.Decimal   `sql:"type:decimal(32,8)" json:"amount,omitempty"`
-	ContextSnapshot types.JSONText    `sql:"type:TEXT" json:"context_snapshot,omitempty"`
-	Data            types.JSONText    `sql:"type:TEXT" json:"data,omitempty"`
-	Status          TransactionStatus `sql:"default:1" json:"status,omitempty"`
-	Version         int64             `sql:"default:0" json:"version,omitempty"`
-	CreatedAt       time.Time         `sql:"default:CURRENT_TIMESTAMP;index:idx_transactions_created_at" json:"created_at,omitempty"`
-	UpdatedAt       time.Time         `sql:"default:CURRENT_TIMESTAMP" json:"updated_at,omitempty"`
+	ID              int64           `sql:"PRIMARY_KEY;AUTO_INCREMENT" json:"id,omitempty"`
+	Action          ActionType      `json:"action,omitempty"`
+	TraceID         string          `sql:"size:36;unique_index:idx_transactions_trace_id" json:"trace_id,omitempty"`
+	UserID          string          `sql:"size:36;index:idx_transactions_user_id" json:"user_id,omitempty"`
+	FollowID        string          `sql:"size:36;index:idx_transactions_follow_id" json:"follow_id,omitempty"`
+	SnapshotTraceID string          `sql:"size:36" json:"snapshot_trace_id,omitempty"`
+	AssetID         string          `sql:"size:36;index:idx_transactions_asset_id" json:"asset_id,omitempty"`
+	Amount          decimal.Decimal `sql:"type:decimal(32,8)" json:"amount,omitempty"`
+	Data            types.JSONText  `sql:"type:TEXT" json:"data,omitempty"`
+	CreatedAt       time.Time       `sql:"default:CURRENT_TIMESTAMP;index:idx_transactions_created_at" json:"created_at,omitempty"`
+	UpdatedAt       time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at,omitempty"`
 }
 
 func (t *Transaction) SetExtraData(extra ExtraDataFormatter) {
@@ -137,47 +153,16 @@ func (t *Transaction) SetExtraData(extra ExtraDataFormatter) {
 	t.Data = data
 }
 
-func (t *Transaction) SetContextSnapshot(cs *ContextSnapshot) {
-	t.ContextSnapshot = cs.Bytes()
-}
-
-func (t *Transaction) UnmarshalContextSnapshot() (*ContextSnapshot, error) {
-	var cs ContextSnapshot
-	if err := json.Unmarshal(t.ContextSnapshot, &cs); err != nil {
-		return nil, err
+func (t *Transaction) UnmarshalExtraData(obj interface{}) error {
+	if obj == nil {
+		return errors.New("nil object")
 	}
 
-	return &cs, nil
-}
-
-// ContextSnapshot context snapshot according to the specified transaction
-type ContextSnapshot struct {
-	Supply       *Supply `json:"supply,omitempty"`
-	Borrow       *Borrow `json:"borrow,omitempty"`
-	SupplyMarket *Market `json:"supply_market,omitempty"`
-	BorrowMarket *Market `json:"borrow_market,omitempty"`
-}
-
-func NewContextSnapshot(supply *Supply, borrow *Borrow, supplyMarket, borrowMarket *Market) *ContextSnapshot {
-	return &ContextSnapshot{
-		Supply:       supply,
-		Borrow:       borrow,
-		SupplyMarket: supplyMarket,
-		BorrowMarket: borrowMarket,
-	}
-}
-
-func (cs *ContextSnapshot) String() string {
-	return string(cs.Bytes())
-}
-
-func (cs *ContextSnapshot) Bytes() []byte {
-	bs, err := json.Marshal(cs)
-	if err != nil {
-		return []byte("{}")
+	if err := json.Unmarshal(t.Data, obj); err != nil {
+		return err
 	}
 
-	return bs
+	return nil
 }
 
 // TransactionStore transaction store interface
@@ -189,16 +174,15 @@ type TransactionStore interface {
 }
 
 // BuildTransactionFromOutput transaction from output
-func BuildTransactionFromOutput(ctx context.Context, userID, followID string, actionType ActionType, output *Output, cs *ContextSnapshot) *Transaction {
+func BuildTransactionFromOutput(ctx context.Context, userID, followID string, actionType ActionType, output *Output, extra ExtraDataFormatter) *Transaction {
 	return &Transaction{
-		UserID:          userID,
-		Action:          actionType,
-		TraceID:         output.TraceID,
-		FollowID:        followID,
-		Amount:          output.Amount,
-		AssetID:         output.AssetID,
-		Status:          TransactionStatusInit,
-		ContextSnapshot: cs.Bytes(),
+		UserID:   userID,
+		Action:   actionType,
+		TraceID:  output.TraceID,
+		FollowID: followID,
+		Amount:   output.Amount,
+		AssetID:  output.AssetID,
+		Data:     extra.Format(),
 	}
 }
 
@@ -235,24 +219,8 @@ func BuildTransactionFromTransfer(ctx context.Context, transfer *Transfer, snaps
 		Amount:          transfer.Amount,
 		AssetID:         transfer.AssetID,
 		SnapshotTraceID: snapshotTraceID,
-		Status:          TransactionStatusComplete,
 		Data:            transactionExtra.Format(),
 	}, nil
-}
-
-func BuildMarketUpdateTransaction(ctx context.Context, market *Market, traceID string) *Transaction {
-	data := market.Format()
-
-	return &Transaction{
-		UserID:   market.AssetID,
-		Action:   ActionTypeUpdateMarket,
-		TraceID:  traceID,
-		FollowID: "",
-		Amount:   decimal.Zero,
-		AssetID:  "",
-		Data:     data,
-		Status:   TransactionStatusComplete,
-	}
 }
 
 func decodeTransferMemo(memo string) []byte {

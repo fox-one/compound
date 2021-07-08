@@ -41,13 +41,6 @@ func (w *Payee) handleWithdrawEvent(ctx context.Context, p *core.Proposal, req p
 		}
 	}
 
-	// market transaction
-	transaction := core.BuildMarketUpdateTransaction(ctx, market, output.TraceID)
-	if e = w.transactionStore.Create(ctx, transaction); e != nil {
-		log.WithError(e).Errorln("create transaction error")
-		return e
-	}
-
 	transfer, err := core.NewTransfer(p.TraceID, req.Asset, amount, req.Opponent)
 	if err != nil {
 		log.WithError(err).Errorln("new transfer error")
