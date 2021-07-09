@@ -5,11 +5,11 @@ REPOSITORY_PATH = $(shell cat .config.ini)
 ENV = $*
 GO = GO111MODULE=on CGO_ENABLED=1 CGO_CFLAGS='-O -D__BLST_PORTABLE__' go
 
-clean-%:	
+.PHONY: clean
+clean:	
 	@echo "cleaning building caches and configs......................."
 	${GO} clean
 	rm -f ./compound
-	rm -f ./compound.${ENV}
 	rm -f ./config/config.yaml
 
 sync-%: 
@@ -22,6 +22,10 @@ refresh-%: clean-% sync-%
 
 build: 
 	${GO} build --ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT}" -o builds/
+
+docker-build: clean
+	docker build -t compound:${VERSION} -t compound:latest -f ./deploy/docker/Dockerfile.audit .	
+
 
 docker-build-%: clean-% sync-%
 	@echo "repository path -> ${REPOSITORY_PATH}"

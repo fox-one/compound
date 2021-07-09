@@ -2,8 +2,12 @@ version: "3.9"
 
 services:
   compound-node1-worker:
-    image: compound-audit-node1:1.2.0
+    image: compound:latest
     container_name: compound-node1-worker
+    depends_on: 
+      - db
+    volumes: 
+      - ../config.audit-node1.yaml:/app/config/config.yaml
     logging:
       driver: "json-file"
       options:
@@ -15,9 +19,14 @@ services:
     entrypoint:
       - "./compound"
       - "worker"
+
   compound-node1-server:
-    image: compound-audit-node1:1.2.0
+    image: compound:latest
     container_name: compound-node1-server
+    depends_on: 
+      - db
+    volumes: 
+      - ../config.audit-node1.yaml:/app/config/config.yaml
     logging:
       driver: "json-file"
       options:
@@ -31,8 +40,12 @@ services:
       - "server"
 
   compound-node2-worker:
-    image: compound-audit-node2:1.2.0
+    image: compound:latest
     container_name: compound-node2-worker
+    depends_on: 
+      - db
+    volumes: 
+      - ../config.audit-node2.yaml:/app/config/config.yaml
     logging:
       driver: "json-file"
       options:
@@ -46,8 +59,12 @@ services:
       - "worker"
 
   compound-node2-server:
-    image: compound-audit-node2:1.2.0
+    image: compound:latest
     container_name: compound-node2-server
+    depends_on: 
+      - db
+    volumes: 
+      - ../config.audit-node2.yaml:/app/config/config.yaml
     logging:
       driver: "json-file"
       options:
@@ -61,8 +78,12 @@ services:
       - "server"
 
   compound-node3-worker:
-    image: compound-audit-node3:1.2.0
+    image: compound:latest
     container_name: compound-node3-worker
+    depends_on: 
+      - db
+    volumes: 
+      - ../config.audit-node3.yaml:/app/config/config.yaml
     logging:
       driver: "json-file"
       options:
@@ -76,8 +97,12 @@ services:
       - "worker"
 
   compound-node3-server:
-    image: compound-audit-node3:1.2.0
+    image: compound:latest
     container_name: compound-node3-server
+    depends_on: 
+      - db
+    volumes: 
+      - ../config.audit-node3.yaml:/app/config/config.yaml
     logging:
       driver: "json-file"
       options:
@@ -91,17 +116,17 @@ services:
       - "server"
 
 
-#   db:
-#     image: mysql:5.7
-#     restart: always
-#     volumes:
-#       - data:/var/lib/mysql
-#     ports:
-#       - "3308:3306"
-#     environment:
-#       - MYSQL_ROOT_PASSWORD=compound
-#       - MYSQL_USER=compound
-#       - MYSQL_PASSWORD=compound
+  db:
+    image: mysql:5.7
+    restart: always
+    volumes:
+      - data:/var/lib/mysql
+    ports:
+      - "3308:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=compound
+      - MYSQL_USER=compound
+      - MYSQL_PASSWORD=compound
 
 volumes:
   data:
