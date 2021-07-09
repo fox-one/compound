@@ -48,17 +48,17 @@ func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID s
 	for _, supply := range supplies {
 		market, e := s.marketStore.FindByCToken(ctx, supply.CTokenAssetID)
 		if e != nil {
-			continue
+			return decimal.Zero, e
 		}
 
 		if market.ID == 0 {
-			continue
+			return decimal.Zero, errors.New("no market")
 		}
 
 		price := market.Price
 		exchangeRate, e := s.marketService.CurExchangeRate(ctx, market)
 		if e != nil {
-			continue
+			return decimal.Zero, e
 		}
 		value := supply.Collaterals.Mul(exchangeRate).Mul(market.CollateralFactor).Mul(price)
 		supplyValue = supplyValue.Add(value)
@@ -74,18 +74,18 @@ func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID s
 	for _, borrow := range borrows {
 		market, e := s.marketStore.Find(ctx, borrow.AssetID)
 		if e != nil {
-			continue
+			return decimal.Zero, e
 		}
 
 		if market.ID == 0 {
-			continue
+			return decimal.Zero, errors.New("no market")
 		}
 
 		price := market.Price
 
 		borrowBalance, e := borrow.Balance(ctx, market)
 		if e != nil {
-			continue
+			return decimal.Zero, e
 		}
 		value := borrowBalance.Mul(price)
 		borrowValue = borrowValue.Add(value)
