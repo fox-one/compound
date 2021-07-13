@@ -101,7 +101,7 @@ func (w *Payee) handleQuickPledgeEvent(ctx context.Context, output *core.Output,
 			Collaterals:   extra.CTokens,
 			Version:       output.ID,
 		}
-		if e = w.supplyStore.Save(ctx, supply); e != nil {
+		if e = w.supplyStore.Create(ctx, supply); e != nil {
 			log.Errorln(e)
 			return e
 		}

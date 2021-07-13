@@ -221,7 +221,7 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 			Collaterals:   extra.NewCollaterals,
 			Version:       output.ID,
 		}
-		if e = w.supplyStore.Save(ctx, supply); e != nil {
+		if e = w.supplyStore.Create(ctx, supply); e != nil {
 			log.Errorln(e)
 			return e
 		}
@@ -246,7 +246,7 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 			InterestIndex: extra.NewBorrowIndex,
 			Version:       output.ID}
 
-		if e = w.borrowStore.Save(ctx, borrow); e != nil {
+		if e = w.borrowStore.Create(ctx, borrow); e != nil {
 			log.Errorln(e)
 			return e
 		}

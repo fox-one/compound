@@ -94,7 +94,7 @@ func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, user
 			Collaterals:   extra.NewCollaterals,
 			Version:       output.ID,
 		}
-		if e = w.supplyStore.Save(ctx, supply); e != nil {
+		if e = w.supplyStore.Create(ctx, supply); e != nil {
 			log.Errorln(e)
 			return e
 		}

@@ -108,7 +108,7 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 			InterestIndex: extra.NewBorrowIndex,
 			Version:       output.ID}
 
-		if e = w.borrowStore.Save(ctx, borrow); e != nil {
+		if e = w.borrowStore.Create(ctx, borrow); e != nil {
 			log.Errorln(e)
 			return e
 		}

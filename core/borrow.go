@@ -46,7 +46,7 @@ func (b *Borrow) Balance(ctx context.Context, market *Market) (decimal.Decimal, 
 
 // IBorrowStore supply store interface
 type IBorrowStore interface {
-	Save(ctx context.Context, borrow *Borrow) error
+	Create(ctx context.Context, borrow *Borrow) error
 	Find(ctx context.Context, userID string, assetID string) (*Borrow, error)
 	FindByUser(ctx context.Context, userID string) ([]*Borrow, error)
 	FindByAssetID(ctx context.Context, assetID string) ([]*Borrow, error)

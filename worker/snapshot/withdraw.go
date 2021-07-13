@@ -30,17 +30,6 @@ func (w *Payee) handleWithdrawEvent(ctx context.Context, p *core.Proposal, req p
 		return nil
 	}
 
-	if output.ID > market.Version {
-		// update market total_cash and reserves
-		market.TotalCash = market.TotalCash.Sub(amount)
-		market.Reserves = market.Reserves.Sub(amount)
-
-		if err := w.marketStore.Update(ctx, market, output.ID); err != nil {
-			log.WithError(err).Errorln("update market error")
-			return err
-		}
-	}
-
 	transfer, err := core.NewTransfer(p.TraceID, req.Asset, amount, req.Opponent)
 	if err != nil {
 		log.WithError(err).Errorln("new transfer error")
@@ -50,6 +39,17 @@ func (w *Payee) handleWithdrawEvent(ctx context.Context, p *core.Proposal, req p
 	if err := w.walletStore.CreateTransfers(ctx, []*core.Transfer{transfer}); err != nil {
 		log.WithError(err).Errorln("wallets.CreateTransfers")
 		return err
+	}
+
+	if output.ID > market.Version {
+		// update market total_cash and reserves
+		market.TotalCash = market.TotalCash.Sub(amount)
+		market.Reserves = market.Reserves.Sub(amount)
+
+		if err := w.marketStore.Update(ctx, market, output.ID); err != nil {
+			log.WithError(err).Errorln("update market error")
+			return err
+		}
 	}
 
 	return nil

@@ -106,8 +106,9 @@ func (s *marketStore) AllAsMap(ctx context.Context) (map[string]*core.Market, er
 func (s *marketStore) Update(ctx context.Context, market *core.Market, version int64) error {
 	if version > market.Version {
 		// do real update
+		oldVersion := market.Version
 		market.Version = version
-		return s.db.Update().Model(market).Updates(market).Error
+		return s.db.Update().Model(market).Where("version=?", oldVersion).Updates(market).Error
 	}
 
 	return nil

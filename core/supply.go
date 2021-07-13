@@ -20,7 +20,7 @@ type Supply struct {
 
 // ISupplyStore supply store interface
 type ISupplyStore interface {
-	Save(ctx context.Context, supply *Supply) error
+	Create(ctx context.Context, supply *Supply) error
 	Find(ctx context.Context, userID string, ctokenAssetID string) (*Supply, error)
 	FindByUser(ctx context.Context, userID string) ([]*Supply, error)
 	FindByCTokenAssetID(ctx context.Context, assetID string) ([]*Supply, error)
