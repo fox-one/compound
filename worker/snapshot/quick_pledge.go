@@ -59,7 +59,7 @@ func (w *Payee) handleQuickPledgeEvent(ctx context.Context, output *core.Output,
 		}
 
 		ctokens := supplyAmount.Div(exchangeRate).Truncate(8)
-		if ctokens.LessThan(decimal.NewFromFloat(0.00000001)) {
+		if ctokens.IsZero() {
 			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrInvalidAmount)
 		}
 

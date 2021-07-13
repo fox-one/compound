@@ -47,7 +47,7 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 		}
 
 		ctokens := supplyAmount.Div(exchangeRate).Truncate(8)
-		if ctokens.LessThan(decimal.NewFromFloat(0.00000001)) {
+		if ctokens.IsZero() {
 			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeSupply, core.ErrInvalidAmount)
 		}
 
