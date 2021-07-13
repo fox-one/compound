@@ -108,7 +108,13 @@ func (s *marketStore) Update(ctx context.Context, market *core.Market, version i
 		// do real update
 		oldVersion := market.Version
 		market.Version = version
-		if rowsAffected := s.db.Update().Model(market).Where("version=?", oldVersion).Updates(market).RowsAffected; rowsAffected == 0 {
+		tx := s.db.Update().Model(market).Where("version=?", oldVersion).Updates(market)
+
+		if tx.Error != nil {
+			return tx.Error
+		}
+
+		if tx.RowsAffected == 0 {
 			return db.ErrOptimisticLock
 		}
 	}

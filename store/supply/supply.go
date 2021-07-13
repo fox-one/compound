@@ -65,7 +65,13 @@ func (s *supplyStore) Update(ctx context.Context, supply *core.Supply, version i
 	if version > supply.Version {
 		oldVersion := supply.Version
 		supply.Version = version
-		if rowsAffected := s.db.Update().Model(supply).Where("version=?", oldVersion).Updates(supply).RowsAffected; rowsAffected == 0 {
+		tx := s.db.Update().Model(supply).Where("version=?", oldVersion).Updates(supply)
+
+		if tx.Error != nil {
+			return tx.Error
+		}
+
+		if tx.RowsAffected == 0 {
 			return db.ErrOptimisticLock
 		}
 	}

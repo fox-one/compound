@@ -72,9 +72,16 @@ func (s *borrowStore) Update(ctx context.Context, borrow *core.Borrow, version i
 	if version > borrow.Version {
 		oldVersion := borrow.Version
 		borrow.Version = version
-		if rowsAffected := s.db.Update().Model(borrow).Where("version=?", oldVersion).Updates(borrow).RowsAffected; rowsAffected == 0 {
+		tx := s.db.Update().Model(borrow).Where("version=?", oldVersion).Updates(borrow)
+
+		if tx.Error != nil {
+			return tx.Error
+		}
+
+		if tx.RowsAffected == 0 {
 			return db.ErrOptimisticLock
 		}
+
 	}
 
 	return nil
