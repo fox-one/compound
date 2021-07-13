@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/fox-one/pkg/logger"
-	foxuuid "github.com/fox-one/pkg/uuid"
 	"github.com/shopspring/decimal"
 )
 
@@ -16,39 +15,33 @@ func (w *Payee) handleMarketEvent(ctx context.Context, p *core.Proposal, req pro
 	log := logger.FromContext(ctx).WithField("worker", "add-market")
 
 	log.Infof("asset:%s", req.AssetID)
-	market, isRecordNotFound, e := w.marketStore.Find(ctx, req.AssetID)
+	market, e := w.marketStore.Find(ctx, req.AssetID)
 	if e != nil {
-		if isRecordNotFound {
-			market = &core.Market{
-				Symbol:               strings.ToUpper(req.Symbol),
-				AssetID:              req.AssetID,
-				CTokenAssetID:        req.CTokenAssetID,
-				InitExchangeRate:     req.InitExchange,
-				ReserveFactor:        req.ReserveFactor,
-				LiquidationIncentive: req.LiquidationIncentive,
-				BorrowCap:            req.BorrowCap,
-				CollateralFactor:     req.CollateralFactor,
-				CloseFactor:          req.CloseFactor,
-				BaseRate:             req.BaseRate,
-				Multiplier:           req.Multiplier,
-				JumpMultiplier:       req.JumpMultiplier,
-				Kink:                 req.Kink,
-				Status:               core.MarketStatusClose,
-			}
-
-			if e = w.marketStore.Save(ctx, market); e != nil {
-				return e
-			}
-
-			// market transaction
-			marketTransaction := core.BuildMarketUpdateTransaction(ctx, market, foxuuid.Modify(output.TraceID, "update_market"))
-			if e = w.transactionStore.Create(ctx, marketTransaction); e != nil {
-				log.WithError(e).Errorln("create transaction error")
-				return e
-			}
-			return nil
-		}
 		return e
+	}
+	if market.ID == 0 {
+		market = &core.Market{
+			Symbol:               strings.ToUpper(req.Symbol),
+			AssetID:              req.AssetID,
+			CTokenAssetID:        req.CTokenAssetID,
+			InitExchangeRate:     req.InitExchange,
+			ReserveFactor:        req.ReserveFactor,
+			LiquidationIncentive: req.LiquidationIncentive,
+			BorrowCap:            req.BorrowCap,
+			CollateralFactor:     req.CollateralFactor,
+			CloseFactor:          req.CloseFactor,
+			BaseRate:             req.BaseRate,
+			Multiplier:           req.Multiplier,
+			JumpMultiplier:       req.JumpMultiplier,
+			Kink:                 req.Kink,
+			Status:               core.MarketStatusClose,
+		}
+
+		if e = w.marketStore.Save(ctx, market); e != nil {
+			return e
+		}
+
+		return nil
 	}
 
 	if market.InitExchangeRate.GreaterThan(decimal.Zero) {
@@ -99,13 +92,6 @@ func (w *Payee) handleMarketEvent(ctx context.Context, p *core.Proposal, req pro
 
 	if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
 		log.Errorln(e)
-		return e
-	}
-
-	// market transaction
-	marketTransaction := core.BuildMarketUpdateTransaction(ctx, market, foxuuid.Modify(output.TraceID, "update_market"))
-	if e = w.transactionStore.Create(ctx, marketTransaction); e != nil {
-		log.WithError(e).Errorln("create transaction error")
 		return e
 	}
 

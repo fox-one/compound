@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"time"
 
-	"github.com/fox-one/pkg/store/db"
 	"github.com/jmoiron/sqlx/types"
 	"github.com/shopspring/decimal"
 )
@@ -80,6 +80,24 @@ func (t TransactionExtraData) Put(key string, value interface{}) {
 	t[key] = value
 }
 
+func (t TransactionExtraData) GetDecimal(key string) (decimal.Decimal, error) {
+	value, ok := t[key].(string)
+	if !ok {
+		return decimal.Zero, errors.New("type cast error")
+	}
+
+	return decimal.NewFromString(value)
+}
+
+func (t TransactionExtraData) GetString(key string) (string, error) {
+	value, ok := t[key].(string)
+	if !ok {
+		return "", errors.New("type cast error")
+	}
+
+	return value, nil
+}
+
 // Format format as []byte by default
 func (t TransactionExtraData) Format() []byte {
 	bs, e := json.Marshal(t)
@@ -91,19 +109,27 @@ func (t TransactionExtraData) Format() []byte {
 }
 
 type ExtraSupply struct {
-	UserID        string          `json:"user_id"`
-	CTokenAssetID string          `json:"ctoken_asset_id"`
-	Collaterals   decimal.Decimal `json:"collaterals"`
+	UserID        string          `json:"user_id,omitempty"`
+	CTokenAssetID string          `json:"ctoken_asset_id,omitempty"`
+	Collaterals   decimal.Decimal `json:"collaterals,omitempty"`
 }
 
 type ExtraBorrow struct {
-	UserID        string          `json:"user_id"`
-	AssetID       string          `json:"asset_id"`
-	Principal     decimal.Decimal `json:"principal"`
-	InterestIndex decimal.Decimal `json:"interest_index"`
+	UserID        string          `json:"user_id,omitempty"`
+	AssetID       string          `json:"asset_id,omitempty"`
+	Principal     decimal.Decimal `json:"principal,omitempty"`
+	InterestIndex decimal.Decimal `json:"interest_index,omitempty"`
 }
 
-// Transaction transaction ifo
+type TransactionStatus int
+
+const (
+	TransactionStatusInit TransactionStatus = iota
+	TransactionStatusComplete
+	TransactionStatusAbort
+)
+
+// Transaction transaction info
 type Transaction struct {
 	ID              int64           `sql:"PRIMARY_KEY;AUTO_INCREMENT" json:"id,omitempty"`
 	Action          ActionType      `json:"action,omitempty"`
@@ -118,21 +144,37 @@ type Transaction struct {
 	UpdatedAt       time.Time       `sql:"default:CURRENT_TIMESTAMP" json:"updated_at,omitempty"`
 }
 
-// TransactionStore transaction store interface
-type TransactionStore interface {
-	Create(ctx context.Context, transactions *Transaction) error
-	FindByTraceID(ctx context.Context, traceID string) (*Transaction, error)
-	Update(ctx context.Context, tx *db.DB, transaction *Transaction) error
-	List(ctx context.Context, offset time.Time, limit int) ([]*Transaction, error)
-}
-
-// BuildTransactionFromOutput transaction from output
-func BuildTransactionFromOutput(ctx context.Context, userID, followID string, actionType ActionType, output *Output, extra ExtraDataFormatter) *Transaction {
+func (t *Transaction) SetExtraData(extra ExtraDataFormatter) {
 	data := []byte("{}")
 	if extra != nil {
 		data = extra.Format()
 	}
 
+	t.Data = data
+}
+
+func (t *Transaction) UnmarshalExtraData(obj interface{}) error {
+	if obj == nil {
+		return errors.New("nil object")
+	}
+
+	if err := json.Unmarshal(t.Data, obj); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// TransactionStore transaction store interface
+type TransactionStore interface {
+	Create(ctx context.Context, transactions *Transaction) error
+	FindByTraceID(ctx context.Context, traceID string) (*Transaction, error)
+	Update(ctx context.Context, transaction *Transaction) error
+	List(ctx context.Context, offset time.Time, limit int, status TransactionStatus) ([]*Transaction, error)
+}
+
+// BuildTransactionFromOutput transaction from output
+func BuildTransactionFromOutput(ctx context.Context, userID, followID string, actionType ActionType, output *Output, extra ExtraDataFormatter) *Transaction {
 	return &Transaction{
 		UserID:   userID,
 		Action:   actionType,
@@ -140,7 +182,7 @@ func BuildTransactionFromOutput(ctx context.Context, userID, followID string, ac
 		FollowID: followID,
 		Amount:   output.Amount,
 		AssetID:  output.AssetID,
-		Data:     data,
+		Data:     extra.Format(),
 	}
 }
 
@@ -179,20 +221,6 @@ func BuildTransactionFromTransfer(ctx context.Context, transfer *Transfer, snaps
 		SnapshotTraceID: snapshotTraceID,
 		Data:            transactionExtra.Format(),
 	}, nil
-}
-
-func BuildMarketUpdateTransaction(ctx context.Context, market *Market, traceID string) *Transaction {
-	data := market.Format()
-
-	return &Transaction{
-		UserID:   market.AssetID,
-		Action:   ActionTypeUpdateMarket,
-		TraceID:  traceID,
-		FollowID: "",
-		Amount:   decimal.Zero,
-		AssetID:  "",
-		Data:     data,
-	}
 }
 
 func decodeTransferMemo(memo string) []byte {

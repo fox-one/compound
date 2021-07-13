@@ -84,9 +84,9 @@ func (s MarketStatus) IsValid() bool {
 // IMarketStore asset store interface
 type IMarketStore interface {
 	Save(ctx context.Context, market *Market) error
-	Find(ctx context.Context, assetID string) (*Market, bool, error)
-	FindBySymbol(ctx context.Context, symbol string) (*Market, bool, error)
-	FindByCToken(ctx context.Context, ctokenAssetID string) (*Market, bool, error)
+	Find(ctx context.Context, assetID string) (*Market, error)
+	FindBySymbol(ctx context.Context, symbol string) (*Market, error)
+	FindByCToken(ctx context.Context, ctokenAssetID string) (*Market, error)
 	All(ctx context.Context) ([]*Market, error)
 	AllAsMap(ctx context.Context) (map[string]*Market, error)
 	Update(ctx context.Context, market *Market, version int64) error

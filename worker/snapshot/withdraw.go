@@ -15,37 +15,19 @@ func (w *Payee) handleWithdrawEvent(ctx context.Context, p *core.Proposal, req p
 	amount := req.Amount.Truncate(8)
 
 	// check the market
-	market, isRecordNotFound, e := w.marketStore.Find(ctx, req.Asset)
-	if isRecordNotFound {
+	market, e := w.marketStore.Find(ctx, req.Asset)
+	if e != nil {
+		return e
+	}
+	if market.ID == 0 {
 		log.Errorln(errors.New("invalid market"))
 		return nil
-	}
-
-	if e != nil {
-		log.WithError(e).Errorln("find market error")
-		return e
 	}
 
 	// check the amount
 	if amount.GreaterThan(market.Reserves) {
 		log.Errorln("insufficient reserves")
 		return nil
-	}
-
-	// update market total_cash and reserves
-	market.TotalCash = market.TotalCash.Sub(amount)
-	market.Reserves = market.Reserves.Sub(amount)
-
-	if err := w.marketStore.Update(ctx, market, output.ID); err != nil {
-		log.WithError(err).Errorln("update market error")
-		return err
-	}
-
-	// market transaction
-	transaction := core.BuildMarketUpdateTransaction(ctx, market, output.TraceID)
-	if e = w.transactionStore.Create(ctx, transaction); e != nil {
-		log.WithError(e).Errorln("create transaction error")
-		return e
 	}
 
 	transfer, err := core.NewTransfer(p.TraceID, req.Asset, amount, req.Opponent)
@@ -57,6 +39,17 @@ func (w *Payee) handleWithdrawEvent(ctx context.Context, p *core.Proposal, req p
 	if err := w.walletStore.CreateTransfers(ctx, []*core.Transfer{transfer}); err != nil {
 		log.WithError(err).Errorln("wallets.CreateTransfers")
 		return err
+	}
+
+	if output.ID > market.Version {
+		// update market total_cash and reserves
+		market.TotalCash = market.TotalCash.Sub(amount)
+		market.Reserves = market.Reserves.Sub(amount)
+
+		if err := w.marketStore.Update(ctx, market, output.ID); err != nil {
+			log.WithError(err).Errorln("update market error")
+			return err
+		}
 	}
 
 	return nil

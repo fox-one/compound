@@ -5,25 +5,29 @@ import (
 	"context"
 
 	"github.com/fox-one/pkg/logger"
-	"github.com/fox-one/pkg/uuid"
+	"github.com/shopspring/decimal"
 )
 
 // handle redeem event
 func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
 	log := logger.FromContext(ctx).WithField("worker", "supply_redeem")
 	ctokenAssetID := output.AssetID
+	redeemTokens := output.Amount
 
 	log.Infof("ctokenAssetID:%s, amount:%s", ctokenAssetID, output.Amount)
 
-	market, isRecordNotFound, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
-	if isRecordNotFound {
-		log.Warningln("market not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrMarketNotFound)
+	tx, e := w.transactionStore.FindByTraceID(ctx, output.TraceID)
+	if e != nil {
+		return e
 	}
 
+	market, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
 	if e != nil {
-		log.WithError(e).Errorln("find market error")
 		return e
+	}
+
+	if market.ID == 0 {
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrMarketNotFound)
 	}
 
 	if w.marketService.IsMarketClosed(ctx, market) {
@@ -36,50 +40,41 @@ func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, user
 		return e
 	}
 
-	redeemTokens := output.Amount
-	if redeemTokens.GreaterThan(market.CTokens) {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrRedeemNotAllowed)
-	}
+	if tx.ID == 0 {
+		if redeemTokens.GreaterThan(market.CTokens) {
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrRedeemNotAllowed)
+		}
 
-	// check redeem allowed
-	allowed := w.supplyService.RedeemAllowed(ctx, redeemTokens, market)
-	if !allowed {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrRedeemNotAllowed)
-	}
+		// check redeem allowed
+		if allowed := w.supplyService.RedeemAllowed(ctx, redeemTokens, market); !allowed {
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrRedeemNotAllowed)
+		}
 
-	// transfer asset to user
-	exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
-	if e != nil {
-		log.Errorln(e)
-		return e
-	}
-
-	amount := redeemTokens.Mul(exchangeRate).Truncate(8)
-
-	if output.ID > market.Version {
-		market.TotalCash = market.TotalCash.Sub(amount).Truncate(16)
-		market.CTokens = market.CTokens.Sub(redeemTokens).Truncate(16)
-		if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
+		// transfer asset to user
+		exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
+		if e != nil {
 			log.Errorln(e)
 			return e
 		}
+
+		amount := redeemTokens.Mul(exchangeRate).Truncate(8)
+
+		extra := core.NewTransactionExtra()
+		extra.Put(core.TransactionKeyAssetID, market.AssetID)
+		extra.Put(core.TransactionKeyAmount, amount)
+
+		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeRedeem, output, extra)
+		if err := w.transactionStore.Create(ctx, tx); err != nil {
+			return err
+		}
 	}
 
-	// market transaction
-	marketTransaction := core.BuildMarketUpdateTransaction(ctx, market, uuid.Modify(output.TraceID, "update_market"))
-	if e = w.transactionStore.Create(ctx, marketTransaction); e != nil {
-		log.WithError(e).Errorln("create transaction error")
-		return e
+	var extra struct {
+		Amount decimal.Decimal `json:"amount"`
 	}
 
-	// transaction
-	extra := core.NewTransactionExtra()
-	extra.Put(core.TransactionKeyAssetID, market.AssetID)
-	extra.Put(core.TransactionKeyAmount, amount)
-	transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeRedeem, output, &extra)
-	if e = w.transactionStore.Create(ctx, transaction); e != nil {
-		log.WithError(e).Errorln("create transaction error")
-		return e
+	if err := tx.UnmarshalExtraData(&extra); err != nil {
+		return err
 	}
 
 	// transfer
@@ -87,5 +82,19 @@ func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, user
 		Source:   core.ActionTypeRedeemTransfer,
 		FollowID: followID,
 	}
-	return w.transferOut(ctx, userID, followID, output.TraceID, market.AssetID, amount, &transferAction)
+	if err := w.transferOut(ctx, userID, followID, output.TraceID, market.AssetID, extra.Amount, &transferAction); err != nil {
+		return err
+	}
+
+	// update market
+	if output.ID > market.Version {
+		market.TotalCash = market.TotalCash.Sub(extra.Amount).Truncate(16)
+		market.CTokens = market.CTokens.Sub(redeemTokens).Truncate(16)
+		if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
+			log.Errorln(e)
+			return e
+		}
+	}
+
+	return nil
 }

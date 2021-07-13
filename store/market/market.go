@@ -3,7 +3,6 @@ package market
 import (
 	"compound/core"
 	"context"
-	"errors"
 
 	"github.com/fox-one/pkg/store/db"
 	"github.com/jinzhu/gorm"
@@ -33,43 +32,52 @@ func (s *marketStore) Save(ctx context.Context, market *core.Market) error {
 	return s.db.Update().Where("asset_id=?", market.AssetID).FirstOrCreate(market).Error
 }
 
-func (s *marketStore) Find(ctx context.Context, assetID string) (*core.Market, bool, error) {
+func (s *marketStore) Find(ctx context.Context, assetID string) (*core.Market, error) {
 	if assetID == "" {
-		return nil, true, errors.New("invalid asset_id")
+		return &core.Market{}, nil
 	}
 
 	var market core.Market
 	if err := s.db.View().Where("asset_id=?", assetID).First(&market).Error; err != nil {
-		return nil, gorm.IsRecordNotFoundError(err), err
+		if gorm.IsRecordNotFoundError(err) {
+			return &core.Market{}, nil
+		}
+		return nil, err
 	}
 
-	return &market, false, nil
+	return &market, nil
 }
 
-func (s *marketStore) FindBySymbol(ctx context.Context, symbol string) (*core.Market, bool, error) {
+func (s *marketStore) FindBySymbol(ctx context.Context, symbol string) (*core.Market, error) {
 	if symbol == "" {
-		return nil, true, errors.New("invalid symbol")
+		return &core.Market{}, nil
 	}
 
 	var market core.Market
 	if err := s.db.View().Where("symbol=?", symbol).First(&market).Error; err != nil {
-		return nil, gorm.IsRecordNotFoundError(err), err
+		if gorm.IsRecordNotFoundError(err) {
+			return &core.Market{}, nil
+		}
+		return nil, err
 	}
 
-	return &market, false, nil
+	return &market, nil
 }
 
-func (s *marketStore) FindByCToken(ctx context.Context, ctokenAssetID string) (*core.Market, bool, error) {
+func (s *marketStore) FindByCToken(ctx context.Context, ctokenAssetID string) (*core.Market, error) {
 	if ctokenAssetID == "" {
-		return nil, true, errors.New("invalid ctoken_asset_id")
+		return &core.Market{}, nil
 	}
 
 	var market core.Market
 	if err := s.db.View().Where("c_token_asset_id=?", ctokenAssetID).First(&market).Error; err != nil {
-		return nil, gorm.IsRecordNotFoundError(err), err
+		if gorm.IsRecordNotFoundError(err) {
+			return &core.Market{}, nil
+		}
+		return nil, err
 	}
 
-	return &market, false, nil
+	return &market, nil
 }
 
 func (s *marketStore) All(ctx context.Context) ([]*core.Market, error) {
@@ -98,8 +106,17 @@ func (s *marketStore) AllAsMap(ctx context.Context) (map[string]*core.Market, er
 func (s *marketStore) Update(ctx context.Context, market *core.Market, version int64) error {
 	if version > market.Version {
 		// do real update
+		oldVersion := market.Version
 		market.Version = version
-		return s.db.Update().Model(market).Updates(market).Error
+		tx := s.db.Update().Model(market).Where("version=?", oldVersion).Updates(market)
+
+		if tx.Error != nil {
+			return tx.Error
+		}
+
+		if tx.RowsAffected == 0 {
+			return db.ErrOptimisticLock
+		}
 	}
 
 	return nil

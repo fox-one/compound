@@ -7,21 +7,21 @@ import (
 	"errors"
 
 	"github.com/fox-one/pkg/logger"
-	foxuuid "github.com/fox-one/pkg/uuid"
 	"github.com/pandodao/blst"
 )
 
 func (w *Payee) handlePriceEvent(ctx context.Context, output *core.Output, priceData *core.PriceData) error {
 	log := logger.FromContext(ctx).WithField("worker", "handle_dirt_price_event")
 
-	market, isRecordNotFound, e := w.marketStore.Find(ctx, priceData.AssetID)
-	if isRecordNotFound {
-		return nil
-	}
-
+	market, e := w.marketStore.Find(ctx, priceData.AssetID)
 	if e != nil {
 		return e
 	}
+
+	if market.ID == 0 {
+		return nil
+	}
+
 	// accrue interest
 	if e = w.marketService.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
 		return e
@@ -35,13 +35,6 @@ func (w *Payee) handlePriceEvent(ctx context.Context, output *core.Output, price
 			log.WithError(e).Errorln("update market price err")
 			return e
 		}
-	}
-
-	// market transaction
-	marketTransaction := core.BuildMarketUpdateTransaction(ctx, market, foxuuid.Modify(output.TraceID, "update_market"))
-	if e = w.transactionStore.Create(ctx, marketTransaction); e != nil {
-		log.WithError(e).Errorln("create transaction error")
-		return e
 	}
 
 	return nil
