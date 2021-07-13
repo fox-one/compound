@@ -54,7 +54,7 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 	}
 
 	// check collateral
-	if supplyMarket.CollateralFactor.LessThanOrEqual(decimal.Zero) {
+	if !supplyMarket.CollateralFactor.IsPositive() {
 		log.Errorln(errors.New("pledge disallowed"))
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrPledgeNotAllowed)
 	}
@@ -98,7 +98,7 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 
 	if tx.ID == 0 {
 		// check borrow ability
-		if borrowAmount.LessThanOrEqual(decimal.Zero) {
+		if !borrowAmount.IsPositive() {
 			log.Errorln("invalid borrow amount")
 			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrBorrowNotAllowed)
 		}

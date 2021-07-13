@@ -116,13 +116,13 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 		}
 
 		borrowPrice := borrowMarket.Price
-		if borrowPrice.LessThanOrEqual(decimal.Zero) {
+		if !borrowPrice.IsPositive() {
 			log.Errorln(e)
 			return e
 		}
 
 		supplyPrice := supplyMarket.Price
-		if supplyPrice.LessThanOrEqual(decimal.Zero) {
+		if !supplyPrice.IsPositive() {
 			log.Errorln(e)
 			return e
 		}
@@ -162,7 +162,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 		refundAmount := userPayAmount.Sub(repayAmount).Truncate(8)
 		newBorrowBalance := borrowBalance.Sub(repayAmount).Truncate(16)
 		newIndex := borrowMarket.BorrowIndex
-		if newBorrowBalance.LessThanOrEqual(decimal.Zero) {
+		if !newBorrowBalance.IsPositive() {
 			newBorrowBalance = decimal.Zero
 			newIndex = decimal.Zero
 		}

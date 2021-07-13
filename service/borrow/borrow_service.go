@@ -29,7 +29,7 @@ func New(
 func (s *borrowService) BorrowAllowed(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *core.Market, time time.Time) bool {
 	log := logger.FromContext(ctx)
 
-	if borrowAmount.LessThanOrEqual(decimal.Zero) {
+	if !borrowAmount.IsPositive() {
 		log.Errorln("invalid borrow amount")
 		return false
 	}

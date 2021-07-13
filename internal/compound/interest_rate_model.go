@@ -27,7 +27,7 @@ var (
 // utilization_rate = market.total_borrows/(market.total_cash + market.borrows - market.reserves)
 func UtilizationRate(cash, borrows, reserves decimal.Decimal) decimal.Decimal {
 	total := cash.Add(borrows).Sub(reserves)
-	if total.LessThanOrEqual(decimal.Zero) {
+	if !total.IsPositive() {
 		return decimal.Zero
 	}
 

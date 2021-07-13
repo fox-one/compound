@@ -61,7 +61,7 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 
 		newBalance := borrowBalance.Sub(repayAmount)
 		newIndex := market.BorrowIndex
-		if newBalance.LessThanOrEqual(decimal.Zero) {
+		if !newBalance.IsPositive() {
 			newBalance = decimal.Zero
 			newIndex = decimal.Zero
 			repayAmount = borrowBalance

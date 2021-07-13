@@ -30,11 +30,11 @@ var (
 // Balance caculate borrow balance
 // balance = borrow.principal * market.borrow_index / borrow.interest_index
 func (b *Borrow) Balance(ctx context.Context, market *Market) (decimal.Decimal, error) {
-	if market.BorrowIndex.LessThanOrEqual(decimal.Zero) {
+	if !market.BorrowIndex.IsPositive() {
 		market.BorrowIndex = market.BorrowRatePerBlock
 	}
 
-	if b.InterestIndex.LessThanOrEqual(decimal.Zero) {
+	if !b.InterestIndex.IsPositive() {
 		b.InterestIndex = market.BorrowIndex
 	}
 

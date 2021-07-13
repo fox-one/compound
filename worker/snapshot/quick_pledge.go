@@ -30,7 +30,7 @@ func (w *Payee) handleQuickPledgeEvent(ctx context.Context, output *core.Output,
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrMarketClosed)
 	}
 
-	if market.CollateralFactor.LessThanOrEqual(decimal.Zero) {
+	if !market.CollateralFactor.IsPositive() {
 		log.Errorln(errors.New("pledge disallowed"))
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickPledge, core.ErrPledgeNotAllowed)
 	}

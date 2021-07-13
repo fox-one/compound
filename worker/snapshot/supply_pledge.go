@@ -52,7 +52,7 @@ func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, user
 		}
 
 		// check collateral
-		if market.CollateralFactor.LessThanOrEqual(decimal.Zero) {
+		if !market.CollateralFactor.IsPositive() {
 			log.Errorln(errors.New("pledge disallowed"))
 			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypePledge, core.ErrPledgeNotAllowed)
 		}
