@@ -38,7 +38,7 @@ func transactionsHandler(transactionStr core.TransactionStore) http.HandlerFunc 
 			offsetTime = time.Time{}
 		}
 
-		transactions, e := transactionStr.List(ctx, offsetTime, limit)
+		transactions, e := transactionStr.List(ctx, offsetTime, limit, core.TransactionStatusComplete)
 		if e != nil {
 			render.BadRequest(w, e)
 			return

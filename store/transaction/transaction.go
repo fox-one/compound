@@ -40,7 +40,7 @@ func (s *transactionStore) FindByTraceID(ctx context.Context, traceID string) (*
 	var transaction core.Transaction
 	if err := s.db.View().Where("trace_id=?", traceID).First(&transaction).Error; err != nil {
 		if gorm.IsRecordNotFoundError(err) {
-			return nil, nil
+			return &core.Transaction{}, nil
 		}
 		return nil, err
 	}
@@ -48,17 +48,17 @@ func (s *transactionStore) FindByTraceID(ctx context.Context, traceID string) (*
 	return &transaction, nil
 }
 
-func (s *transactionStore) Update(ctx context.Context, tx *db.DB, transaction *core.Transaction) error {
-	return tx.Update().Model(core.Transaction{}).Where("trace_id=?", transaction.TraceID).Updates(transaction).Error
+func (s *transactionStore) Update(ctx context.Context, transaction *core.Transaction) error {
+	return s.db.Update().Model(core.Transaction{}).Where("trace_id=?", transaction.TraceID).Updates(transaction).Error
 }
 
-func (s *transactionStore) List(ctx context.Context, offset time.Time, limit int) ([]*core.Transaction, error) {
+func (s *transactionStore) List(ctx context.Context, offset time.Time, limit int, status core.TransactionStatus) ([]*core.Transaction, error) {
 	var transactions []*core.Transaction
 	if limit <= 0 {
 		limit = 500
 	}
 
-	if err := s.db.View().Where("created_at >=?", offset).Order("created_at ASC").Limit(limit).Find(&transactions).Error; err != nil {
+	if err := s.db.View().Where("status=? and created_at >=?", status, offset).Order("created_at ASC").Limit(limit).Find(&transactions).Error; err != nil {
 		return nil, err
 	}
 

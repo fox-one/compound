@@ -30,11 +30,11 @@ var (
 // Balance caculate borrow balance
 // balance = borrow.principal * market.borrow_index / borrow.interest_index
 func (b *Borrow) Balance(ctx context.Context, market *Market) (decimal.Decimal, error) {
-	if market.BorrowIndex.LessThanOrEqual(decimal.Zero) {
+	if !market.BorrowIndex.IsPositive() {
 		market.BorrowIndex = market.BorrowRatePerBlock
 	}
 
-	if b.InterestIndex.LessThanOrEqual(decimal.Zero) {
+	if !b.InterestIndex.IsPositive() {
 		b.InterestIndex = market.BorrowIndex
 	}
 
@@ -46,8 +46,8 @@ func (b *Borrow) Balance(ctx context.Context, market *Market) (decimal.Decimal, 
 
 // IBorrowStore supply store interface
 type IBorrowStore interface {
-	Save(ctx context.Context, borrow *Borrow) error
-	Find(ctx context.Context, userID string, assetID string) (*Borrow, bool, error)
+	Create(ctx context.Context, borrow *Borrow) error
+	Find(ctx context.Context, userID string, assetID string) (*Borrow, error)
 	FindByUser(ctx context.Context, userID string) ([]*Borrow, error)
 	FindByAssetID(ctx context.Context, assetID string) ([]*Borrow, error)
 	CountOfBorrowers(ctx context.Context, assetID string) (int64, error)

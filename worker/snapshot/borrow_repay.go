@@ -5,7 +5,6 @@ import (
 	"context"
 
 	"github.com/fox-one/pkg/logger"
-	foxuuid "github.com/fox-one/pkg/uuid"
 	"github.com/shopspring/decimal"
 )
 
@@ -18,19 +17,14 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 	assetID := output.AssetID
 
 	log.Infoln(":asset:", output.AssetID, "amount:", repayAmount)
-	market, isRecordNotFound, e := w.marketStore.Find(ctx, assetID)
-	if isRecordNotFound {
-		log.Warningln("market not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRepay, core.ErrMarketNotFound)
-	}
 
+	market, e := w.marketStore.Find(ctx, assetID)
 	if e != nil {
-		log.WithError(e).Errorln("find market error")
 		return e
 	}
 
-	if w.marketService.IsMarketClosed(ctx, market) {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRepay, core.ErrMarketClosed)
+	if market.ID == 0 {
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRepay, core.ErrMarketNotFound)
 	}
 
 	//update interest
@@ -39,79 +33,94 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 		return e
 	}
 
-	borrow, isRecordNotFound, e := w.borrowStore.Find(ctx, userID, market.AssetID)
-	if isRecordNotFound {
-		log.Warningln("borrow not found")
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRepay, core.ErrBorrowNotFound)
-	}
+	borrow, e := w.borrowStore.Find(ctx, userID, market.AssetID)
 	if e != nil {
-		log.Errorln(e)
 		return e
 	}
 
-	//update borrow info
-	borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, market)
+	if borrow.ID == 0 {
+		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRepay, core.ErrBorrowNotFound)
+	}
+
+	transaction, e := w.transactionStore.FindByTraceID(ctx, output.TraceID)
 	if e != nil {
-		log.Errorln(e)
 		return e
 	}
-	realRepaidBalance := repayAmount
-	redundantAmount := repayAmount.Sub(borrowBalance).Truncate(8)
-	newBalance := borrowBalance.Sub(repayAmount)
-	newIndex := market.BorrowIndex
-	if newBalance.LessThanOrEqual(decimal.Zero) {
-		newBalance = decimal.Zero
-		newIndex = decimal.Zero
-		realRepaidBalance = borrowBalance
+
+	if transaction.ID == 0 {
+		if w.marketService.IsMarketClosed(ctx, market) {
+			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRepay, core.ErrMarketClosed)
+		}
+
+		//update borrow info
+		borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, market)
+		if e != nil {
+			log.Errorln(e)
+			return e
+		}
+
+		newBalance := borrowBalance.Sub(repayAmount)
+		newIndex := market.BorrowIndex
+		if !newBalance.IsPositive() {
+			newBalance = decimal.Zero
+			newIndex = decimal.Zero
+			repayAmount = borrowBalance
+		}
+
+		extra := core.NewTransactionExtra()
+		extra.Put("repay_amount", repayAmount.Truncate(16))
+		extra.Put("new_balance", newBalance.Truncate(16))
+		extra.Put("new_index", newIndex.Truncate(16))
+		extra.Put(core.TransactionKeyBorrow, core.ExtraBorrow{
+			UserID:        borrow.UserID,
+			AssetID:       borrow.AssetID,
+			Principal:     newBalance,
+			InterestIndex: newIndex,
+		})
+
+		transaction = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeRepay, output, extra)
+		if e := w.transactionStore.Create(ctx, transaction); e != nil {
+			return e
+		}
+	}
+
+	var extra struct {
+		RepayAmount decimal.Decimal `json:"repay_amount"`
+		NewBalance  decimal.Decimal `json:"new_balance"`
+		NewIndex    decimal.Decimal `json:"new_index"`
+	}
+
+	if e := transaction.UnmarshalExtraData(&extra); e != nil {
+		return e
 	}
 
 	if output.ID > borrow.Version {
-		borrow.Principal = newBalance.Truncate(16)
-		borrow.InterestIndex = newIndex.Truncate(16)
+		borrow.Principal = extra.NewBalance
+		borrow.InterestIndex = extra.NewIndex
 		if e = w.borrowStore.Update(ctx, borrow, output.ID); e != nil {
 			log.Errorln(e)
 			return e
 		}
 	}
 
-	if output.ID > market.Version {
-		market.TotalBorrows = market.TotalBorrows.Sub(realRepaidBalance).Truncate(16)
-		market.TotalCash = market.TotalCash.Add(realRepaidBalance).Truncate(16)
-		if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
-			log.Errorln(e)
-			return e
-		}
-	}
-
-	// market transaction
-	marketTransaction := core.BuildMarketUpdateTransaction(ctx, market, foxuuid.Modify(output.TraceID, "update_market"))
-	if e = w.transactionStore.Create(ctx, marketTransaction); e != nil {
-		log.WithError(e).Errorln("create transaction error")
-		return e
-	}
-
-	// add transaction
-	extra := core.NewTransactionExtra()
-	extra.Put(core.TransactionKeyBorrow, core.ExtraBorrow{
-		UserID:        borrow.UserID,
-		AssetID:       borrow.AssetID,
-		Principal:     borrow.Principal,
-		InterestIndex: borrow.InterestIndex,
-	})
-	transaction := core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeRepay, output, extra)
-	if e = w.transactionStore.Create(ctx, transaction); e != nil {
-		log.WithError(e).Errorln("create transaction error")
-		return e
-	}
-
-	if redundantAmount.GreaterThan(decimal.Zero) {
-		refundAmount := redundantAmount
+	if refundAmount := output.Amount.Sub(extra.RepayAmount); refundAmount.GreaterThan(decimal.Zero) {
 		transferAction := core.TransferAction{
 			Source:   core.ActionTypeRepayRefundTransfer,
 			FollowID: followID,
 		}
 
-		return w.transferOut(ctx, userID, followID, output.TraceID, assetID, refundAmount, &transferAction)
+		if e := w.transferOut(ctx, userID, followID, output.TraceID, assetID, refundAmount, &transferAction); e != nil {
+			return e
+		}
+	}
+
+	if output.ID > market.Version {
+		market.TotalBorrows = market.TotalBorrows.Sub(extra.NewBalance).Truncate(16)
+		market.TotalCash = market.TotalCash.Add(extra.NewBalance).Truncate(16)
+		if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
+			log.Errorln(e)
+			return e
+		}
 	}
 
 	return nil

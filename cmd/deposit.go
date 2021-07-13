@@ -26,7 +26,7 @@ var depositCmd = &cobra.Command{
 			panic(e)
 		}
 		amountNum, e := decimal.NewFromString(amount)
-		if e != nil || amountNum.LessThanOrEqual(decimal.Zero) {
+		if e != nil || !amountNum.IsPositive() {
 			panic("invalid amount")
 		}
 

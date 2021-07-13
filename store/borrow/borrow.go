@@ -30,7 +30,7 @@ func init() {
 	})
 }
 
-func (s *borrowStore) Save(ctx context.Context, borrow *core.Borrow) error {
+func (s *borrowStore) Create(ctx context.Context, borrow *core.Borrow) error {
 	if e := s.db.Update().Where("user_id=? and asset_id=?", borrow.UserID, borrow.AssetID).Create(borrow).Error; e != nil {
 		return e
 	}
@@ -38,13 +38,16 @@ func (s *borrowStore) Save(ctx context.Context, borrow *core.Borrow) error {
 	return nil
 }
 
-func (s *borrowStore) Find(ctx context.Context, userID string, assetID string) (*core.Borrow, bool, error) {
+func (s *borrowStore) Find(ctx context.Context, userID string, assetID string) (*core.Borrow, error) {
 	var borrow core.Borrow
 	if e := s.db.View().Where("user_id=? and asset_id=?", userID, assetID).First(&borrow).Error; e != nil {
-		return nil, gorm.IsRecordNotFoundError(e), e
+		if gorm.IsRecordNotFoundError(e) {
+			return &core.Borrow{}, nil
+		}
+		return nil, e
 	}
 
-	return &borrow, false, nil
+	return &borrow, nil
 }
 
 func (s *borrowStore) FindByUser(ctx context.Context, userID string) ([]*core.Borrow, error) {
@@ -67,8 +70,18 @@ func (s *borrowStore) FindByAssetID(ctx context.Context, assetID string) ([]*cor
 
 func (s *borrowStore) Update(ctx context.Context, borrow *core.Borrow, version int64) error {
 	if version > borrow.Version {
+		oldVersion := borrow.Version
 		borrow.Version = version
-		return s.db.Update().Model(borrow).Updates(borrow).Error
+		tx := s.db.Update().Model(borrow).Where("version=?", oldVersion).Updates(borrow)
+
+		if tx.Error != nil {
+			return tx.Error
+		}
+
+		if tx.RowsAffected == 0 {
+			return db.ErrOptimisticLock
+		}
+
 	}
 
 	return nil

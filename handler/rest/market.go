@@ -6,6 +6,7 @@ import (
 	"compound/handler/render"
 	"compound/handler/views"
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/shopspring/decimal"
@@ -47,9 +48,9 @@ func marketHandler(marketStr core.IMarketStore, supplyStr core.ISupplyStore, bor
 			render.BadRequest(w, err)
 			return
 		}
-		market, _, e := marketStr.Find(ctx, params.Asset)
-		if e != nil {
-			render.BadRequest(w, e)
+		market, e := marketStr.Find(ctx, params.Asset)
+		if e != nil || market.ID == 0 {
+			render.BadRequest(w, errors.New("no market"))
 			return
 		}
 

@@ -28,7 +28,7 @@ func New(
 
 func (s *service) CurUtilizationRate(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
 	ur := market.UtilizationRate
-	if ur.LessThanOrEqual(decimal.Zero) {
+	if !ur.IsPositive() {
 		return decimal.Zero, nil
 	}
 
@@ -36,7 +36,7 @@ func (s *service) CurUtilizationRate(ctx context.Context, market *core.Market) (
 }
 func (s *service) CurExchangeRate(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
 	er := market.ExchangeRate
-	if er.LessThanOrEqual(decimal.Zero) {
+	if !er.IsPositive() {
 		return market.InitExchangeRate, nil
 	}
 
@@ -44,7 +44,7 @@ func (s *service) CurExchangeRate(ctx context.Context, market *core.Market) (dec
 }
 func (s *service) CurBorrowRatePerBlock(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
 	br := market.BorrowRatePerBlock
-	if br.LessThanOrEqual(decimal.Zero) {
+	if !br.IsPositive() {
 		return s.curBorrowRatePerBlockInternal(ctx, market)
 	}
 
@@ -52,7 +52,7 @@ func (s *service) CurBorrowRatePerBlock(ctx context.Context, market *core.Market
 }
 func (s *service) CurSupplyRatePerBlock(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
 	sr := market.SupplyRatePerBlock
-	if sr.LessThanOrEqual(decimal.Zero) {
+	if !sr.IsPositive() {
 		return s.curSupplyRatePerBlockInternal(ctx, market)
 	}
 
@@ -66,7 +66,7 @@ func (s *service) curUtilizationRateInternal(ctx context.Context, market *core.M
 }
 
 func (s *service) curExchangeRateInternal(ctx context.Context, market *core.Market) (decimal.Decimal, error) {
-	if market.CTokens.LessThanOrEqual(decimal.Zero) {
+	if !market.CTokens.IsPositive() {
 		return market.InitExchangeRate, nil
 	}
 
@@ -147,7 +147,7 @@ func (s *service) AccrueInterest(ctx context.Context, market *core.Market, time 
 			return e
 		}
 
-		if market.BorrowIndex.LessThanOrEqual(decimal.Zero) {
+		if !market.BorrowIndex.IsPositive() {
 			market.BorrowIndex = borrowRate
 		}
 
