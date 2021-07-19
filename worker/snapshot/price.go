@@ -69,7 +69,7 @@ func (w *Payee) decodePriceTransaction(ctx context.Context, businessData []byte)
 		}
 	}
 
-	if verifyPriceData(&p, signers, int(w.system.Threshold)) {
+	if verifyPriceData(&p, signers, int(w.system.PriceThreshold)) {
 		return &p, nil
 	}
 
