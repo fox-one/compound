@@ -121,14 +121,6 @@ type ExtraBorrow struct {
 	InterestIndex decimal.Decimal `json:"interest_index,omitempty"`
 }
 
-type TransactionStatus int
-
-const (
-	TransactionStatusInit TransactionStatus = iota
-	TransactionStatusComplete
-	TransactionStatusAbort
-)
-
 // Transaction transaction info
 type Transaction struct {
 	ID              int64           `sql:"PRIMARY_KEY;AUTO_INCREMENT" json:"id,omitempty"`
@@ -170,7 +162,7 @@ type TransactionStore interface {
 	Create(ctx context.Context, transactions *Transaction) error
 	FindByTraceID(ctx context.Context, traceID string) (*Transaction, error)
 	Update(ctx context.Context, transaction *Transaction) error
-	List(ctx context.Context, offset time.Time, limit int, status TransactionStatus) ([]*Transaction, error)
+	List(ctx context.Context, offset time.Time, limit int) ([]*Transaction, error)
 }
 
 // BuildTransactionFromOutput transaction from output
