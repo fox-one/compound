@@ -12,7 +12,6 @@ import (
 	"github.com/pandodao/blst"
 )
 
-// TODO: stop price scan
 func priceRequestsHandler(system *core.System, marketStr core.IMarketStore, oracleSignerStr core.OracleSignerStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
