@@ -3,6 +3,7 @@ package cmd
 import (
 	"compound/handler/hc"
 	"compound/handler/rest"
+	"compound/handler/rpc"
 	"fmt"
 	"net/http"
 
@@ -54,6 +55,12 @@ var serverCmd = &cobra.Command{
 		{
 			//restful api
 			mux.Mount("/api/v1", rest.Handle(system, dapp, marketStore, supplyStore, borrowStore, transactionStore, oracleSignerStore, marketService))
+		}
+
+		{
+			rpcService := rpc.NewServiceImpl(system, dapp, transactionStore, marketStore, oracleSignerStore, supplyStore, borrowStore, marketService)
+			rpcHandler := rpc.NewCompoundServer(rpcService, nil)
+			mux.Mount("/", rpcHandler)
 		}
 
 		port, err := cmd.Flags().GetInt("port")

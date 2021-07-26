@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+option go_package = "../rpc";
+
+import "google/protobuf/timestamp.proto";
+
+message MarketReq {
+
+}
+
+message Market {
+	int64 id = 1;
+	string asset_id = 2;
+	string symbol = 3;
+	string ctoken_asset_id = 4;
+	string total_cash = 5;
+	string total_borrows = 6;
+	string reserves = 7;
+	string ctokens = 8;
+	string init_exchange_rate = 9;
+	string reserve_factor = 10;
+	string liquidation_incentive = 11;
+	string borrow_cap = 12;
+	string collateral_factor = 13;
+	string close_factor = 14;
+	string base_rate = 15;
+	string multiplier = 16;
+	string jump_multiplier = 17;
+	string kink = 18;
+	int64 block_number = 19;
+	string utilization_rate = 20;
+	string exchange_rate = 21;
+	string supply_rate_per_block = 22;
+	string borrow_rate_per_block = 23;
+	string price = 24;
+	google.protobuf.Timestamp price_update_at = 25;
+	string borrow_index = 26;
+	int32 status = 27;
+	google.protobuf.Timestamp created_at = 28;
+	google.protobuf.Timestamp updated_at = 29;
+	int64 suppliers = 30;
+	int64 borrowers = 31;
+	string supply_apy = 32;
+	string borrow_apy = 33;
+}
+
+message MarketListResp {
+	repeated Market data = 1;
+}
+
+message PriceReq {
+
+}
+
+message PriceReceiver {
+	repeated string members = 1;
+	int32 threshold = 2;
+}
+
+message PriceSigner {
+	int32 index = 1;
+	string verify_key = 2;
+}
+
+message Price {
+	string asset_id = 1;
+	string symbol = 2;
+	string trace_id = 3;
+	PriceReceiver receiver = 4;
+	repeated PriceSigner signers = 5;
+	int32 threshold = 6;
+}
+message PriceRequestResp {
+	repeated Price data = 1;
+}
+
+message TransactionReq {
+	google.protobuf.Timestamp offset = 1;
+	int32 limit = 2;	
+}
+
+message Transaction {
+	int64 id = 1;
+	int32 action = 2;
+	string trace_id = 3;
+	string user_id = 4;
+	string follow_id = 5;
+	string snapshot_trace_id = 6;
+	string asset_id = 7;
+	string amount = 8;
+	bytes data = 9;
+	google.protobuf.Timestamp created_at = 10;
+}
+
+message TransactionListResp {
+	repeated Transaction data = 1;
+}
+
+message PayReq {
+	string asset_id = 1;
+	string amount = 2;
+	string trace_id = 3;
+	string follow_id = 4;
+	string memo_base64 = 5;
+	bool with_gas = 6;
+}
+
+message PayResp {
+	string url = 1;
+}
+
+service Compound {
+	rpc AllMarkets(MarketReq) returns (MarketListResp);
+	rpc PriceRequest(PriceReq) returns (PriceRequestResp);
+	rpc Transactions(TransactionReq) returns (TransactionListResp);
+	rpc PayRequest (PayReq) returns (PayResp);
+}
