@@ -27,19 +27,6 @@ Create the config file named as `config.${ENV}.yaml` according to the [template 
 
 ## Build as docker image locally
 * Place `config.audit-node1.yaml`,`config.audit-node2.yaml`,`config.audit-node3.yaml` in the dir `./deploy`
-* Prepare mysql
-If you use an mysql instance running in a docker container, such as:
-
-```
-docker run -d --name compound-mysql -e MYSQL_ROOT_PASSWORD=compound -e MYSQL_USER=compound -e MYSQL_PASSWORD=compound -p 3308:3306 -v data:/var/lib/mysql mysql:5.7
-```
-And then you should `grant privileges` and `create database` that used in the config file:
-1. login mysql with root user `mysql -h 127.0.0.1 -P 3308 -uroot -pcompound`
-2. Then `mysql> grant all privileges on *.* to compound@'%' identified by 'compound';`
-3. `mysql> flush privileges;`
-4. Then login mysql with compound user `mysql -h 127.0.0.1 -P 3308 -ucompound -pcompound`
-5. create database: `mysql> create database compound_node1;`, `mysql> create database compound_node2;`, `mysql> create database compound_node3;`
-
 * Build the docker images
 
 ```
