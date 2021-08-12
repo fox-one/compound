@@ -1,6 +1,6 @@
-<mxfile>
+<mxfile host="65bd71144e">
     <diagram id="c8xr0SXTrMsmiezocEGH" name="Page-1">
-        <mxGraphModel dx="978" dy="956" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="536" dy="406" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -31,7 +31,7 @@
                 <mxCell id="9" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;" parent="7" vertex="1">
                     <mxGeometry x="45" y="335" width="10" height="80" as="geometry"/>
                 </mxCell>
-                <mxCell id="12" value="Compound" style="swimlane;" parent="1" vertex="1">
+                <mxCell id="12" value="Rings" style="swimlane;" parent="1" vertex="1">
                     <mxGeometry x="190" y="10" width="460" height="80" as="geometry"/>
                 </mxCell>
                 <mxCell id="13" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;" parent="12" vertex="1">
@@ -99,16 +99,16 @@
                         <mxPoint x="390" y="560" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="27" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;" vertex="1" parent="1">
+                <mxCell id="27" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;" parent="1" vertex="1">
                     <mxGeometry x="265" y="160" width="10" height="50" as="geometry"/>
                 </mxCell>
-                <mxCell id="28" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;" vertex="1" parent="1">
+                <mxCell id="28" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;" parent="1" vertex="1">
                     <mxGeometry x="745" y="170" width="10" height="50" as="geometry"/>
                 </mxCell>
-                <mxCell id="29" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;" vertex="1" parent="1">
+                <mxCell id="29" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;" parent="1" vertex="1">
                     <mxGeometry x="745" y="490" width="10" height="50" as="geometry"/>
                 </mxCell>
-                <mxCell id="30" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;" vertex="1" parent="1">
+                <mxCell id="30" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;" parent="1" vertex="1">
                     <mxGeometry x="85" y="490" width="10" height="50" as="geometry"/>
                 </mxCell>
             </root>
