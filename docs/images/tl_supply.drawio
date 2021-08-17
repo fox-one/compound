@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="kXMbqFJOhM0tmtiRuBux" name="Page-1">
-        <mxGraphModel dx="536" dy="406" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="776" dy="336" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -37,7 +37,7 @@
                 <mxCell id="31" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;" parent="21" vertex="1">
                     <mxGeometry x="220" y="260" width="10" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="35" value="transfer ctoken(cETH) to user" style="html=1;verticalAlign=bottom;endArrow=block;" parent="21" edge="1">
+                <mxCell id="35" value="transfer ctoken(rETH) to user" style="html=1;verticalAlign=bottom;endArrow=block;" parent="21" edge="1">
                     <mxGeometry width="80" relative="1" as="geometry">
                         <mxPoint x="235" y="320" as="sourcePoint"/>
                         <mxPoint x="379.5" y="320" as="targetPoint"/>
