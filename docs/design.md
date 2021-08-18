@@ -2,7 +2,7 @@
 
 ## Architecture
 
-Compound is an implementation of MTG and a parachain of Mixin network.
+Rings is an implementation of MTG and a parachain of Mixin network.
 
 ![](images/architecture.png)
 
@@ -13,8 +13,8 @@ Compound is an implementation of MTG and a parachain of Mixin network.
 
 #### MTG system data flow
 * The user transfers a payment(UTXO) that carries business data to the Mixin network.
-* Compound syncs the outputs(UTXO) by parsing the business data(in output.memo)
-* Compound dispatchs the business action(included in business data) and processes each action(supply, borrow...)
+* Rings syncs the outputs(UTXO) by parsing the business data(in output.memo)
+* Rings dispatchs the business action(included in business data) and processes each action(supply, borrow...)
 
 ![](images/workflow.png)
 
@@ -26,12 +26,12 @@ In MTG system, There are two main roles, one is `Payee`, and the another is `cas
 * `cashier` spending the token, transfering the token to user
 ![](images/f_cashier.png)
 
-#### Compound actions
+#### Rings actions
 
 * `Supply`, Suppose users supply the underlying token `ETH` and gain the equity token `cETH`
   ![](images/tl_supply.png)
 
-* `Pledge`, Suppose users pledge the equity token `cETH`, meains that users should pay `cETH` to the compound system
+* `Pledge`, Suppose users pledge the equity token `cETH`, meains that users should pay `cETH` to the Rings system
   ![](images/tl_pledge.png)
 
 * `Unpledge`, Suppose users unpledge the equity token `cETH`, meains that users should pay some gas `CNB` and will get the equity token `cETH` back

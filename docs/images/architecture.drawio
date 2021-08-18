@@ -1,33 +1,33 @@
-<mxfile>
+<mxfile host="65bd71144e">
     <diagram id="QoCbxZE-Zmsi6r9K_KpH" name="Page-1">
-        <mxGraphModel dx="2011" dy="785" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="536" dy="406" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
-                <mxCell id="2" value="" style="shape=link;html=1;" edge="1" parent="1">
+                <mxCell id="2" value="" style="shape=link;html=1;" parent="1" edge="1">
                     <mxGeometry width="100" relative="1" as="geometry">
                         <mxPoint x="100" y="80" as="sourcePoint"/>
                         <mxPoint x="670" y="80" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="3" value="&lt;b&gt;&lt;font style=&quot;font-size: 14px&quot;&gt;Mixin Network&lt;/font&gt;&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="2">
+                <mxCell id="3" value="&lt;b&gt;&lt;font style=&quot;font-size: 14px&quot;&gt;Mixin Network&lt;/font&gt;&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="2" vertex="1" connectable="0">
                     <mxGeometry x="0.36" relative="1" as="geometry">
                         <mxPoint x="-118" as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="4" value="&lt;b&gt;&lt;font style=&quot;font-size: 14px&quot;&gt;Compound&lt;/font&gt;&lt;/b&gt;" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+                <mxCell id="4" value="&lt;b&gt;&lt;font style=&quot;font-size: 14px&quot;&gt;Rings&lt;/font&gt;&lt;/b&gt;" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
                     <mxGeometry x="130" y="160" width="170" height="170" as="geometry"/>
                 </mxCell>
-                <mxCell id="5" value="Node 1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+                <mxCell id="5" value="Node 1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
                     <mxGeometry x="100" y="220" width="60" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="6" value="Node 2" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+                <mxCell id="6" value="Node 2" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
                     <mxGeometry x="190" y="290" width="60" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="7" value="Node n" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+                <mxCell id="7" value="Node n" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
                     <mxGeometry x="250" y="160" width="60" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="8" value="" style="endArrow=none;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" edge="1" parent="1" source="4">
+                <mxCell id="8" value="" style="endArrow=none;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" parent="1" source="4" edge="1">
                     <mxGeometry width="50" height="50" relative="1" as="geometry">
                         <mxPoint x="20" y="200" as="sourcePoint"/>
                         <mxPoint x="215" y="80" as="targetPoint"/>
