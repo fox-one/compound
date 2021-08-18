@@ -79,7 +79,6 @@ func decodeRawProposalData(message []byte, members []*Member) (*Member, ActionTy
 	var actionType int
 	content, err := mtg.Scan(message, &clientID, &actionType)
 	if err != nil {
-		logrus.Errorln("mtg scan error:", err)
 		return nil, ActionTypeDefault, nil, err
 	}
 
