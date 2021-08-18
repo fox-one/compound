@@ -6,7 +6,6 @@ import (
 	"errors"
 
 	"github.com/gofrs/uuid"
-	"github.com/sirupsen/logrus"
 )
 
 // Member member
