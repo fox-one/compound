@@ -103,7 +103,7 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 		}
 	}
 
-	if refundAmount := output.Amount.Sub(extra.RepayAmount); refundAmount.GreaterThan(decimal.Zero) {
+	if refundAmount := output.Amount.Sub(extra.RepayAmount).Truncate(8); refundAmount.GreaterThan(decimal.Zero) {
 		transferAction := core.TransferAction{
 			Source:   core.ActionTypeRepayRefundTransfer,
 			FollowID: followID,
