@@ -72,11 +72,13 @@ func payRequestsHandler(system *core.System, dapp *core.Wallet) http.HandlerFunc
 		url := mixin.URL.Codes(payment.CodeID)
 
 		var response struct {
-			URL string `json:"url"`
+			URL           string               `json:"url"`
+			TransferInput *mixin.TransferInput `json:"transfer_input"`
 		}
 
 		response.URL = url
+		response.TransferInput = &input
 
-		render.JSON(w, response)
+		render.JSON(w, input)
 	}
 }

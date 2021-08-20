@@ -38,11 +38,6 @@ func provideDatabase() *db.DB {
 	return db.MustOpen(cfg.DB)
 }
 
-// provide config instance
-func provideConfig() *core.Config {
-	return &cfg
-}
-
 // provide mixin dapp
 func provideDapp() *core.Wallet {
 	c, err := mixin.NewFromKeystore(&cfg.Dapp.Keystore)
