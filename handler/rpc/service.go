@@ -252,6 +252,16 @@ func (s *RPCService) PayRequest(ctx context.Context, req *PayReq) (*PayResp, err
 
 	payResp := PayResp{
 		Url: url,
+		TransferInput: &TransferInput{
+			AssetId: input.AssetID,
+			Amount:  input.Amount.String(),
+			TraceId: input.TraceID,
+			Memo:    input.Memo,
+			OpponentMultisig: &OpponentMultiSig{
+				Receivers: input.OpponentMultisig.Receivers,
+				Threshold: int32(input.OpponentMultisig.Threshold),
+			},
+		},
 	}
 
 	return &payResp, nil

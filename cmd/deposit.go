@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"compound/pkg/id"
+	"encoding/json"
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/qrcode"
@@ -47,6 +48,13 @@ var depositCmd = &cobra.Command{
 		if err != nil {
 			panic(err)
 		}
+
+		ibs, err := json.MarshalIndent(input, "", "    ")
+		if err != nil {
+			panic(err)
+		}
+
+		cmd.Println(string(ibs))
 
 		url := mixin.URL.Codes(payment.CodeID)
 		cmd.Println(url)
