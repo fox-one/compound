@@ -79,6 +79,6 @@ func payRequestsHandler(system *core.System, dapp *core.Wallet) http.HandlerFunc
 		response.URL = url
 		response.TransferInput = &input
 
-		render.JSON(w, input)
+		render.JSON(w, response)
 	}
 }
