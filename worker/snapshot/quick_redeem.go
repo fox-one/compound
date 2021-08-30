@@ -92,6 +92,7 @@ func (w *Payee) handleQuickRedeemEvent(ctx context.Context, output *core.Output,
 		}
 
 		underlyingAmount := redeemTokens.Mul(exchangeRate).Truncate(8)
+		newCollaterals := supply.Collaterals.Sub(redeemTokens).Truncate(16)
 
 		extra := core.NewTransactionExtra()
 		extra.Put(core.TransactionKeyAssetID, market.AssetID)
@@ -101,7 +102,7 @@ func (w *Payee) handleQuickRedeemEvent(ctx context.Context, output *core.Output,
 		extra.Put(core.TransactionKeySupply, core.ExtraSupply{
 			UserID:        supply.UserID,
 			CTokenAssetID: supply.CTokenAssetID,
-			Collaterals:   supply.Collaterals,
+			Collaterals:   newCollaterals,
 		})
 
 		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeQuickRedeem, output, extra)

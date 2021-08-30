@@ -186,13 +186,13 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 		extra.Put(core.TransactionKeySupply, core.ExtraSupply{
 			UserID:        seizedUserID,
 			CTokenAssetID: supply.CTokenAssetID,
-			Collaterals:   supply.Collaterals,
+			Collaterals:   newCollaterals,
 		})
 		extra.Put(core.TransactionKeyBorrow, core.ExtraBorrow{
 			UserID:        seizedUserID,
 			AssetID:       borrow.AssetID,
-			Principal:     borrow.Principal,
-			InterestIndex: borrow.InterestIndex,
+			Principal:     newBorrowBalance,
+			InterestIndex: newIndex,
 		})
 		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeLiquidate, output, extra)
 		if err := w.transactionStore.Create(ctx, tx); err != nil {
