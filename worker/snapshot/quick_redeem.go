@@ -73,7 +73,7 @@ func (w *Payee) handleQuickRedeemEvent(ctx context.Context, output *core.Output,
 		}
 
 		// check liqudity
-		liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, userID)
+		liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, userID, market)
 		if e != nil {
 			log.Errorln(e)
 			return e
@@ -87,7 +87,7 @@ func (w *Payee) handleQuickRedeemEvent(ctx context.Context, output *core.Output,
 		}
 		unpledgedTokenLiquidity := redeemTokens.Mul(exchangeRate).Mul(market.CollateralFactor).Mul(price)
 		if unpledgedTokenLiquidity.GreaterThan(liquidity) {
-			log.Errorln(errors.New("insufficient liquidity"))
+			log.Errorf("insufficient liquidity, liquidity:%v, changed_liquidity:%v", liquidity, unpledgedTokenLiquidity)
 			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrInsufficientLiquidity)
 		}
 

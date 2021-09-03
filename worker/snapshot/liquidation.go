@@ -127,8 +127,14 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 			return e
 		}
 
+		liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, userID, borrowMarket, supplyMarket)
+		if e != nil {
+			log.Errorln(e)
+			return e
+		}
+
 		// refund to liquidator if seize not allowed
-		if !w.accountService.SeizeTokenAllowed(ctx, supply, borrow, output.CreatedAt) {
+		if !w.accountService.SeizeTokenAllowed(ctx, supply, borrow, liquidity) {
 			return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrSeizeNotAllowed)
 		}
 

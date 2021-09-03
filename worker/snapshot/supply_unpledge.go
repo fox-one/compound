@@ -66,21 +66,17 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 		}
 
 		// check liqudity
-		liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, userID)
+		liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, userID, market)
 		if e != nil {
 			log.Errorln(e)
 			return e
 		}
 
 		price := market.Price
-		exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
-		if e != nil {
-			log.Errorln(e)
-			return e
-		}
+		exchangeRate := market.ExchangeRate
 		unpledgedTokenLiquidity := unpledgedAmount.Mul(exchangeRate).Mul(market.CollateralFactor).Mul(price)
 		if unpledgedTokenLiquidity.GreaterThan(liquidity) {
-			log.Errorln(errors.New("insufficient liquidity"))
+			log.Errorf("insufficient liquidity, liquidity:%v, changed_liquidity:%v", liquidity, unpledgedTokenLiquidity)
 			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeUnpledge, core.ErrInsufficientLiquidity)
 		}
 

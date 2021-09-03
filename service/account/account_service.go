@@ -4,7 +4,6 @@ import (
 	"compound/core"
 	"context"
 	"errors"
-	"time"
 
 	"github.com/shopspring/decimal"
 )
@@ -39,16 +38,19 @@ func New(
 // 	supplyValue = supply.collaterals * market.exchange_rate * market.collateral_factor * market.price
 // 	borrowValue = borrow.Balance()
 // 	liquidity = total_supply_values - total_borrow_values
-func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID string) (decimal.Decimal, error) {
+func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID string, newMarkets ...*core.Market) (decimal.Decimal, error) {
 	supplies, e := s.supplyStore.FindByUser(ctx, userID)
 	if e != nil {
 		return decimal.Zero, e
 	}
 	supplyValue := decimal.Zero
 	for _, supply := range supplies {
-		market, e := s.marketStore.FindByCToken(ctx, supply.CTokenAssetID)
+		market, e := s.findMarketByCtokenAssetID(ctx, newMarkets, supply.CTokenAssetID)
 		if e != nil {
-			return decimal.Zero, e
+			market, e = s.marketStore.FindByCToken(ctx, supply.CTokenAssetID)
+			if e != nil {
+				return decimal.Zero, e
+			}
 		}
 
 		if market.ID == 0 {
@@ -56,10 +58,7 @@ func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID s
 		}
 
 		price := market.Price
-		exchangeRate, e := s.marketService.CurExchangeRate(ctx, market)
-		if e != nil {
-			return decimal.Zero, e
-		}
+		exchangeRate := market.ExchangeRate
 		value := supply.Collaterals.Mul(exchangeRate).Mul(market.CollateralFactor).Mul(price)
 		supplyValue = supplyValue.Add(value)
 	}
@@ -72,9 +71,12 @@ func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID s
 	borrowValue := decimal.Zero
 
 	for _, borrow := range borrows {
-		market, e := s.marketStore.Find(ctx, borrow.AssetID)
+		market, e := s.findMarketByAssetID(ctx, newMarkets, borrow.AssetID)
 		if e != nil {
-			return decimal.Zero, e
+			market, e = s.marketStore.Find(ctx, borrow.AssetID)
+			if e != nil {
+				return decimal.Zero, e
+			}
 		}
 
 		if market.ID == 0 {
@@ -99,17 +101,12 @@ func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID s
 // SeizeTokenAllowed
 //
 // check account liquidity
-func (s *accountService) SeizeTokenAllowed(ctx context.Context, supply *core.Supply, borrow *core.Borrow, time time.Time) bool {
+func (s *accountService) SeizeTokenAllowed(ctx context.Context, supply *core.Supply, borrow *core.Borrow, liquidity decimal.Decimal) bool {
 	if supply.UserID != borrow.UserID {
 		return false
 	}
 
 	// check liquidity
-	liquidity, e := s.CalculateAccountLiquidity(ctx, borrow.UserID)
-	if e != nil {
-		return false
-	}
-
 	if liquidity.GreaterThanOrEqual(decimal.Zero) {
 		return false
 	}
@@ -161,4 +158,32 @@ func (s *accountService) MaxSeize(ctx context.Context, supply *core.Supply, borr
 
 func (s *accountService) SeizeToken(ctx context.Context, supply *core.Supply, borrow *core.Borrow, repayAmount decimal.Decimal) (string, error) {
 	panic("implement me")
+}
+
+func (s *accountService) findMarketByAssetID(ctx context.Context, src []*core.Market, assetID string) (*core.Market, error) {
+	if src == nil {
+		return nil, errors.New("no market found")
+	}
+
+	for _, m := range src {
+		if m.AssetID == assetID {
+			return m, nil
+		}
+	}
+
+	return nil, errors.New("no market found")
+}
+
+func (s *accountService) findMarketByCtokenAssetID(ctx context.Context, src []*core.Market, ctokenAssetID string) (*core.Market, error) {
+	if src == nil {
+		return nil, errors.New("no market found")
+	}
+
+	for _, m := range src {
+		if m.CTokenAssetID == ctokenAssetID {
+			return m, nil
+		}
+	}
+
+	return nil, errors.New("no market found")
 }

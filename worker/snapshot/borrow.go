@@ -55,7 +55,13 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeBorrow, core.ErrMarketClosed)
 		}
 
-		if !w.borrowService.BorrowAllowed(ctx, borrowAmount, userID, market, output.CreatedAt) {
+		liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, userID, market)
+		if e != nil {
+			log.Errorln(e)
+			return e
+		}
+
+		if !w.borrowService.BorrowAllowed(ctx, borrowAmount, userID, market, liquidity) {
 			log.Errorln("borrow not allowed")
 			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeBorrow, core.ErrBorrowNotAllowed)
 		}

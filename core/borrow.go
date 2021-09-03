@@ -58,6 +58,6 @@ type IBorrowStore interface {
 
 // IBorrowService supply service interface
 type IBorrowService interface {
-	BorrowAllowed(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *Market, time time.Time) bool
+	BorrowAllowed(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *Market, liquidity decimal.Decimal) bool
 	BorrowBalance(ctx context.Context, borrow *Borrow, market *Market) (decimal.Decimal, error)
 }

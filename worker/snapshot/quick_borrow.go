@@ -116,7 +116,7 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 		}
 
 		// check liquidity
-		liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, userID)
+		liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, userID, supplyMarket, borrowMarket)
 		if e != nil {
 			log.Errorln(e)
 			return e
