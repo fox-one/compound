@@ -1,0 +1,27 @@
+on:
+  push:
+    tags:
+      - v*
+
+name: Build & Push Rings Node to GCR
+
+jobs:
+  build-push:
+    name: Build And Push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set Image Tag
+        id: imagetag
+        run: echo "::set-output name=tag::$(git describe --tags --abbrev=0 | cut -c2-)"
+
+      - name: Build and Publish latest Rings Node Docker image
+        uses: VaultVulp/gp-docker-action@1.1.8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          image-name: rings-node
+          dockerfile: docker/Dockerfile
+          image-tag: ${{ steps.imagetag.outputs.tag }}

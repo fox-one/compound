@@ -22,8 +22,6 @@ var serverCmd = &cobra.Command{
 		ctx := cmd.Context()
 		log := logger.FromContext(ctx)
 
-		migrateDB()
-
 		db := provideDatabase()
 		defer db.Close()
 

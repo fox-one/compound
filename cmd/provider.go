@@ -35,7 +35,11 @@ import (
 
 // provide db instance
 func provideDatabase() *db.DB {
-	return db.MustOpen(cfg.DB)
+	database := db.MustOpen(cfg.DB)
+	if err := db.Migrate(database); err != nil {
+		panic(err)
+	}
+	return database
 }
 
 // provide mixin dapp

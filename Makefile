@@ -1,37 +1,13 @@
-COMMIT = $(shell git rev-parse --short HEAD)
-VERSION = $(shell git describe --abbrev=0) 
+TAG = $(shell git describe --tags --abbrev=0)
+IMAGE_VERSION = $(shell echo ${TAG} | cut -c2-)
 
-REPOSITORY_PATH = $(shell cat .config.ini)
-ENV = $*
-GO = GO111MODULE=on CGO_ENABLED=1 CGO_CFLAGS='-O -D__BLST_PORTABLE__' go
+.PHONY: build
+build-prod:
+	sh hack/build.sh prod
 
-.PHONY: clean
-clean:	
-	@echo "cleaning building caches and configs......................."
-	${GO} clean
-	rm -f ./config/config.yaml
-	rm -f ./compound
-	rm -rf ./builds
+.PHONY: docker
+docker:
+	docker build -t rings-node:${IMAGE_VERSION} -f ./docker/Dockerfile .
 
-sync-%: clean
-	@echo "sync code and config file..........................."
-	# git pull
-	cp -f ./deploy/config.${ENV}.yaml ./config/config.yaml
-
-build: 
-	${GO} build --ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT}" -o builds/
-
-docker-build: clean
-	docker build -t compound:${VERSION} -t compound:latest -f ./deploy/docker/Dockerfile.audit .	
-
-
-docker-build-%: clean sync-%
-	@echo "repository path -> ${REPOSITORY_PATH}"
-	docker build -t ${REPOSITORY_PATH}compound-${ENV}:${VERSION} -f ./deploy/docker/Dockerfile . 
-
-.PHONY: aws-login
-aws-login:
-	$(shell aws ecr get-login --no-include-email --region ap-northeast-1)
-
-deploy-%: docker-build-%
-	docker push ${REPOSITORY_PATH}compound-${ENV}:${VERSION}
+clean:
+	@rm -rf ./builds

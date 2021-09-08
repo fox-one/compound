@@ -13,5 +13,5 @@ var (
 func main() {
 	version := fmt.Sprintf("%s-%s", version, commit)
 
-	cmd.Run(version)
+	cmd.Execute(version)
 }
