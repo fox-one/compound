@@ -9,7 +9,6 @@ import (
 // Config compound config
 type Config struct {
 	Genesis     int64       `json:"genesis"`
-	Location    string      `json:"location"`
 	DB          db.Config   `json:"db"`
 	Dapp        Dapp        `json:"dapp"`
 	Group       Group       `json:"group"`
@@ -56,8 +55,7 @@ type Vote struct {
 // Dapp mixin dapp config
 type Dapp struct {
 	mixin.Keystore
-	ClientSecret string `json:"client_secret"`
-	Pin          string `json:"pin"`
+	Pin string `json:"pin"`
 }
 
 // PriceOracle price oracle config

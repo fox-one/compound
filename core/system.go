@@ -10,7 +10,6 @@ import (
 type System struct {
 	Admins         []string
 	ClientID       string
-	ClientSecret   string
 	Members        []*Member
 	Threshold      uint8
 	VoteAsset      string
@@ -18,7 +17,6 @@ type System struct {
 	PrivateKey     ed25519.PrivateKey
 	SignKey        ed25519.PrivateKey
 	PriceThreshold uint8
-	Location       string
 	Genesis        int64
 	Version        string
 }
