@@ -8,17 +8,16 @@ import (
 
 // System stores system information.
 type System struct {
-	Admins         []string
-	ClientID       string
-	Members        []*Member
-	Threshold      uint8
-	VoteAsset      string
-	VoteAmount     decimal.Decimal
-	PrivateKey     ed25519.PrivateKey
-	SignKey        ed25519.PrivateKey
-	PriceThreshold uint8
-	Genesis        int64
-	Version        string
+	Admins     []string
+	ClientID   string
+	Members    []*Member
+	Threshold  uint8
+	VoteAsset  string
+	VoteAmount decimal.Decimal
+	PrivateKey ed25519.PrivateKey
+	SignKey    ed25519.PrivateKey
+	Genesis    int64
+	Version    string
 }
 
 // MemberIDs member ids

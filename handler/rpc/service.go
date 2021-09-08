@@ -145,7 +145,7 @@ func (s *RPCService) PriceRequest(ctx context.Context, req *PriceReq) (*PriceReq
 
 	requests := make([]*Price, 0)
 	for _, m := range markets {
-		if time.Now().After(m.PriceUpdatedAt.Add(10 * time.Minute)) {
+		if m.PriceThreshold > 0 && time.Now().After(m.PriceUpdatedAt.Add(10*time.Minute)) {
 			requests = append(requests, &Price{
 				TraceId: uuid.Modify(m.AssetID, fmt.Sprintf("price-request:%s:%d", s.System.ClientID, time.Now().Unix()/600)),
 				AssetId: m.AssetID,
@@ -155,7 +155,7 @@ func (s *RPCService) PriceRequest(ctx context.Context, req *PriceReq) (*PriceReq
 					Members:   members,
 				},
 				Signers:   signers,
-				Threshold: int32(s.System.PriceThreshold),
+				Threshold: int32(m.PriceThreshold),
 			})
 		}
 	}

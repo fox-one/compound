@@ -8,11 +8,10 @@ import (
 
 // Config compound config
 type Config struct {
-	Genesis     int64       `json:"genesis"`
-	DB          db.Config   `json:"db"`
-	Dapp        Dapp        `json:"dapp"`
-	Group       Group       `json:"group"`
-	PriceOracle PriceOracle `json:"price_oracle"`
+	Genesis int64     `json:"genesis"`
+	DB      db.Config `json:"db"`
+	Dapp    Dapp      `json:"dapp"`
+	Group   Group     `json:"group"`
 }
 
 // IsAdmin check if the user is admin or not
@@ -56,9 +55,4 @@ type Vote struct {
 type Dapp struct {
 	mixin.Keystore
 	Pin string `json:"pin"`
-}
-
-// PriceOracle price oracle config
-type PriceOracle struct {
-	Threshold uint8 `json:"threshold"`
 }

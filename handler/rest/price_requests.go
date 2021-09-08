@@ -57,7 +57,7 @@ func priceRequestsHandler(system *core.System, marketStr core.IMarketStore, orac
 
 		requests := make([]*core.PriceRequest, 0)
 		for _, m := range markets {
-			if time.Now().After(m.PriceUpdatedAt.Add(10 * time.Minute)) {
+			if m.PriceThreshold > 0 && time.Now().After(m.PriceUpdatedAt.Add(10*time.Minute)) {
 				requests = append(requests, &core.PriceRequest{
 					TraceID: uuid.Modify(m.AssetID, fmt.Sprintf("price-request:%s:%d", system.ClientID, time.Now().Unix()/600)),
 					Asset:   core.Asset{AssetID: m.AssetID, Symbol: m.Symbol},
@@ -66,7 +66,7 @@ func priceRequestsHandler(system *core.System, marketStr core.IMarketStore, orac
 						Members:   members,
 					},
 					Signers:   signers,
-					Threshold: system.PriceThreshold,
+					Threshold: m.PriceThreshold,
 				})
 			}
 		}

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/pandodao/blst"
@@ -51,6 +52,13 @@ func (w *Payee) decodePriceTransaction(ctx context.Context, businessData []byte)
 		return nil, err
 	}
 
+	market, err := w.marketStore.Find(ctx, p.AssetID)
+	if err != nil {
+		return nil, err
+	} else if market.ID == 0 {
+		return nil, fmt.Errorf("market not found: %s", p.AssetID)
+	}
+
 	signers := make([]*core.Signer, len(ss))
 	for idx, s := range ss {
 		bts, err := base64.StdEncoding.DecodeString(s.PublicKey)
@@ -69,7 +77,7 @@ func (w *Payee) decodePriceTransaction(ctx context.Context, businessData []byte)
 		}
 	}
 
-	if verifyPriceData(&p, signers, int(w.system.PriceThreshold)) {
+	if verifyPriceData(&p, signers, int(market.PriceThreshold)) {
 		return &p, nil
 	}
 
