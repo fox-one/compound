@@ -33,7 +33,8 @@ var addMarketCmd = &cobra.Command{
 	base_rate: base rate
 	multi: multiplier
 	jump_multi: jump multiplier
-	kink: kink`,
+	kink: kink
+	price_threshold: int`,
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := cmd.Context()
 		system := provideSystem()
@@ -165,6 +166,12 @@ var addMarketCmd = &cobra.Command{
 			panic(e)
 		}
 		req.Kink = k
+
+		if pt, err := cmd.Flags().GetInt("price_threshold"); err != nil {
+			panic("invalid param: price_threshold")
+		} else {
+			req.PriceThreshold = pt
+		}
 
 		memo, err := mtg.Encode(clientID, int(core.ActionTypeProposalAddMarket), req)
 		if err != nil {
@@ -337,6 +344,7 @@ func init() {
 	addMarketCmd.Flags().String("multi", "", "multiplier")
 	addMarketCmd.Flags().String("jump_multi", "", "jump multiplier")
 	addMarketCmd.Flags().String("kink", "", "kink")
+	addMarketCmd.Flags().Int("price_threshold", 0, "price threshold")
 
 	closeMarketCmd.Flags().String("asset", "", "asset id")
 

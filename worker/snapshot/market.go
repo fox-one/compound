@@ -34,6 +34,7 @@ func (w *Payee) handleMarketEvent(ctx context.Context, p *core.Proposal, req pro
 			Multiplier:           req.Multiplier,
 			JumpMultiplier:       req.JumpMultiplier,
 			Kink:                 req.Kink,
+			PriceThreshold:       req.PriceThreshold,
 			Status:               core.MarketStatusClose,
 		}
 
@@ -88,6 +89,12 @@ func (w *Payee) handleMarketEvent(ctx context.Context, p *core.Proposal, req pro
 
 	if req.Kink.GreaterThanOrEqual(decimal.Zero) && req.Kink.LessThan(decimal.NewFromInt(1)) {
 		market.Kink = req.Kink
+	}
+
+	if req.PriceThreshold > 0 {
+		market.PriceThreshold = req.PriceThreshold
+	} else if req.PriceThreshold < 0 {
+		market.PriceThreshold = 0
 	}
 
 	if e = w.marketStore.Update(ctx, market, output.ID); e != nil {

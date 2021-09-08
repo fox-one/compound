@@ -77,7 +77,7 @@ func (w *Payee) decodePriceTransaction(ctx context.Context, businessData []byte)
 		}
 	}
 
-	if verifyPriceData(&p, signers, int(market.PriceThreshold)) {
+	if verifyPriceData(&p, signers, market.PriceThreshold) {
 		return &p, nil
 	}
 

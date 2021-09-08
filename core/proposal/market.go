@@ -12,6 +12,7 @@ type MarketReq struct {
 	Symbol               string          `json:"symbol,omitempty"`
 	AssetID              string          `json:"asset_id,omitempty"`
 	CTokenAssetID        string          `json:"ctoken_asset_id,omitempty"`
+	PriceThreshold       int             `json:"price_threshold,omitempty"`
 	InitExchange         decimal.Decimal `json:"init_exchange,omitempty"`
 	ReserveFactor        decimal.Decimal `json:"reserve_factor,omitempty"`
 	LiquidationIncentive decimal.Decimal `json:"liquidation_incentive,omitempty"`
@@ -36,32 +37,52 @@ func (w MarketReq) MarshalBinary() (data []byte, err error) {
 		return nil, err
 	}
 
-	return mtg.Encode(w.Symbol, asset, ctokenAsset, w.InitExchange, w.ReserveFactor, w.LiquidationIncentive, w.CollateralFactor, w.BaseRate, w.BorrowCap, w.CloseFactor, w.Multiplier, w.JumpMultiplier, w.Kink)
+	return mtg.Encode(
+		w.Symbol,
+		asset,
+		ctokenAsset,
+		w.InitExchange,
+		w.ReserveFactor,
+		w.LiquidationIncentive,
+		w.CollateralFactor,
+		w.BaseRate,
+		w.BorrowCap,
+		w.CloseFactor,
+		w.Multiplier,
+		w.JumpMultiplier,
+		w.Kink,
+		w.PriceThreshold,
+	)
 }
 
 // UnmarshalBinary unmarshal bytes to withdraw
 func (w *MarketReq) UnmarshalBinary(data []byte) error {
-	var symbol string
-	var asset, ctokenAsset uuid.UUID
-	var initExchange, reserveFactor, liquidationIncentive, collateralFactor, baseRate, borrowCap, closeFactor, multiplier, jumpMultiplier, kink decimal.Decimal
-
-	if _, err := mtg.Scan(data, &symbol, &asset, &ctokenAsset, &initExchange, &reserveFactor, &liquidationIncentive, &collateralFactor, &baseRate, &borrowCap, &closeFactor, &multiplier, &jumpMultiplier, &kink); err != nil {
+	var (
+		req           MarketReq
+		assetID       uuid.UUID
+		ctokenAssetID uuid.UUID
+	)
+	if _, err := mtg.Scan(data,
+		&req.Symbol,
+		&assetID,
+		&ctokenAssetID,
+		&w.InitExchange,
+		&w.ReserveFactor,
+		&w.LiquidationIncentive,
+		&w.CollateralFactor,
+		&w.BaseRate,
+		&w.BorrowCap,
+		&w.CloseFactor,
+		&w.Multiplier,
+		&w.JumpMultiplier,
+		&w.Kink,
+		&w.PriceThreshold,
+	); err != nil {
 		return err
 	}
+	req.AssetID = assetID.String()
+	req.CTokenAssetID = ctokenAssetID.String()
 
-	w.Symbol = symbol
-	w.AssetID = asset.String()
-	w.CTokenAssetID = ctokenAsset.String()
-	w.InitExchange = initExchange
-	w.ReserveFactor = reserveFactor
-	w.LiquidationIncentive = liquidationIncentive
-	w.CollateralFactor = collateralFactor
-	w.BaseRate = baseRate
-	w.BorrowCap = borrowCap
-	w.CloseFactor = closeFactor
-	w.Multiplier = multiplier
-	w.JumpMultiplier = jumpMultiplier
-	w.Kink = kink
-
+	*w = req
 	return nil
 }

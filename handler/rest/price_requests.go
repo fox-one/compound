@@ -66,7 +66,7 @@ func priceRequestsHandler(system *core.System, marketStr core.IMarketStore, orac
 						Members:   members,
 					},
 					Signers:   signers,
-					Threshold: m.PriceThreshold,
+					Threshold: uint8(m.PriceThreshold),
 				})
 			}
 		}
