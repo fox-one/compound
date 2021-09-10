@@ -41,7 +41,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 		return e
 	}
 	if needAllowListCheck {
-		userAllowed, e := w.allowListService.CheckAllowList(ctx, userID, core.OSLiquidation)
+		userAllowed, e := w.allowListService.CheckAllowList(ctx, liquidator, core.OSLiquidation)
 		if e != nil {
 			return e
 		}
@@ -64,7 +64,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 		return e
 	}
 	if supplyMarket.ID == 0 {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeLiquidate, core.ErrMarketNotFound)
+		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrMarketNotFound)
 	}
 
 	borrowMarket, e := w.marketStore.Find(ctx, userPayAssetID)
@@ -72,7 +72,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 		return e
 	}
 	if borrowMarket.ID == 0 {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeLiquidate, core.ErrMarketNotFound)
+		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrMarketNotFound)
 	}
 
 	supply, e := w.supplyStore.Find(ctx, seizedUserID, supplyMarket.CTokenAssetID)
@@ -80,7 +80,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 		return e
 	}
 	if supply.ID == 0 {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeLiquidate, core.ErrSupplyNotFound)
+		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrSupplyNotFound)
 	}
 
 	borrow, e := w.borrowStore.Find(ctx, seizedUserID, borrowMarket.AssetID)
@@ -88,7 +88,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 		return e
 	}
 	if borrow.ID == 0 {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeLiquidate, core.ErrBorrowNotFound)
+		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrBorrowNotFound)
 	}
 
 	//supply market accrue interest
@@ -127,7 +127,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 			return e
 		}
 
-		liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, userID, borrowMarket, supplyMarket)
+		liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, seizedUserID, borrowMarket, supplyMarket)
 		if e != nil {
 			log.Errorln(e)
 			return e
@@ -200,7 +200,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 			Principal:     newBorrowBalance,
 			InterestIndex: newIndex,
 		})
-		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeLiquidate, output, extra)
+		tx = core.BuildTransactionFromOutput(ctx, liquidator, followID, core.ActionTypeLiquidate, output, extra)
 		if err := w.transactionStore.Create(ctx, tx); err != nil {
 			return err
 		}
