@@ -22,9 +22,7 @@ import (
 	"compound/store/transaction"
 	"compound/store/user"
 	"compound/store/wallet"
-
 	"fmt"
-
 	_ "time/tzdata"
 
 	"github.com/fox-one/mixin-sdk-go"

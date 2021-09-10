@@ -13,6 +13,7 @@ type MarketReq struct {
 	AssetID              string          `json:"asset_id,omitempty"`
 	CTokenAssetID        string          `json:"ctoken_asset_id,omitempty"`
 	PriceThreshold       int             `json:"price_threshold,omitempty"`
+	Price                decimal.Decimal `json:"price,omitempty"`
 	InitExchange         decimal.Decimal `json:"init_exchange,omitempty"`
 	ReserveFactor        decimal.Decimal `json:"reserve_factor,omitempty"`
 	LiquidationIncentive decimal.Decimal `json:"liquidation_incentive,omitempty"`
@@ -52,6 +53,7 @@ func (w MarketReq) MarshalBinary() (data []byte, err error) {
 		w.JumpMultiplier,
 		w.Kink,
 		w.PriceThreshold,
+		w.Price,
 	)
 }
 
@@ -77,6 +79,7 @@ func (w *MarketReq) UnmarshalBinary(data []byte) error {
 		&req.JumpMultiplier,
 		&req.Kink,
 		&req.PriceThreshold,
+		&req.Price,
 	); err != nil {
 		return err
 	}
