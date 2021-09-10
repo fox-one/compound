@@ -36,6 +36,7 @@ func (w *Payee) handleMarketEvent(ctx context.Context, p *core.Proposal, req pro
 			Kink:                 req.Kink,
 			Price:                req.Price,
 			PriceThreshold:       req.PriceThreshold,
+			PriceUpdatedAt:       output.CreatedAt,
 			Status:               core.MarketStatusClose,
 		}
 
