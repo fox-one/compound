@@ -60,4 +60,4 @@ def supply_borrow_rate(base_rate, multiplier, jump_multiplier, kink, reserve_fac
 
 if __name__ == "__main__":
     # supply_borrow_rate(0.0202, 0.2, 0.5, 0.8, 0.1)
-    supply_borrow_rate(0.025, 0.4, 0.0, 0.0, 0.1)
+    supply_borrow_rate(0, 0.058, 1.476, 0.8, 0.15)

@@ -38,6 +38,10 @@ func (b *Borrow) Balance(ctx context.Context, market *Market) (decimal.Decimal, 
 		b.InterestIndex = market.BorrowIndex
 	}
 
+	if !b.InterestIndex.IsPositive() {
+		return b.Principal, nil
+	}
+
 	principalTimesIndex := b.Principal.Mul(market.BorrowIndex)
 	result := principalTimesIndex.Div(b.InterestIndex)
 
