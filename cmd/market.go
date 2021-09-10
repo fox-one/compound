@@ -173,6 +173,16 @@ var addMarketCmd = &cobra.Command{
 			req.PriceThreshold = pt
 		}
 
+		{
+			if price, err := cmd.Flags().GetString("price"); err != nil {
+				panic("invalid price")
+			} else if value, err := decimal.NewFromString(price); err != nil {
+				panic(err)
+			} else {
+				req.Price = value
+			}
+		}
+
 		memo, err := mtg.Encode(clientID, int(core.ActionTypeProposalAddMarket), req)
 		if err != nil {
 			panic(err)
@@ -334,16 +344,17 @@ func init() {
 	addMarketCmd.Flags().String("symbol", "", "market symbol")
 	addMarketCmd.Flags().String("asset", "", "asset id")
 	addMarketCmd.Flags().String("ctoken", "", "ctoken asset id")
-	addMarketCmd.Flags().String("init_exchange_rate", "", "intial exchange rate")
-	addMarketCmd.Flags().String("reserve_factor", "", "reserve factor")
-	addMarketCmd.Flags().String("liquidation_incentive", "", "liquidation incentive")
-	addMarketCmd.Flags().String("borrow_cap", "", "borrow cap")
-	addMarketCmd.Flags().String("collateral_factor", "", "collateral factor")
-	addMarketCmd.Flags().String("close_factor", "", "close factor")
-	addMarketCmd.Flags().String("base_rate", "", "base rate")
-	addMarketCmd.Flags().String("multi", "", "multiplier")
-	addMarketCmd.Flags().String("jump_multi", "", "jump multiplier")
-	addMarketCmd.Flags().String("kink", "", "kink")
+	addMarketCmd.Flags().String("init_exchange_rate", "1", "intial exchange rate")
+	addMarketCmd.Flags().String("reserve_factor", "0.1", "reserve factor")
+	addMarketCmd.Flags().String("liquidation_incentive", "0.05", "liquidation incentive")
+	addMarketCmd.Flags().String("borrow_cap", "0", "borrow cap")
+	addMarketCmd.Flags().String("collateral_factor", "0.75", "collateral factor")
+	addMarketCmd.Flags().String("close_factor", "0.5", "close factor")
+	addMarketCmd.Flags().String("base_rate", "0.025", "base rate")
+	addMarketCmd.Flags().String("multi", "0.4", "multiplier")
+	addMarketCmd.Flags().String("jump_multi", "0", "jump multiplier")
+	addMarketCmd.Flags().String("kink", "0", "kink")
+	addMarketCmd.Flags().String("price", "0", "price")
 	addMarketCmd.Flags().Int("price_threshold", 0, "price threshold")
 
 	closeMarketCmd.Flags().String("asset", "", "asset id")
