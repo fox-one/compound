@@ -114,52 +114,6 @@ func (s *accountService) SeizeTokenAllowed(ctx context.Context, supply *core.Sup
 	return true
 }
 
-func (s *accountService) MaxSeize(ctx context.Context, supply *core.Supply, borrow *core.Borrow) (decimal.Decimal, error) {
-	if supply.UserID != borrow.UserID {
-		return decimal.Zero, errors.New("different user bettween supply and borrow")
-	}
-
-	supplyMarket, e := s.marketStore.FindByCToken(ctx, supply.CTokenAssetID)
-	if e != nil {
-		return decimal.Zero, e
-	}
-
-	if supplyMarket.ID == 0 {
-		return decimal.Zero, errors.New("no market")
-	}
-
-	exchangeRate, e := s.marketService.CurExchangeRate(ctx, supplyMarket)
-	if e != nil {
-		return decimal.Zero, e
-	}
-
-	maxSeize := supply.Collaterals.Mul(exchangeRate).Mul(supplyMarket.CloseFactor)
-
-	supplyPrice := supplyMarket.Price
-	borrowMarket, e := s.marketStore.Find(ctx, borrow.AssetID)
-	if e != nil {
-		return decimal.Zero, e
-	}
-	if borrowMarket.ID == 0 {
-		return decimal.Zero, errors.New("no market")
-	}
-
-	borrowPrice := borrowMarket.Price
-	seizePrice := supplyPrice.Sub(supplyPrice.Mul(supplyMarket.LiquidationIncentive))
-	seizeValue := maxSeize.Mul(seizePrice)
-	borrowValue := borrow.Principal.Mul(borrowPrice)
-	if seizeValue.GreaterThan(borrowValue) {
-		seizeValue = borrowValue
-		maxSeize = seizeValue.Div(seizePrice)
-	}
-
-	return maxSeize, nil
-}
-
-func (s *accountService) SeizeToken(ctx context.Context, supply *core.Supply, borrow *core.Borrow, repayAmount decimal.Decimal) (string, error) {
-	panic("implement me")
-}
-
 func (s *accountService) findMarketByAssetID(ctx context.Context, src []*core.Market, assetID string) (*core.Market, error) {
 	if src == nil {
 		return nil, errors.New("no market found")
