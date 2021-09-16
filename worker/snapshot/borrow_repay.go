@@ -115,8 +115,8 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 	}
 
 	if output.ID > market.Version {
-		market.TotalBorrows = market.TotalBorrows.Sub(extra.NewBalance).Truncate(16)
-		market.TotalCash = market.TotalCash.Add(extra.NewBalance).Truncate(16)
+		market.TotalBorrows = market.TotalBorrows.Sub(extra.RepayAmount).Truncate(16)
+		market.TotalCash = market.TotalCash.Add(extra.RepayAmount).Truncate(16)
 		if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
 			log.Errorln(e)
 			return e
