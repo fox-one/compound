@@ -1,6 +1,7 @@
 package core
 
 import (
+	"compound/internal/compound"
 	"context"
 	"errors"
 	"time"
@@ -39,7 +40,8 @@ func (b *Borrow) Balance(ctx context.Context, market *Market) (decimal.Decimal, 
 	}
 
 	principalTimesIndex := b.Principal.Mul(market.BorrowIndex)
-	result := principalTimesIndex.Div(b.InterestIndex)
+	result := principalTimesIndex.Div(b.InterestIndex).
+		Shift(compound.MaxPricision).Ceil().Shift(-compound.MaxPricision)
 
 	return result, nil
 }
