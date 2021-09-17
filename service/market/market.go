@@ -136,15 +136,15 @@ func (s *service) AccrueInterest(ctx context.Context, market *core.Market, time 
 		return e
 	}
 
+	if !market.BorrowIndex.IsPositive() {
+		market.BorrowIndex = decimal.New(1, 0)
+	}
+
 	blockDelta := blockNum - blockNumberPrior
 	if blockDelta > 0 {
 		borrowRate, e := s.curBorrowRatePerBlockInternal(ctx, market)
 		if e != nil {
 			return e
-		}
-
-		if !market.BorrowIndex.IsPositive() {
-			market.BorrowIndex = borrowRate
 		}
 
 		timesBorrowRate := borrowRate.Mul(decimal.NewFromInt(blockDelta))
