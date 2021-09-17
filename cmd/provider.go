@@ -152,9 +152,8 @@ func provideBlockService() core.IBlockService {
 	return block.New(&cfg)
 }
 
-func provideMarketService(marketStr core.IMarketStore, blockSrv core.IBlockService) core.IMarketService {
+func provideMarketService(blockSrv core.IBlockService) core.IMarketService {
 	return marketservice.New(
-		marketStr,
 		blockSrv)
 }
 

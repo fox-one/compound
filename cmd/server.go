@@ -33,7 +33,7 @@ var serverCmd = &cobra.Command{
 		oracleSignerStore := provideOracleSignerStore(db)
 
 		blockService := provideBlockService()
-		marketService := provideMarketService(marketStore, blockService)
+		marketService := provideMarketService(blockService)
 
 		transactionStore := provideTransactionStore(db)
 

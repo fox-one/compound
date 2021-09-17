@@ -23,7 +23,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 	}
 
 	// check market close status
-	if w.marketService.HasClosedMarkets(ctx) {
+	if w.HasClosedMarkets(ctx) {
 		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrMarketClosed)
 	}
 
@@ -277,4 +277,21 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 	}
 
 	return nil
+}
+
+func (w *Payee) HasClosedMarkets(ctx context.Context) bool {
+	markets, e := w.marketStore.All(ctx)
+	if e != nil {
+		return false
+	}
+
+	has := false
+	for _, m := range markets {
+		if m.Status == core.MarketStatusClose {
+			has = true
+			break
+		}
+	}
+
+	return has
 }

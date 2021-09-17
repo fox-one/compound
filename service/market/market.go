@@ -3,26 +3,22 @@ package market
 import (
 	"compound/core"
 	"compound/internal/compound"
-	"time"
-
 	"context"
+	"time"
 
 	"github.com/shopspring/decimal"
 )
 
 type service struct {
-	marketStore core.IMarketStore
-	blockSrv    core.IBlockService
+	blockSrv core.IBlockService
 }
 
 // New new market service
 func New(
-	marketStr core.IMarketStore,
 	blockSrv core.IBlockService,
 ) core.IMarketService {
 	return &service{
-		marketStore: marketStr,
-		blockSrv:    blockSrv,
+		blockSrv: blockSrv,
 	}
 }
 
@@ -191,25 +187,4 @@ func (s *service) AccrueInterest(ctx context.Context, market *core.Market, time 
 	market.BorrowRatePerBlock = borrowRate.Truncate(16)
 
 	return nil
-}
-
-func (s *service) IsMarketClosed(ctx context.Context, market *core.Market) bool {
-	return market.Status == core.MarketStatusClose
-}
-
-func (s *service) HasClosedMarkets(ctx context.Context) bool {
-	markets, e := s.marketStore.All(ctx)
-	if e != nil {
-		return false
-	}
-
-	has := false
-	for _, m := range markets {
-		if m.Status == core.MarketStatusClose {
-			has = true
-			break
-		}
-	}
-
-	return has
 }

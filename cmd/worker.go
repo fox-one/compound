@@ -58,7 +58,7 @@ var workerCmd = &cobra.Command{
 		})
 
 		blockService := provideBlockService()
-		marketService := provideMarketService(marketStore, blockService)
+		marketService := provideMarketService(blockService)
 		accountService := provideAccountService(marketStore, supplyStore, borrowStore, blockService, marketService)
 		supplyService := provideSupplyService(marketService)
 		borrowService := provideBorrowService(blockService, accountService)

@@ -51,7 +51,7 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 	}
 
 	if tx.ID == 0 {
-		if w.marketService.IsMarketClosed(ctx, market) {
+		if market.IsMarketClosed() {
 			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeBorrow, core.ErrMarketClosed)
 		}
 

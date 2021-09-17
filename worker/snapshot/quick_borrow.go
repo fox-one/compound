@@ -49,7 +49,7 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 	if supplyMarket.ID == 0 {
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrMarketNotFound)
 	}
-	if w.marketService.IsMarketClosed(ctx, supplyMarket) {
+	if supplyMarket.IsMarketClosed() {
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrMarketClosed)
 	}
 
@@ -66,7 +66,7 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 	if borrowMarket.ID == 0 {
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrMarketNotFound)
 	}
-	if w.marketService.IsMarketClosed(ctx, borrowMarket) {
+	if borrowMarket.IsMarketClosed() {
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrMarketClosed)
 	}
 

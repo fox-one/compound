@@ -35,7 +35,7 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeUnpledge, core.ErrMarketNotFound)
 	}
 
-	if w.marketService.IsMarketClosed(ctx, market) {
+	if market.IsMarketClosed() {
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeUnpledge, core.ErrMarketClosed)
 	}
 

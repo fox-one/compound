@@ -48,7 +48,7 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 	}
 
 	if transaction.ID == 0 {
-		if w.marketService.IsMarketClosed(ctx, market) {
+		if market.IsMarketClosed() {
 			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRepay, core.ErrMarketClosed)
 		}
 

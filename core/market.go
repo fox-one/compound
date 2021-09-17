@@ -65,6 +65,10 @@ func (m *Market) Format() []byte {
 	return bytes
 }
 
+func (m Market) IsMarketClosed() bool {
+	return m.Status == MarketStatusClose
+}
+
 // MarketStatus market status
 type MarketStatus int
 
@@ -104,6 +108,4 @@ type IMarketService interface {
 	CurTotalBorrows(ctx context.Context, market *Market) (decimal.Decimal, error)
 	CurTotalReserves(ctx context.Context, market *Market) (decimal.Decimal, error)
 	AccrueInterest(ctx context.Context, market *Market, time time.Time) error
-	IsMarketClosed(ctx context.Context, market *Market) bool
-	HasClosedMarkets(ctx context.Context) bool
 }

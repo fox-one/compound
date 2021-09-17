@@ -30,7 +30,7 @@ func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, user
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrMarketNotFound)
 	}
 
-	if w.marketService.IsMarketClosed(ctx, market) {
+	if market.IsMarketClosed() {
 		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrMarketClosed)
 	}
 
