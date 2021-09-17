@@ -4,10 +4,13 @@ import (
 	"compound/handler/hc"
 	walletservice "compound/service/wallet"
 	"compound/worker"
+	"compound/worker/assigner"
 	"compound/worker/cashier"
 	"compound/worker/message"
 	"compound/worker/snapshot"
+	"compound/worker/spentsync"
 	"compound/worker/syncer"
+	"compound/worker/txsender"
 	"fmt"
 	"net/http"
 	"sync"
@@ -84,13 +87,13 @@ var workerCmd = &cobra.Command{
 		}
 
 		workers := []worker.Worker{
-			// cashier.New(walletStore, walletService, system, cashierConfig),
-			// assigner.New(walletStore, system),
+			cashier.New(walletStore, walletService, system, cashierConfig),
+			assigner.New(walletStore, system),
 			message.New(messageStore, messageService),
 			snapshot.NewPayee(system, dapp, propertyStore, userStore, walletStore, marketStore, supplyStore, borrowStore, proposalStore, transactionStore, oracleSignerStore, proposalService, blockService, marketService, supplyService, borrowService, accountService, allowListService),
 			syncer.New(walletStore, walletService, propertyStore),
-			// txsender.New(walletStore),
-			// spentsync.New(db, walletStore, transactionStore),
+			txsender.New(walletStore),
+			spentsync.New(db, walletStore, transactionStore),
 		}
 
 		wg := sync.WaitGroup{}

@@ -148,15 +148,14 @@ func (s *service) AccrueInterest(ctx context.Context, market *core.Market, time 
 		}
 
 		timesBorrowRate := borrowRate.Mul(decimal.NewFromInt(blockDelta))
-		interestAccumulated := market.TotalBorrows.Mul(timesBorrowRate)
-		totalBorrowsNew := interestAccumulated.Add(market.TotalBorrows)
-		totalReservesNew := interestAccumulated.Mul(market.ReserveFactor).Add(market.Reserves)
-		borrowIndexNew := market.BorrowIndex.Add(timesBorrowRate.Mul(market.BorrowIndex))
+		interestAccumulated := market.TotalBorrows.Mul(timesBorrowRate).Truncate(compound.MaxPricision)
 
 		market.BlockNumber = blockNum
-		market.TotalBorrows = totalBorrowsNew.Truncate(16)
-		market.Reserves = totalReservesNew.Truncate(16)
-		market.BorrowIndex = borrowIndexNew.Truncate(16)
+		market.TotalBorrows = market.TotalBorrows.Add(interestAccumulated)
+		market.Reserves = market.Reserves.Add(interestAccumulated.Mul(market.ReserveFactor).Truncate(compound.MaxPricision))
+		market.BorrowIndex = market.BorrowIndex.Add(
+			timesBorrowRate.Mul(market.BorrowIndex).
+				Shift(compound.MaxPricision).Ceil().Shift(-compound.MaxPricision))
 	}
 
 	//utilization rate
