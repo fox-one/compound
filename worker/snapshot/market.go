@@ -28,6 +28,7 @@ func (w *Payee) handleMarketEvent(ctx context.Context, p *core.Proposal, req pro
 			ReserveFactor:        req.ReserveFactor,
 			LiquidationIncentive: req.LiquidationIncentive,
 			BorrowCap:            req.BorrowCap,
+			BorrowIndex:          decimal.New(1, 0),
 			CollateralFactor:     req.CollateralFactor,
 			CloseFactor:          req.CloseFactor,
 			BaseRate:             req.BaseRate,
