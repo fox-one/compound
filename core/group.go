@@ -94,5 +94,5 @@ func decodeRawProposalData(message []byte, members []*Member) (*Member, ActionTy
 		return m, action, content, nil
 	}
 
-	return nil, action, content, nil
+	return nil, action, content, errors.New("member not found")
 }
