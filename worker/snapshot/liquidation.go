@@ -2,6 +2,7 @@ package snapshot
 
 import (
 	"compound/core"
+	"compound/internal/compound"
 	"compound/pkg/mtg"
 	"context"
 
@@ -164,14 +165,15 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 
 		seizedCTokens := seizedAmount.Div(supplyExchangeRate).Truncate(8)
 
-		repayAmount := repayValue.Div(borrowPrice).Truncate(16)
-		refundAmount := userPayAmount.Sub(repayAmount).Truncate(8)
-		newBorrowBalance := borrowBalance.Sub(repayAmount).Truncate(16)
+		repayAmount := repayValue.Div(borrowPrice).Truncate(compound.MaxPricision)
+		newBorrowBalance := borrowBalance.Sub(repayAmount).Truncate(compound.MaxPricision)
 		newIndex := borrowMarket.BorrowIndex
 		if !newBorrowBalance.IsPositive() {
 			newBorrowBalance = decimal.Zero
 			newIndex = decimal.Zero
+			repayAmount = borrowBalance
 		}
+		refundAmount := userPayAmount.Sub(repayAmount).Truncate(8)
 
 		extra := core.NewTransactionExtra()
 		extra.Put(core.TransactionKeyCTokenAssetID, seizedCTokenAssetID)
@@ -268,8 +270,15 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 
 	// update borrow market
 	if output.ID > borrowMarket.Version {
-		borrowMarket.TotalBorrows = borrowMarket.TotalBorrows.Sub(extra.RepayAmount).Truncate(16)
-		borrowMarket.TotalCash = borrowMarket.TotalCash.Add(extra.RepayAmount).Truncate(16)
+		borrowMarket.TotalBorrows = borrowMarket.TotalBorrows.Sub(extra.RepayAmount).Truncate(compound.MaxPricision)
+		borrowMarket.TotalCash = borrowMarket.TotalCash.Add(extra.RepayAmount).Truncate(compound.MaxPricision)
+		switch w.sysversion {
+		case 0:
+		default:
+			if borrowMarket.TotalBorrows.IsNegative() {
+				borrowMarket.TotalBorrows = decimal.Zero
+			}
+		}
 		if e = w.marketStore.Update(ctx, borrowMarket, output.ID); e != nil {
 			log.Errorln(e)
 			return e

@@ -2,6 +2,7 @@ package snapshot
 
 import (
 	"compound/core"
+	"compound/internal/compound"
 	"compound/pkg/mtg"
 	"context"
 	"errors"
@@ -276,8 +277,8 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 	if output.ID > supplyMarket.Version {
 		// Only update the ctokens and total_cash of market when the underlying assets are provided
 		if !isSupplyCToken {
-			supplyMarket.CTokens = supplyMarket.CTokens.Add(extra.CTokens).Truncate(16)
-			supplyMarket.TotalCash = supplyMarket.TotalCash.Add(supplyAmount).Truncate(16)
+			supplyMarket.CTokens = supplyMarket.CTokens.Add(extra.CTokens).Truncate(compound.MaxPricision)
+			supplyMarket.TotalCash = supplyMarket.TotalCash.Add(supplyAmount).Truncate(compound.MaxPricision)
 		}
 
 		if e = w.marketStore.Update(ctx, supplyMarket, output.ID); e != nil {
@@ -288,8 +289,8 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 
 	// update borrow market
 	if output.ID > borrowMarket.Version {
-		borrowMarket.TotalCash = borrowMarket.TotalCash.Sub(borrowAmount).Truncate(16)
-		borrowMarket.TotalBorrows = borrowMarket.TotalBorrows.Add(borrowAmount).Truncate(16)
+		borrowMarket.TotalCash = borrowMarket.TotalCash.Sub(borrowAmount).Truncate(compound.MaxPricision)
+		borrowMarket.TotalBorrows = borrowMarket.TotalBorrows.Add(borrowAmount).Truncate(compound.MaxPricision)
 		// update market
 		if e = w.marketStore.Update(ctx, borrowMarket, output.ID); e != nil {
 			log.Errorln(e)

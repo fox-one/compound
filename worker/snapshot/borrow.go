@@ -2,6 +2,7 @@ package snapshot
 
 import (
 	"compound/core"
+	"compound/internal/compound"
 	"compound/pkg/mtg"
 	"context"
 
@@ -68,14 +69,14 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 
 		newBorrowBalance := decimal.Zero
 		if borrow.ID == 0 {
-			newBorrowBalance = borrowAmount.Truncate(16)
+			newBorrowBalance = borrowAmount.Truncate(compound.MaxPricision)
 		} else {
 			borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, market)
 			if e != nil {
 				log.Errorln(e)
 				return e
 			}
-			newBorrowBalance = borrowBalance.Add(borrowAmount).Truncate(16)
+			newBorrowBalance = borrowBalance.Add(borrowAmount).Truncate(compound.MaxPricision)
 		}
 
 		extra := core.NewTransactionExtra()
@@ -141,8 +142,8 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 	}
 
 	if output.ID > market.Version {
-		market.TotalCash = market.TotalCash.Sub(borrowAmount).Truncate(16)
-		market.TotalBorrows = market.TotalBorrows.Add(borrowAmount).Truncate(16)
+		market.TotalCash = market.TotalCash.Sub(borrowAmount).Truncate(compound.MaxPricision)
+		market.TotalBorrows = market.TotalBorrows.Add(borrowAmount).Truncate(compound.MaxPricision)
 		// update market
 		if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
 			log.Errorln(e)

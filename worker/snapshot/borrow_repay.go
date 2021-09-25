@@ -2,6 +2,7 @@ package snapshot
 
 import (
 	"compound/core"
+	"compound/internal/compound"
 	"context"
 
 	"github.com/fox-one/pkg/logger"
@@ -68,9 +69,9 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 		}
 
 		extra := core.NewTransactionExtra()
-		extra.Put("repay_amount", repayAmount.Truncate(16))
-		extra.Put("new_balance", newBalance.Truncate(16))
-		extra.Put("new_index", newIndex.Truncate(16))
+		extra.Put("repay_amount", repayAmount.Truncate(compound.MaxPricision))
+		extra.Put("new_balance", newBalance.Truncate(compound.MaxPricision))
+		extra.Put("new_index", newIndex.Truncate(compound.MaxPricision))
 		extra.Put(core.TransactionKeyBorrow, core.ExtraBorrow{
 			UserID:        borrow.UserID,
 			AssetID:       borrow.AssetID,
@@ -115,8 +116,15 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 	}
 
 	if output.ID > market.Version {
-		market.TotalBorrows = market.TotalBorrows.Sub(extra.RepayAmount).Truncate(16)
-		market.TotalCash = market.TotalCash.Add(extra.RepayAmount).Truncate(16)
+		market.TotalBorrows = market.TotalBorrows.Sub(extra.RepayAmount).Truncate(compound.MaxPricision)
+		market.TotalCash = market.TotalCash.Add(extra.RepayAmount).Truncate(compound.MaxPricision)
+		switch w.sysversion {
+		case 0:
+		default:
+			if market.TotalBorrows.IsNegative() {
+				market.TotalBorrows = decimal.Zero
+			}
+		}
 		if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
 			log.Errorln(e)
 			return e
