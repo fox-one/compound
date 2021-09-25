@@ -48,6 +48,7 @@ func generateButtons(ctx context.Context, marketStore core.IMarketStore, p *core
 	case core.ActionTypeProposalRemoveScope:
 	case core.ActionTypeProposalAddAllowList:
 	case core.ActionTypeProposalRemoveAllowList:
+	case core.ActionTypeProposalSetProperty:
 	}
 
 	return buttons

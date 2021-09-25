@@ -57,7 +57,7 @@ const approvedByTpl = `✅ Approved By {{.Reviewer}}
 ({{.ApprovedCount}} Votes In Total)
 `
 
-func renderApprovedBy(p *core.Proposal, member *core.Member) []byte {
+func renderApprovedBy(p *core.Proposal, member string) []byte {
 	t, err := template.New("-").Parse(approvedByTpl)
 	if err != nil {
 		panic(err)
@@ -66,11 +66,11 @@ func renderApprovedBy(p *core.Proposal, member *core.Member) []byte {
 	var b bytes.Buffer
 	if err := t.Execute(&b, map[string]interface{}{
 		"ApprovedCount": len(p.Votes),
-		"Reviewer":      member.ClientID,
+		"Reviewer":      member,
 	}); err != nil {
 		panic(err)
 	}
- 
+
 	return b.Bytes()
 }
 

@@ -21,28 +21,32 @@ const (
 	limit         = 500
 )
 
-// Payee payee worker
-type Payee struct {
-	worker.TickWorker
-	system            *core.System
-	dapp              *core.Wallet
-	propertyStore     property.Store
-	userStore         core.UserStore
-	walletStore       core.WalletStore
-	marketStore       core.IMarketStore
-	supplyStore       core.ISupplyStore
-	borrowStore       core.IBorrowStore
-	proposalStore     core.ProposalStore
-	transactionStore  core.TransactionStore
-	oracleSignerStore core.OracleSignerStore
-	proposalService   core.ProposalService
-	blockService      core.IBlockService
-	marketService     core.IMarketService
-	supplyService     core.ISupplyService
-	borrowService     core.IBorrowService
-	accountService    core.IAccountService
-	allowListService  core.IAllowListService
-}
+type (
+	// Payee payee worker
+	Payee struct {
+		worker.TickWorker
+		system            *core.System
+		dapp              *core.Wallet
+		propertyStore     property.Store
+		userStore         core.UserStore
+		walletStore       core.WalletStore
+		marketStore       core.IMarketStore
+		supplyStore       core.ISupplyStore
+		borrowStore       core.IBorrowStore
+		proposalStore     core.ProposalStore
+		transactionStore  core.TransactionStore
+		oracleSignerStore core.OracleSignerStore
+		proposalService   core.ProposalService
+		blockService      core.IBlockService
+		marketService     core.IMarketService
+		supplyService     core.ISupplyService
+		borrowService     core.IBorrowService
+		accountService    core.IAccountService
+		allowListService  core.IAllowListService
+
+		sysversion int64
+	}
+)
 
 // NewPayee new payee
 func NewPayee(
@@ -64,6 +68,7 @@ func NewPayee(
 	borrowService core.IBorrowService,
 	accountService core.IAccountService,
 	allowListService core.IAllowListService) *Payee {
+
 	payee := Payee{
 		system:            system,
 		dapp:              dapp,
@@ -98,6 +103,10 @@ func (w *Payee) Run(ctx context.Context) error {
 func (w *Payee) onWork(ctx context.Context) error {
 	log := logger.FromContext(ctx).WithField("worker", "payee")
 
+	if err := w.loadSysVersion(ctx); err != nil {
+		return err
+	}
+
 	v, err := w.propertyStore.Get(ctx, checkpointKey)
 	if err != nil {
 		log.WithError(err).Errorln("property.Get error")
@@ -129,14 +138,23 @@ func (w *Payee) onWork(ctx context.Context) error {
 }
 
 func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
-	log := logger.FromContext(ctx).WithField("output", output.TraceID)
+	log := logger.FromContext(ctx).
+		WithField("output", output.TraceID).
+		WithField("sysversion", w.sysversion)
 	ctx = logger.WithContext(ctx, log)
 
 	businessData := w.decodeMemo(output.Memo)
 
-	// handle member proposal action
-	if member, action, body, err := core.DecodeMemberProposalTransactionAction(businessData, w.system.Members); err == nil {
-		return w.handleProposalAction(ctx, output, member, action, body)
+	if w.sysversion < 1 {
+		// handle member proposal action
+		if member, action, body, err := core.DecodeMemberActionV0(businessData, w.system.Members); err == nil {
+			return w.handleProposalActionV0(ctx, output, member, action, body)
+		}
+	} else {
+		// handle member proposal action
+		if member, body, err := core.DecodeMemberActionV1(businessData, w.system.Members); err == nil {
+			return w.handleMemberAction(ctx, output, member.ClientID, body)
+		}
 	}
 
 	// handle price provided by dirtoracle
@@ -145,7 +163,7 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 	}
 
 	// decode user action
-	actionType, body, err := core.DecodeUserTransactionAction(w.system.PrivateKey, businessData)
+	actionType, body, err := core.DecodeTransactionAction(w.system.PrivateKey, businessData)
 	if err != nil {
 		log.WithError(err).Errorln("DecodeTransactionAction error")
 		return nil
@@ -174,14 +192,6 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 
 	// handle user action
 	return w.handleUserAction(ctx, output, actionType, output.Sender, followID.String(), body)
-}
-
-func (w *Payee) handleProposalAction(ctx context.Context, output *core.Output, member *core.Member, action core.ActionType, body []byte) error {
-	if action == core.ActionTypeProposalVote {
-		return w.handleVoteProposalEvent(ctx, output, member, body)
-	}
-
-	return w.handleCreateProposalEvent(ctx, output, member, action, output.TraceID, body)
 }
 
 func (w *Payee) handleUserAction(ctx context.Context, output *core.Output, actionType core.ActionType, userID, followID string, body []byte) error {

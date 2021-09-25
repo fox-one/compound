@@ -1,5 +1,9 @@
 package core
 
+import (
+	"strings"
+)
+
 //go:generate stringer -type ActionType -trimprefix ActionType
 
 // ActionType compound action type
@@ -82,7 +86,20 @@ const (
 	ActionTypeProposalAddOracleSigner
 	// ActionTypeProposalRemoveOracleSigner remove oracle signer proposal action
 	ActionTypeProposalRemoveOracleSigner
+	// ActionTypeProposalSetProperty proposal to set property value
+	ActionTypeProposalSetProperty
 )
+
+func ParseActionType(t string) ActionType {
+	for idx := 0; idx < len(_ActionType_index)-1; idx++ {
+		l, r := _ActionType_index[idx], _ActionType_index[idx+1]
+		if typ := _ActionType_name[l:r]; strings.EqualFold(typ, t) {
+			return ActionType(idx)
+		}
+	}
+
+	return 0
+}
 
 func (a ActionType) IsProposalAction() bool {
 	return a == ActionTypeProposalAddMarket ||
@@ -99,5 +116,6 @@ func (a ActionType) IsProposalAction() bool {
 		a == ActionTypeProposalAddAllowList ||
 		a == ActionTypeProposalRemoveAllowList ||
 		a == ActionTypeProposalAddOracleSigner ||
-		a == ActionTypeProposalRemoveOracleSigner
+		a == ActionTypeProposalRemoveOracleSigner ||
+		a == ActionTypeProposalSetProperty
 }

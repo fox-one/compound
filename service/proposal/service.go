@@ -33,7 +33,7 @@ type service struct {
 	messages    core.MessageStore
 }
 
-func (p *service) ProposalCreated(ctx context.Context, proposal *core.Proposal, by *core.Member) error {
+func (p *service) ProposalCreated(ctx context.Context, proposal *core.Proposal, by string) error {
 	buttons := generateButtons(ctx, p.marketStore, proposal)
 	trace, err := uuid.FromString(proposal.TraceID)
 	if err != nil {
@@ -110,7 +110,7 @@ func (p *service) ProposalCreated(ctx context.Context, proposal *core.Proposal, 
 }
 
 // ProposalApproved send proposal approved message to all the node managers
-func (p *service) ProposalApproved(ctx context.Context, proposal *core.Proposal, by *core.Member) error {
+func (p *service) ProposalApproved(ctx context.Context, proposal *core.Proposal, by string) error {
 	var messages []*core.Message
 
 	post := renderApprovedBy(proposal, by)
@@ -119,7 +119,7 @@ func (p *service) ProposalApproved(ctx context.Context, proposal *core.Proposal,
 		msgReq := &mixin.MessageRequest{
 			RecipientID:    admin,
 			ConversationID: mixin.UniqueConversationID(p.system.ClientID, admin),
-			MessageID:      uuid.Modify(quote, "Approved By "+by.ClientID),
+			MessageID:      uuid.Modify(quote, "Approved By "+by),
 			Category:       mixin.MessageCategoryPlainText,
 			Data:           base64.StdEncoding.EncodeToString(post),
 			QuoteMessageID: quote,
