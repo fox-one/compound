@@ -28,7 +28,7 @@ type (
 
 	// MessageService message service interface
 	MessageService interface {
-		Send(ctx context.Context, messages []*Message) error
+		Send(ctx context.Context, messages []*Message, batch bool) error
 		Meet(ctx context.Context, userID string) error
 	}
 )
