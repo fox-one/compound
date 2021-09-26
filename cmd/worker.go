@@ -7,7 +7,7 @@ import (
 	"compound/worker/assigner"
 	"compound/worker/cashier"
 	"compound/worker/message"
-	"compound/worker/snapshot"
+	"compound/worker/payee"
 	"compound/worker/spentsync"
 	"compound/worker/syncer"
 	"compound/worker/txsender"
@@ -90,7 +90,7 @@ var workerCmd = &cobra.Command{
 			cashier.New(walletStore, walletService, system, cashierConfig),
 			assigner.New(walletStore, system),
 			message.New(messageStore, messageService),
-			snapshot.NewPayee(system, dapp, propertyStore, userStore, walletStore, marketStore, supplyStore, borrowStore, proposalStore, transactionStore, oracleSignerStore, proposalService, blockService, marketService, supplyService, borrowService, accountService, allowListService),
+			payee.NewPayee(system, dapp, propertyStore, userStore, walletStore, marketStore, supplyStore, borrowStore, proposalStore, transactionStore, oracleSignerStore, proposalService, blockService, marketService, supplyService, borrowService, accountService, allowListService),
 			syncer.New(walletStore, walletService, propertyStore),
 			txsender.New(walletStore),
 			spentsync.New(db, walletStore, transactionStore),

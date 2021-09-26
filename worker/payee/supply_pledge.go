@@ -1,4 +1,4 @@
-package snapshot
+package payee
 
 import (
 	"compound/core"
