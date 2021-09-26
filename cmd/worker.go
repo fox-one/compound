@@ -7,7 +7,7 @@ import (
 	"compound/worker/assigner"
 	"compound/worker/cashier"
 	"compound/worker/datadog"
-	"compound/worker/message"
+	"compound/worker/messenger"
 	"compound/worker/payee"
 	"compound/worker/spentsync"
 	"compound/worker/syncer"
@@ -86,14 +86,33 @@ var workerCmd = &cobra.Command{
 		}
 
 		workers := []worker.Worker{
+			messenger.New(messageStore, messageService),
 			cashier.New(walletStore, walletService, system, provideCashierConfig()),
 			assigner.New(walletStore, system),
-			message.New(messageStore, messageService),
-			payee.NewPayee(system, dapp, propertyStore, userStore, walletStore, marketStore, supplyStore, borrowStore, proposalStore, transactionStore, oracleSignerStore, proposalService, blockService, marketService, supplyService, borrowService, accountService, allowListService),
+			txsender.New(walletStore),
+			spentsync.New(walletStore, transactionStore),
 			syncer.New(walletStore, walletService, propertyStore),
 			datadog.New(walletStore, propertyStore, messageService, provideDataDogConfig(cfg)),
-			txsender.New(walletStore),
-			spentsync.New(db, walletStore, transactionStore),
+			payee.NewPayee(
+				system,
+				dapp,
+				propertyStore,
+				userStore,
+				walletStore,
+				marketStore,
+				supplyStore,
+				borrowStore,
+				proposalStore,
+				transactionStore,
+				oracleSignerStore,
+				proposalService,
+				blockService,
+				marketService,
+				supplyService,
+				borrowService,
+				accountService,
+				allowListService,
+			),
 		}
 
 		wg := sync.WaitGroup{}

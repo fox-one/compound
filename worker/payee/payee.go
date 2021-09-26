@@ -3,11 +3,11 @@ package payee
 import (
 	"compound/core"
 	"compound/pkg/mtg"
-	"compound/worker"
 	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/property"
@@ -24,7 +24,6 @@ const (
 type (
 	// Payee payee worker
 	Payee struct {
-		worker.TickWorker
 		system            *core.System
 		dapp              *core.Wallet
 		propertyStore     property.Store
@@ -95,12 +94,25 @@ func NewPayee(
 
 // Run run worker
 func (w *Payee) Run(ctx context.Context) error {
-	return w.StartTick(ctx, func(ctx context.Context) error {
-		return w.onWork(ctx)
-	})
+	log := logger.FromContext(ctx).WithField("worker", "payee")
+	ctx = logger.WithContext(ctx, log)
+
+	dur := time.Millisecond
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(dur):
+			if err := w.run(ctx); err == nil {
+				dur = 100 * time.Millisecond
+			} else {
+				dur = 500 * time.Millisecond
+			}
+		}
+	}
 }
 
-func (w *Payee) onWork(ctx context.Context) error {
+func (w *Payee) run(ctx context.Context) error {
 	log := logger.FromContext(ctx).WithField("worker", "payee")
 
 	if err := w.loadSysVersion(ctx); err != nil {

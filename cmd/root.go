@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"compound/config"
-	"compound/core"
 	"flag"
 	"fmt"
 	"os"
@@ -28,14 +27,14 @@ var (
 	}
 
 	cfgFile     string
-	cfg         core.Config
+	cfg         config.Config
 	debugMode   bool
 	initialized bool
 )
 
 var rootCmd = cobra.Command{
-	Use:   "compound",
-	Short: "compound engine",
+	Use:   "rings",
+	Short: "rings by pando",
 }
 
 func init() {

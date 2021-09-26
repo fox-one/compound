@@ -2,10 +2,10 @@ package assigner
 
 import (
 	"compound/core"
-	"compound/worker"
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
@@ -28,7 +28,6 @@ func New(
 }
 
 type Assigner struct {
-	worker.TickWorker
 	wallets core.WalletStore
 	system  *core.System
 }
@@ -37,12 +36,23 @@ func (w *Assigner) Run(ctx context.Context) error {
 	log := logger.FromContext(ctx).WithField("worker", "assigner")
 	ctx = logger.WithContext(ctx, log)
 
-	return w.StartTick(ctx, func(ctx context.Context) error {
-		return w.onWork(ctx)
-	})
+	dur := time.Millisecond
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(dur):
+			if err := w.run(ctx); err == nil {
+				dur = 300 * time.Millisecond
+			} else {
+				dur = 500 * time.Millisecond
+			}
+		}
+	}
 }
 
-func (w *Assigner) onWork(ctx context.Context) error {
+func (w *Assigner) run(ctx context.Context) error {
 	const limit = 100
 	transfers, err := w.wallets.ListTransfers(ctx, core.TransferStatusPending, limit)
 	if err != nil {

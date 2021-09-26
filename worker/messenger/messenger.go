@@ -1,4 +1,4 @@
-package message
+package messenger
 
 import (
 	"compound/core"

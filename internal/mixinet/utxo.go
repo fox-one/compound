@@ -2,9 +2,8 @@ package mixinet
 
 import (
 	"bytes"
-	"sort"
-
 	"compound/core"
+	"sort"
 
 	"github.com/fox-one/mixin-sdk-go"
 )

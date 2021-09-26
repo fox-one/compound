@@ -7,20 +7,26 @@ import (
 	"time"
 )
 
-type service struct {
-	config *core.Config
-}
+type (
+	Config struct {
+		Genesis int64
+	}
+
+	service struct {
+		genesis int64
+	}
+)
 
 // New new block service
-func New(config *core.Config) core.IBlockService {
+func New(config Config) core.IBlockService {
 	return &service{
-		config: config,
+		genesis: config.Genesis,
 	}
 }
 
 // GetBlock get block by time
 func (s *service) GetBlock(ctx context.Context, t time.Time) (int64, error) {
-	block, e := compound.GetBlockByTime(ctx, compound.SecondsPerBlock, s.config.Genesis, t)
+	block, e := compound.GetBlockByTime(ctx, compound.SecondsPerBlock, s.genesis, t)
 	if e != nil {
 		return 0, e
 	}

@@ -54,7 +54,7 @@ func (s *walletService) Pull(ctx context.Context, offset time.Time, limit int) (
 	return results, nil
 }
 
-// Spent 消费指定的 UTXO
+// Spend 消费指定的 UTXO
 // 如果 transfer 是 nil，则合并这些 UTXO
 func (s *walletService) Spend(ctx context.Context, outputs []*core.Output, transfer *core.Transfer) (*core.RawTransaction, error) {
 	state, tx, err := s.signTransaction(ctx, outputs, transfer)
@@ -79,7 +79,6 @@ func (s *walletService) Spend(ctx context.Context, outputs []*core.Output, trans
 		if err := s.validateTransaction(tx, transfer); err != nil {
 			return nil, fmt.Errorf("validateTransaction failed: %w", err)
 		}
-
 	case mixin.UTXOStateSigned:
 		sig, err := s.client.CreateMultisig(ctx, mixin.MultisigActionSign, tx)
 		if err != nil {
@@ -93,7 +92,7 @@ func (s *walletService) Spend(ctx context.Context, outputs []*core.Output, trans
 				// if err != nil {
 				// 	return nil, fmt.Errorf("CreateMultisig %s failed: %w", mixin.MultisigActionUnlock, err)
 				// }
-
+				//
 				// if err := s.client.UnlockMultisig(ctx, unlock.RequestID, s.pin); err != nil {
 				// 	return nil, fmt.Errorf("UnlockMultisig failed: %w", err)
 				// }
@@ -110,6 +109,15 @@ func (s *walletService) Spend(ctx context.Context, outputs []*core.Output, trans
 
 		// 签名数量达到要求，返回 raw transaction，将异步提交到主网
 		if len(sig.Signers) >= int(sig.Threshold) {
+			tx, err := mixin.TransactionFromRaw(sig.RawTransaction)
+			if err != nil {
+				return nil, err
+			}
+
+			if tx.AggregatedSignature == nil && len(tx.Signatures) == 0 {
+				return nil, fmt.Errorf("generate raw transaction failed, empty signatures")
+			}
+
 			return &core.RawTransaction{
 				TraceID: transfer.TraceID,
 				Data:    sig.RawTransaction,
@@ -190,7 +198,6 @@ func convertUTXO(raw *mixin.MultisigUTXO) *core.Output {
 		panic(err)
 	}
 
-	// TODO should replaced with real user id
 	return &core.Output{
 		CreatedAt: raw.CreatedAt,
 		UpdatedAt: raw.UpdatedAt,

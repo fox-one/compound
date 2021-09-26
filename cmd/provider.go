@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"compound/config"
 	"compound/core"
 	"compound/pkg/mtg"
 	accountservice "compound/service/account"
@@ -99,7 +100,7 @@ func provideCashierConfig() cashier.Config {
 	}
 }
 
-func provideDataDogConfig(cfg core.Config) datadog.Config {
+func provideDataDogConfig(cfg config.Config) datadog.Config {
 	return datadog.Config{
 		ConversationID: cfg.DataDog.ConversationID,
 		Interval:       _flag.datadog.interval,
@@ -166,7 +167,9 @@ func provideWalletService(client *mixin.Client, cfg walletservice.Config) core.W
 }
 
 func provideBlockService() core.IBlockService {
-	return block.New(&cfg)
+	return block.New(block.Config{
+		Genesis: cfg.Genesis,
+	})
 }
 
 func provideMarketService(blockSrv core.IBlockService) core.IMarketService {

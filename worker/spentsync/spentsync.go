@@ -2,37 +2,31 @@ package spentsync
 
 import (
 	"compound/core"
-	"compound/worker"
 	"context"
 	"crypto/md5"
 	"errors"
-	"fmt"
 	"io"
 	"math/big"
+	"time"
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/store"
-	"github.com/fox-one/pkg/store/db"
 	"github.com/gofrs/uuid"
 )
 
 // SpentSync spent sync worker
 type SpentSync struct {
-	worker.TickWorker
-	db               *db.DB
 	walletStore      core.WalletStore
 	transactionStore core.TransactionStore
 }
 
 // New new spent sync worker
 func New(
-	db *db.DB,
 	walletStr core.WalletStore,
 	transactionStr core.TransactionStore,
 ) *SpentSync {
 	return &SpentSync{
-		db:               db,
 		walletStore:      walletStr,
 		transactionStore: transactionStr,
 	}
@@ -40,15 +34,30 @@ func New(
 
 // Run worker run
 func (w *SpentSync) Run(ctx context.Context) error {
-	return w.StartTick(ctx, func(ctx context.Context) error {
-		return w.onWork(ctx)
-	})
+	log := logger.FromContext(ctx).WithField("worker", "SpentSync")
+	ctx = logger.WithContext(ctx, log)
+
+	dur := time.Millisecond
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(dur):
+			if err := w.run(ctx); err == nil {
+				dur = 500 * time.Millisecond
+			} else {
+				dur = time.Second
+			}
+		}
+	}
 }
 
-func (w *SpentSync) onWork(ctx context.Context) error {
+func (w *SpentSync) run(ctx context.Context) error {
 	log := logger.FromContext(ctx)
 
-	transfers, err := w.walletStore.ListTransfers(ctx, core.TransferStatusHandled, 100)
+	const limit = 100
+	transfers, err := w.walletStore.ListTransfers(ctx, core.TransferStatusHandled, limit)
 	if err != nil {
 		log.WithError(err).Errorln("wallets.ListNotPassedTransfers")
 		return err
@@ -87,8 +96,6 @@ func (w *SpentSync) handleTransfer(ctx context.Context, transfer *core.Transfer)
 		log.Debugln("utxo is not spent, skip")
 		return nil
 	}
-
-	fmt.Println("ID:", output.ID, ":trace:", output.TraceID, "asset", output.AssetID, ":amount:", output.Amount, ":memo:", output.Memo, ":data:", output.Data)
 
 	signedTx := output.UTXO.SignedTx
 	if signedTx == "" {

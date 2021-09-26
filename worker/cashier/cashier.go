@@ -1,12 +1,13 @@
 package cashier
 
 import (
+	"compound/core"
 	"context"
 	"errors"
+	"time"
 
-	"compound/core"
-	"compound/worker"
-
+	"github.com/asaskevich/govalidator"
+	"github.com/fatih/structs"
 	"github.com/fox-one/pkg/logger"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
@@ -15,54 +16,71 @@ import (
 // Cashier cashier
 //
 // use output to spend
-type Cashier struct {
-	worker.TickWorker
-	walletStore   core.WalletStore
-	walletService core.WalletService
-	system        *core.System
-	cfg           Config
-}
-
 type Config struct {
 	Batch    int   `json:"batch" valid:"required"`
 	Capacity int64 `json:"capacity" valid:"required"`
 }
 
-// New new cashier
 func New(
-	walletStr core.WalletStore,
-	walletSrv core.WalletService,
+	wallets core.WalletStore,
+	walletz core.WalletService,
 	system *core.System,
 	cfg Config,
 ) *Cashier {
-	cashier := Cashier{
-		walletStore:   walletStr,
-		walletService: walletSrv,
-		system:        system,
-		cfg:           cfg,
+	if _, err := govalidator.ValidateStruct(cfg); err != nil {
+		panic(err)
 	}
 
-	return &cashier
+	w := &Cashier{
+		wallets: wallets,
+		walletz: walletz,
+		system:  system,
+		cfg:     cfg,
+	}
+
+	return w
 }
 
-// Run run worker
+type Cashier struct {
+	wallets core.WalletStore
+	walletz core.WalletService
+	system  *core.System
+	cfg     Config
+}
+
 func (w *Cashier) Run(ctx context.Context) error {
+	log := logger.FromContext(ctx).WithField("worker", "cashier")
+	ctx = logger.WithContext(ctx, log)
+
+	log.WithFields(structs.Map(w.cfg)).Infoln("start")
+
 	f := w.sync
 	if w.cfg.Capacity > 1 {
 		f = w.parallel(w.cfg.Capacity)
 	}
 
-	return w.StartTick(ctx, func(ctx context.Context) error {
-		return w.onWork(ctx, f)
-	})
+	dur := time.Millisecond
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(dur):
+			if err := w.run(ctx, f); err == nil {
+				dur = 300 * time.Millisecond
+			} else {
+				dur = 500 * time.Millisecond
+			}
+		}
+	}
 }
 
-func (w *Cashier) onWork(ctx context.Context, f func(context.Context, []*core.Transfer) error) error {
-	log := logger.FromContext(ctx).WithField("worker", "cashier")
+func (w *Cashier) run(ctx context.Context, f func(context.Context, []*core.Transfer) error) error {
+	log := logger.FromContext(ctx)
 
-	transfers, err := w.walletStore.ListTransfers(ctx, core.TransferStatusAssigned, w.cfg.Batch)
+	transfers, err := w.wallets.ListTransfers(ctx, core.TransferStatusAssigned, w.cfg.Batch)
 	if err != nil {
-		log.WithError(err).Errorln("list transfers")
+		log.WithError(err).Errorln("wallets.ListTransfers")
 		return err
 	}
 
@@ -107,9 +125,10 @@ func (w *Cashier) parallel(capacity int64) func(ctx context.Context, transfers [
 }
 
 func (w *Cashier) handleTransfer(ctx context.Context, transfer *core.Transfer) error {
-	log := logger.FromContext(ctx)
+	log := logger.FromContext(ctx).WithField("transfer", transfer.TraceID)
+	ctx = logger.WithContext(ctx, log)
 
-	outputs, err := w.walletStore.ListSpentBy(ctx, transfer.AssetID, transfer.TraceID)
+	outputs, err := w.wallets.ListSpentBy(ctx, transfer.AssetID, transfer.TraceID)
 	if err != nil {
 		log.WithError(err).Errorln("wallets.ListSpentBy")
 		return err
@@ -124,19 +143,19 @@ func (w *Cashier) handleTransfer(ctx context.Context, transfer *core.Transfer) e
 }
 
 func (w *Cashier) spend(ctx context.Context, outputs []*core.Output, transfer *core.Transfer) error {
-	if tx, err := w.walletService.Spend(ctx, outputs, transfer); err != nil {
+	if tx, err := w.walletz.Spend(ctx, outputs, transfer); err != nil {
 		logger.FromContext(ctx).WithError(err).Errorln("walletz.Spend")
 		return err
 	} else if tx != nil {
 		// signature completed, prepare to send this tx to mixin mainnet
-		if err := w.walletStore.CreateRawTransaction(ctx, tx); err != nil {
+		if err := w.wallets.CreateRawTransaction(ctx, tx); err != nil {
 			logger.FromContext(ctx).WithError(err).Errorln("wallets.CreateRawTransaction")
 			return err
 		}
 	}
 
 	transfer.Handled = true
-	if err := w.walletStore.UpdateTransfer(ctx, transfer); err != nil {
+	if err := w.wallets.UpdateTransfer(ctx, transfer); err != nil {
 		logger.FromContext(ctx).WithError(err).Errorln("wallets.UpdateTransfer")
 		return err
 	}
