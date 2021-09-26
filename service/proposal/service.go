@@ -34,7 +34,7 @@ type service struct {
 }
 
 func (p *service) ProposalCreated(ctx context.Context, proposal *core.Proposal, by string) error {
-	buttons := generateButtons(ctx, p.marketStore, proposal)
+	buttons := p.generateButtons(ctx, p.marketStore, proposal)
 	trace, err := uuid.FromString(proposal.TraceID)
 	if err != nil {
 		return err
@@ -106,7 +106,7 @@ func (p *service) ProposalCreated(ctx context.Context, proposal *core.Proposal, 
 func (p *service) ProposalApproved(ctx context.Context, proposal *core.Proposal, by string) error {
 	var messages []*core.Message
 
-	post := renderApprovedBy(proposal, by)
+	post := renderApprovedBy(proposal, p.fetchUserName(ctx, by))
 	for _, admin := range p.system.Admins {
 		quote := uuid.Modify(proposal.TraceID, p.system.ClientID+admin)
 		msgReq := &mixin.MessageRequest{

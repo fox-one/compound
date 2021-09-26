@@ -11,10 +11,10 @@ import (
 	"github.com/fox-one/mixin-sdk-go"
 )
 
-func generateButtons(ctx context.Context, marketStore core.IMarketStore, p *core.Proposal) mixin.AppButtonGroupMessage {
+func (s *service) generateButtons(ctx context.Context, marketStore core.IMarketStore, p *core.Proposal) mixin.AppButtonGroupMessage {
 	var buttons mixin.AppButtonGroupMessage
 
-	buttons = appendUser(buttons, "Creator", p.Creator)
+	buttons = appendUser(buttons, "Creator: "+s.fetchUserName(ctx, p.Creator), p.Creator)
 
 	switch p.Action {
 	case core.ActionTypeProposalAddMarket:
@@ -23,27 +23,27 @@ func generateButtons(ctx context.Context, marketStore core.IMarketStore, p *core
 		if err != nil {
 			return buttons
 		}
-		buttons = appendAsset(buttons, "Asset", action.AssetID)
-		buttons = appendAsset(buttons, "CToken", action.CTokenAssetID)
+		buttons = appendAsset(buttons, "Asset: "+s.fetchAssetSymbol(ctx, action.AssetID), action.AssetID)
+		buttons = appendAsset(buttons, "CToken:"+s.fetchAssetSymbol(ctx, action.CTokenAssetID), action.CTokenAssetID)
 	case core.ActionTypeProposalWithdrawReserves:
 		var action proposal.WithdrawReq
 		err := json.Unmarshal(p.Content, &action)
 		if err != nil {
 			return buttons
 		}
-		buttons = appendAsset(buttons, "Asset", action.Asset)
-		buttons = appendUser(buttons, "Opponent", action.Opponent)
+		buttons = appendAsset(buttons, "Asset: "+s.fetchAssetSymbol(ctx, action.Asset), action.Asset)
+		buttons = appendUser(buttons, "Opponent: "+s.fetchUserName(ctx, action.Opponent), action.Opponent)
 	case core.ActionTypeProposalCloseMarket:
 		var action proposal.MarketStatusReq
 		_ = json.Unmarshal(p.Content, &action)
-		buttons = appendAsset(buttons, "Asset", action.AssetID)
+		buttons = appendAsset(buttons, "Asset: "+s.fetchAssetSymbol(ctx, action.AssetID), action.AssetID)
 	case core.ActionTypeProposalOpenMarket:
 		var action proposal.MarketStatusReq
 		err := json.Unmarshal(p.Content, &action)
 		if err != nil {
 			return buttons
 		}
-		buttons = appendAsset(buttons, "Asset", action.AssetID)
+		buttons = appendAsset(buttons, "Asset: "+s.fetchAssetSymbol(ctx, action.AssetID), action.AssetID)
 	case core.ActionTypeProposalAddScope:
 	case core.ActionTypeProposalRemoveScope:
 	case core.ActionTypeProposalAddAllowList:
