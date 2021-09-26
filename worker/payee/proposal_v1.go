@@ -6,39 +6,158 @@ import (
 	"compound/pkg/mtg"
 	"compound/pkg/sysversion"
 	"context"
+	"crypto/ed25519"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strconv"
 
 	"github.com/asaskevich/govalidator"
+	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
+	uuidutil "github.com/fox-one/pkg/uuid"
 	"github.com/gofrs/uuid"
 )
 
-var (
-	errProposalSkip = fmt.Errorf("skip: invalid proposal")
-)
+func (w *Payee) handleMakeProposal(ctx context.Context, output *core.Output, message []byte) error {
+	log := logger.FromContext(ctx).WithField("handler", "proposal_make")
 
-func (w *Payee) handleMemberAction(ctx context.Context, output *core.Output, member string, body []byte) error {
-	log := logger.FromContext(ctx)
-
-	var action int
-	body, err := mtg.Scan(body, &action)
-	if err != nil {
-		log.WithError(err).Debugln("scan proposal trace & action failed")
+	var action core.ActionType
+	if _, err := mtg.Scan(message, &action); err != nil {
+		log.WithError(err).Errorln("scan action failed")
 		return nil
 	}
 
-	log.WithField("trace", output.TraceID).Debugf("handle member action %s", core.ActionType(action).String())
+	if !action.IsProposalAction() {
+		return nil
+	}
 
-	if core.ActionType(action) == core.ActionTypeProposalVote {
-		var trace uuid.UUID
-		if _, err := mtg.Scan(body, &trace); err != nil {
+	proposal, err := w.buildProposal(ctx, output, action, message)
+	if proposal == nil || err != nil {
+		return err
+	}
+
+	if err := w.proposalStore.Create(ctx, proposal); err != nil {
+		log.WithError(err).Errorln("proposals.Create")
+		return err
+	}
+
+	if w.system.IsMember(output.Sender) {
+		if err := w.proposalService.ProposalCreated(ctx, proposal, output.Sender); err != nil {
+			log.WithError(err).Errorln("proposalService.ProposalCreated")
+			return err
+		}
+	} else if w.system.IsStaff(output.Sender) {
+		if err := w.forwardProposal(ctx, output, proposal); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (w *Payee) handleShoutProposal(ctx context.Context, output *core.Output, message []byte) error {
+	log := logger.FromContext(ctx).WithField("handler", "proposal_shout")
+
+	if !w.system.IsMember(output.Sender) {
+		return nil
+	}
+
+	var trace uuid.UUID
+	if _, err := mtg.Scan(message, &trace); err != nil {
+		log.WithError(err).Errorln("scan proposal trace failed")
+		return nil
+	}
+
+	proposal, isNotFound, err := w.proposalStore.Find(ctx, trace.String())
+	if err != nil {
+		// 如果 proposal 不存在，直接跳过
+		if isNotFound {
+			log.WithError(err).Debugln("proposal not found")
 			return nil
 		}
-		return w.voteProposal(ctx, output, member, trace.String())
+
+		log.WithError(err).Errorln("proposals.Find")
+		return err
 	}
+
+	if err := w.proposalService.ProposalCreated(ctx, proposal, output.Sender); err != nil {
+		log.WithError(err).Errorln("proposalService.ProposalCreated")
+		return err
+	}
+	return nil
+}
+
+func (w *Payee) handleVoteProposal(ctx context.Context, output *core.Output, message []byte) error {
+	log := logger.FromContext(ctx).WithField("handler", "proposal_vote")
+
+	var trace uuid.UUID
+	if _, err := mtg.Scan(message, &trace); err != nil {
+		log.WithError(err).Errorln("scan proposal trace failed")
+		return nil
+	}
+
+	proposal, isNotFound, err := w.proposalStore.Find(ctx, trace.String())
+	if err != nil {
+		// 如果 proposal 不存在，直接跳过
+		if isNotFound {
+			log.WithError(err).Debugln("proposal not found")
+			return nil
+		}
+
+		log.WithError(err).Errorln("proposals.Find")
+		return err
+	}
+
+	if w.system.IsStaff(output.Sender) {
+		if err := w.forwardProposal(ctx, output, proposal); err != nil {
+			return err
+		}
+		return nil
+	} else if w.system.IsMember(output.Sender) {
+		if err := w.validateProposal(ctx, proposal); err != nil {
+			if err == errProposalSkip {
+				return nil
+			}
+			return err
+		}
+
+		if handled := proposal.PassedAt.Valid || govalidator.IsIn(output.Sender, proposal.Votes...); !handled {
+			proposal.Votes = append(proposal.Votes, output.Sender)
+
+			if err := w.proposalService.ProposalApproved(ctx, proposal, output.Sender); err != nil {
+				logger.FromContext(ctx).WithError(err).Errorln("proposalService.ProposalApproved")
+				return err
+			}
+
+			if len(proposal.Votes) >= int(w.system.Threshold) {
+				proposal.PassedAt = sql.NullTime{
+					Time:  output.CreatedAt,
+					Valid: true,
+				}
+
+				if err := w.proposalService.ProposalPassed(ctx, proposal); err != nil {
+					logger.FromContext(ctx).WithError(err).Errorln("proposalService.ProposalPassed")
+					return err
+				}
+			}
+
+			if err := w.proposalStore.Update(ctx, proposal, output.ID); err != nil {
+				logger.FromContext(ctx).WithError(err).Errorln("proposals.Update")
+				return err
+			}
+		}
+
+		if proposal.PassedAt.Valid && proposal.Version == output.ID {
+			return w.handlePassedProposal(ctx, proposal, output)
+		}
+	}
+	return nil
+}
+
+func (w *Payee) buildProposal(ctx context.Context, output *core.Output, action core.ActionType, message []byte) (*core.Proposal, error) {
+	log := logger.FromContext(ctx)
 
 	// new proposal
 	p := &core.Proposal{
@@ -73,48 +192,42 @@ func (w *Payee) handleMemberAction(ctx context.Context, output *core.Output, mem
 	case core.ActionTypeProposalSetProperty:
 		content = &proposal.SetProperty{}
 	default:
-		log.Panicf("unknown proposal action %d", p.Action)
+		return nil, fmt.Errorf("unknown proposal action %d", p.Action)
 	}
 
-	if _, err := mtg.Scan(body, content); err != nil {
+	if _, err := mtg.Scan(message, content); err != nil {
 		log.WithError(err).Debugln("decode proposal content failed")
 	}
 
-	if err := w.validateProposalAction(ctx, p.Action, content); err != nil {
+	if err := w.validateProposal(ctx, p); err != nil {
 		if err == errProposalSkip {
-			return nil
+			return nil, nil
 		}
-		return err
+		return nil, err
 	}
 
 	p.Content, _ = json.Marshal(content)
-
-	if err := w.proposalStore.Create(ctx, p); err != nil {
-		log.WithError(err).Errorln("proposals.Create")
-		return err
-	}
-
-	if err := w.proposalService.ProposalCreated(ctx, p, member); err != nil {
-		log.WithError(err).Errorln("notifier.ProposalVoted")
-		return err
-	}
-
-	return w.loadSysVersion(ctx)
+	return p, nil
 }
 
-func (w *Payee) validateProposalAction(ctx context.Context, a core.ActionType, u interface{}) error {
-	log := logger.FromContext(ctx).WithField("action", a.String())
+func (w *Payee) validateProposal(ctx context.Context, p *core.Proposal) error {
+	log := logger.FromContext(ctx).WithField("action", p.Action.String())
 
-	switch a {
+	switch p.Action {
 	case core.ActionTypeProposalSetProperty:
-		action := u.(*proposal.SetProperty)
-		switch action.Key {
+		var content proposal.SetProperty
+		if err := json.Unmarshal([]byte(p.Content), &content); err != nil {
+			log.WithError(err).Errorln("unmarshal SetProperty failed")
+			return errProposalSkip
+		}
+
+		switch content.Key {
 		case "":
 			log.Infoln("skip: empty key")
 			return errProposalSkip
 
 		case sysversion.SysVersionKey:
-			ver, err := strconv.ParseInt(action.Value, 10, 64)
+			ver, err := strconv.ParseInt(content.Value, 10, 64)
 			if err != nil {
 				log.WithError(err).Infoln("skip")
 				return errProposalSkip
@@ -126,56 +239,22 @@ func (w *Payee) validateProposalAction(ctx context.Context, a core.ActionType, u
 	return nil
 }
 
-func (w *Payee) voteProposal(ctx context.Context, output *core.Output, member string, traceID string) error {
-	log := logger.FromContext(ctx).WithField("proposal", traceID)
+func (w *Payee) forwardProposal(ctx context.Context, output *core.Output, p *core.Proposal) error {
+	pid, _ := uuidutil.FromString(p.TraceID)
+	data, _ := mtg.Encode(p.Action, pid)
+	data, _ = mtg.Encrypt(data, mixin.GenerateEd25519Key(), w.system.PrivateKey.Public().(ed25519.PublicKey))
+	memo := base64.StdEncoding.EncodeToString(data)
 
-	p, isNotFound, err := w.proposalStore.Find(ctx, traceID)
-	if err != nil {
-		// 如果 proposal 不存在，直接跳过
-		if isNotFound {
-			log.WithError(err).Debugln("proposal not found")
-			return nil
-		}
-
-		log.WithError(err).Errorln("proposals.Find")
+	if err := w.walletz.HandleTransfer(ctx, &core.Transfer{
+		TraceID:   uuidutil.Modify(output.TraceID, p.TraceID+w.system.ClientID),
+		AssetID:   w.system.VoteAsset,
+		Amount:    w.system.VoteAmount,
+		Threshold: w.system.Threshold,
+		Opponents: w.system.MemberIDs,
+		Memo:      memo,
+	}); err != nil {
+		logger.FromContext(ctx).WithError(err).Errorln("wallets.HandleTransfer")
 		return err
-	}
-
-	passed := p.PassedAt.Valid
-	if passed && p.Version != output.ID {
-		return nil
-	}
-
-	if !govalidator.IsIn(member, p.Votes...) {
-		p.Votes = append(p.Votes, member)
-		log.Infof("Proposal Voted by %s", member)
-
-		if err := w.proposalService.ProposalApproved(ctx, p, member); err != nil {
-			log.WithError(err).Errorln("notifier.ProposalVoted")
-			return err
-		}
-
-		if passed = len(p.Votes) >= int(w.system.Threshold); passed {
-			p.PassedAt = sql.NullTime{
-				Time:  output.CreatedAt,
-				Valid: true,
-			}
-
-			log.Infof("Proposal Approved")
-			if err := w.proposalService.ProposalPassed(ctx, p); err != nil {
-				log.WithError(err).Errorln("notifier.ProposalApproved")
-				return err
-			}
-		}
-
-		if err := w.proposalStore.Update(ctx, p, output.ID); err != nil {
-			log.WithError(err).Errorln("proposals.Update")
-			return err
-		}
-	}
-
-	if passed {
-		return w.handlePassedProposal(ctx, p, output)
 	}
 
 	return nil

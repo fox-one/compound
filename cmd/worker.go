@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"compound/handler/hc"
-	walletservice "compound/service/wallet"
 	"compound/worker"
 	"compound/worker/assigner"
 	"compound/worker/cashier"
@@ -20,6 +19,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/rs/cors"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -50,11 +50,7 @@ var workerCmd = &cobra.Command{
 		allowListStore := provideAllowListStore(db)
 		oracleSignerStore := provideOracleSignerStore(db)
 
-		walletService := provideWalletService(dapp.Client, walletservice.Config{
-			Pin:       dapp.Pin,
-			Members:   system.MemberIDs(),
-			Threshold: system.Threshold,
-		})
+		walletService := provideWalletService(dapp.Client)
 
 		blockService := provideBlockService()
 		marketService := provideMarketService(blockService)
@@ -105,6 +101,7 @@ var workerCmd = &cobra.Command{
 				proposalStore,
 				transactionStore,
 				oracleSignerStore,
+				walletService,
 				proposalService,
 				blockService,
 				marketService,
@@ -114,6 +111,8 @@ var workerCmd = &cobra.Command{
 				allowListService,
 			),
 		}
+
+		logrus.Infof("rings worker %s launched", rootCmd.Version)
 
 		wg := sync.WaitGroup{}
 		for _, w := range workers {

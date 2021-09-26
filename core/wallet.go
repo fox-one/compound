@@ -114,4 +114,6 @@ type WalletService interface {
 	// Consume spend multiple Output
 	Spend(ctx context.Context, outputs []*Output, transfer *Transfer) (*RawTransaction, error)
 	ReqTransfer(ctx context.Context, transfer *Transfer) (string, error)
+	// HandleTransfer handle a transfer request
+	HandleTransfer(ctx context.Context, transfer *Transfer) error
 }

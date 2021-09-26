@@ -122,7 +122,7 @@ func (w *Assigner) handleTransfer(ctx context.Context, transfer *core.Transfer) 
 				Version:   transfer.Version,
 				AssetID:   transfer.AssetID,
 				Amount:    sum,
-				Opponents: w.system.MemberIDs(),
+				Opponents: w.system.MemberIDs,
 				Threshold: w.system.Threshold,
 				Memo:      fmt.Sprintf("merge for %s", transfer.TraceID),
 			}

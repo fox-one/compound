@@ -88,6 +88,8 @@ const (
 	ActionTypeProposalRemoveOracleSigner
 	// ActionTypeProposalSetProperty proposal to set property value
 	ActionTypeProposalSetProperty
+	ActionTypeProposalMake
+	ActionTypeProposalShout
 )
 
 func ParseActionType(t string) ActionType {
@@ -107,6 +109,8 @@ func (a ActionType) IsProposalAction() bool {
 		a == ActionTypeProposalWithdrawReserves ||
 		a == ActionTypeProposalProvidePrice ||
 		a == ActionTypeProposalVote ||
+		a == ActionTypeProposalMake ||
+		a == ActionTypeProposalShout ||
 		a == ActionTypeProposalInjectCTokenForMint ||
 		a == ActionTypeProposalUpdateMarketAdvance ||
 		a == ActionTypeProposalCloseMarket ||

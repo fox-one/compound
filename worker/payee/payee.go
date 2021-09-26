@@ -35,6 +35,7 @@ type (
 		proposalStore     core.ProposalStore
 		transactionStore  core.TransactionStore
 		oracleSignerStore core.OracleSignerStore
+		walletz           core.WalletService
 		proposalService   core.ProposalService
 		blockService      core.IBlockService
 		marketService     core.IMarketService
@@ -60,6 +61,7 @@ func NewPayee(
 	proposalStore core.ProposalStore,
 	transactionStore core.TransactionStore,
 	oracleSignerStr core.OracleSignerStore,
+	walletz core.WalletService,
 	proposalService core.ProposalService,
 	blockService core.IBlockService,
 	marketSrv core.IMarketService,
@@ -80,6 +82,7 @@ func NewPayee(
 		proposalStore:     proposalStore,
 		transactionStore:  transactionStore,
 		oracleSignerStore: oracleSignerStr,
+		walletz:           walletz,
 		proposalService:   proposalService,
 		blockService:      blockService,
 		marketService:     marketSrv,
@@ -155,55 +158,64 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 		WithField("sysversion", w.sysversion)
 	ctx = logger.WithContext(ctx, log)
 
-	businessData := w.decodeMemo(output.Memo)
-
-	if w.sysversion < 1 {
-		// handle member proposal action
-		if member, action, body, err := core.DecodeMemberActionV0(businessData, w.system.Members); err == nil {
-			return w.handleProposalActionV0(ctx, output, member, action, body)
-		}
-	} else {
-		// handle member proposal action
-		if member, body, err := core.DecodeMemberActionV1(businessData, w.system.Members); err == nil {
-			return w.handleMemberAction(ctx, output, member.ClientID, body)
-		}
-	}
+	message := w.decodeMemo(output.Memo)
 
 	// handle price provided by dirtoracle
-	if priceData, err := w.decodePriceTransaction(ctx, businessData); err == nil {
+	if priceData, err := w.decodePriceTransaction(ctx, message); err == nil {
 		return w.handlePriceEvent(ctx, output, priceData)
 	}
 
-	// decode user action
-	actionType, body, err := core.DecodeTransactionAction(w.system.PrivateKey, businessData)
-	if err != nil {
-		log.WithError(err).Errorln("DecodeTransactionAction error")
-		return nil
+	if w.sysversion < 1 {
+		// handle v0 member proposal action
+		if member, action, body, err := core.DecodeMemberActionV0(message, w.system.Members); err == nil {
+			return w.handleProposalActionV0(ctx, output, member, action, body)
+		}
 	}
 
-	// transaction trace id as order id, different from output trace id
-	var followID uuid.UUID
-	body, err = mtg.Scan(body, &followID)
-	if err != nil {
-		log.WithError(err).Errorln("scan userID and followID error")
+	// 2. decode tx message
+	if body, err := mtg.Decrypt(message, w.system.PrivateKey); err == nil {
+		message = body
+	}
+
+	var action core.ActionType
+	if body, err := mtg.Scan(message, &action); err != nil {
+		log.WithError(err).Errorln("scan action failed")
 		return nil
+	} else {
+		message = body
 	}
 
 	if output.Sender == "" {
 		return nil
 	}
 
-	//upsert user
-	user := core.User{
-		UserID:  output.Sender,
-		Address: core.BuildUserAddress(output.Sender),
-	}
-	if err = w.userStore.Save(ctx, &user); err != nil {
-		return err
-	}
+	switch action {
+	case core.ActionTypeProposalMake:
+		return w.handleMakeProposal(ctx, output, message)
+	case core.ActionTypeProposalShout:
+		return w.handleShoutProposal(ctx, output, message)
+	case core.ActionTypeProposalVote:
+		return w.handleVoteProposal(ctx, output, message)
+	default:
+		// transaction trace id as order id, different from output trace id
+		var followID uuid.UUID
+		message, err := mtg.Scan(message, &followID)
+		if err != nil {
+			log.WithError(err).Errorln("scan userID and followID error")
+			return nil
+		}
 
-	// handle user action
-	return w.handleUserAction(ctx, output, actionType, output.Sender, followID.String(), body)
+		//upsert user
+		user := core.User{
+			UserID:  output.Sender,
+			Address: core.BuildUserAddress(output.Sender),
+		}
+		if err = w.userStore.Save(ctx, &user); err != nil {
+			return err
+		}
+		// handle user action
+		return w.handleUserAction(ctx, output, action, output.Sender, followID.String(), message)
+	}
 }
 
 func (w *Payee) handleUserAction(ctx context.Context, output *core.Output, actionType core.ActionType, userID, followID string, body []byte) error {

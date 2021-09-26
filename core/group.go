@@ -4,7 +4,6 @@ import (
 	"compound/pkg/mtg"
 	"crypto/ed25519"
 	"errors"
-	"fmt"
 
 	"github.com/gofrs/uuid"
 )
@@ -14,54 +13,6 @@ type Member struct {
 	ClientID  string
 	Name      string
 	VerifyKey ed25519.PublicKey
-}
-
-func DecodeTransactionAction(privateKey ed25519.PrivateKey, message []byte) (ActionType, []byte, error) {
-	b, err := mtg.Decrypt(message, privateKey)
-	if err != nil {
-		return 0, nil, err
-	}
-
-	var t int
-	b, err = mtg.Scan(b, &t)
-	if err != nil {
-		return 0, nil, err
-	}
-
-	typ := ParseActionType(ActionType(t).String())
-	if typ == 0 {
-		return 0, nil, fmt.Errorf("invalid transaction type %d", t)
-	}
-
-	return typ, b, nil
-}
-
-// DecodeMemberActionV1 decode member vote transaction
-func DecodeMemberActionV1(message []byte, members []*Member) (*Member, []byte, error) {
-	body, sig, err := mtg.Unpack(message)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var id uuid.UUID
-	content, err := mtg.Scan(body, &id)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	for _, member := range members {
-		if member.ClientID != id.String() {
-			continue
-		}
-
-		if !mtg.Verify(body, sig, member.VerifyKey) {
-			return nil, nil, errors.New("verify sig failed")
-		}
-
-		return member, content, nil
-	}
-
-	return nil, nil, errors.New("member not found")
 }
 
 // Deprecated since sysver 1

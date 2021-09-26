@@ -5,9 +5,14 @@ import (
 	"compound/core/proposal"
 	"compound/pkg/sysversion"
 	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/fox-one/pkg/logger"
+)
+
+var (
+	errProposalSkip = fmt.Errorf("skip: invalid proposal")
 )
 
 func (w *Payee) setProperty(ctx context.Context, output *core.Output, _ *core.Proposal, action proposal.SetProperty) error {
