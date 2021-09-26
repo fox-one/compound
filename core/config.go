@@ -7,12 +7,19 @@ import (
 )
 
 // Config compound config
-type Config struct {
-	Genesis int64     `json:"genesis"`
-	DB      db.Config `json:"db"`
-	Dapp    Dapp      `json:"dapp"`
-	Group   Group     `json:"group"`
-}
+type (
+	Config struct {
+		Genesis int64     `json:"genesis"`
+		DB      db.Config `json:"db"`
+		Dapp    Dapp      `json:"dapp"`
+		Group   Group     `json:"group"`
+		DataDog DataDog   `json:"data_dog"`
+	}
+
+	DataDog struct {
+		ConversationID string `json:"conversation_id,omitempty"`
+	}
+)
 
 // IsAdmin check if the user is admin or not
 func (c *Config) IsAdmin(userID string) bool {

@@ -22,6 +22,8 @@ import (
 	"compound/store/transaction"
 	"compound/store/user"
 	"compound/store/wallet"
+	"compound/worker/cashier"
+	"compound/worker/datadog"
 	"fmt"
 	_ "time/tzdata"
 
@@ -87,6 +89,21 @@ func provideSystem() *core.System {
 		PrivateKey: privateKey,
 		SignKey:    signKey,
 		Genesis:    cfg.Genesis,
+	}
+}
+
+func provideCashierConfig() cashier.Config {
+	return cashier.Config{
+		Batch:    _flag.cashier.batch,
+		Capacity: _flag.cashier.capacity,
+	}
+}
+
+func provideDataDogConfig(cfg core.Config) datadog.Config {
+	return datadog.Config{
+		ConversationID: cfg.DataDog.ConversationID,
+		Interval:       _flag.datadog.interval,
+		Version:        rootCmd.Version,
 	}
 }
 
