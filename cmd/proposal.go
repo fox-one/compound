@@ -53,6 +53,9 @@ func buildProposalTransferURL(ctx context.Context, system *core.System, dapp *mi
 	}
 
 	memo := base64.StdEncoding.EncodeToString(encryptedData)
+	if len(memo) > 200 {
+		memo = base64.StdEncoding.EncodeToString(data)
+	}
 
 	input := mixin.TransferInput{
 		AssetID: cfg.Group.Vote.Asset,
