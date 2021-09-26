@@ -3,13 +3,8 @@ package cmd
 import (
 	"compound/core"
 	"compound/core/proposal"
-	"compound/pkg/id"
-	"compound/pkg/mtg"
-	"encoding/base64"
 
-	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/qrcode"
-	"github.com/fox-one/pkg/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
 )
@@ -24,15 +19,6 @@ var withdrawCmd = &cobra.Command{
 		ctx := cmd.Context()
 		system := provideSystem()
 		dapp := provideDapp()
-
-		clientID, err := uuid.FromString(system.ClientID)
-		if err != nil {
-			panic(err)
-		}
-		traceID, err := uuid.FromString(id.GenTraceID())
-		if err != nil {
-			panic(err)
-		}
 
 		opponent, err := cmd.Flags().GetString("opponent")
 		if err != nil {
@@ -59,36 +45,19 @@ var withdrawCmd = &cobra.Command{
 			Amount:   amount,
 		}
 
-		memo, err := mtg.Encode(clientID, int(core.ActionTypeProposalWithdrawReserves), withdrawRequest)
+		url, err := buildProposalTransferURL(ctx, system, dapp.Client, core.ActionTypeProposalWithdrawReserves, withdrawRequest)
 		if err != nil {
-			panic(err)
+			cmd.PrintErr(err)
+			return
 		}
 
-		sign := mtg.Sign(memo, system.SignKey)
-		memo = mtg.Pack(memo, sign)
-
-		input := mixin.TransferInput{
-			AssetID: system.VoteAsset,
-			Amount:  system.VoteAmount,
-			TraceID: traceID.String(),
-			Memo:    base64.StdEncoding.EncodeToString(memo),
-		}
-		input.OpponentMultisig.Receivers = system.MemberIDs
-		input.OpponentMultisig.Threshold = system.Threshold
-
-		payment, err := dapp.Client.VerifyPayment(ctx, input)
-		if err != nil {
-			panic(err)
-		}
-
-		url := mixin.URL.Codes(payment.CodeID)
 		cmd.Println(url)
 		qrcode.Fprint(cmd.OutOrStdout(), url)
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(withdrawCmd)
+	proposalCmd.AddCommand(withdrawCmd)
 
 	withdrawCmd.Flags().StringP("opponent", "o", "", "opponent id")
 	withdrawCmd.Flags().StringP("asset", "s", "", "asset id")

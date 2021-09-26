@@ -3,14 +3,8 @@ package cmd
 import (
 	"compound/core"
 	"compound/core/proposal"
-	"compound/pkg/id"
-	"compound/pkg/mtg"
-	"encoding/base64"
-	"fmt"
 
-	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/qrcode"
-	"github.com/fox-one/pkg/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
 )
@@ -39,15 +33,6 @@ var addMarketCmd = &cobra.Command{
 		ctx := cmd.Context()
 		system := provideSystem()
 		dapp := provideDapp()
-
-		clientID, err := uuid.FromString(system.ClientID)
-		if err != nil {
-			panic(err)
-		}
-		traceID, err := uuid.FromString(id.GenTraceID())
-		if err != nil {
-			panic(err)
-		}
 
 		req := proposal.MarketReq{}
 
@@ -183,38 +168,12 @@ var addMarketCmd = &cobra.Command{
 			}
 		}
 
-		memo, err := mtg.Encode(clientID, int(core.ActionTypeProposalAddMarket), req)
+		url, err := buildProposalTransferURL(ctx, system, dapp.Client, core.ActionTypeProposalAddMarket, req)
 		if err != nil {
-			panic(err)
+			cmd.PrintErr(err)
+			return
 		}
 
-		sign := mtg.Sign(memo, system.SignKey)
-		signedMemo := mtg.Pack(memo, sign)
-
-		memoStr := base64.StdEncoding.EncodeToString(signedMemo)
-		fmt.Println("memo.length:", len(memoStr))
-
-		if len(memoStr) > 200 {
-			memoStr = base64.StdEncoding.EncodeToString(memo)
-		}
-		fmt.Println("memo.length:", len(memoStr))
-
-		input := mixin.TransferInput{
-			AssetID: system.VoteAsset,
-			Amount:  system.VoteAmount,
-			TraceID: traceID.String(),
-			Memo:    memoStr,
-		}
-
-		input.OpponentMultisig.Receivers = system.MemberIDs
-		input.OpponentMultisig.Threshold = system.Threshold
-
-		payment, err := dapp.Client.VerifyPayment(ctx, input)
-		if err != nil {
-			panic(err)
-		}
-
-		url := mixin.URL.Codes(payment.CodeID)
 		cmd.Println(url)
 		qrcode.Fprint(cmd.OutOrStdout(), url)
 	},
@@ -231,15 +190,6 @@ var closeMarketCmd = &cobra.Command{
 		system := provideSystem()
 		dapp := provideDapp()
 
-		clientID, err := uuid.FromString(system.ClientID)
-		if err != nil {
-			panic(err)
-		}
-		traceID, err := uuid.FromString(id.GenTraceID())
-		if err != nil {
-			panic(err)
-		}
-
 		closeMarketReq := proposal.MarketStatusReq{
 			Status: core.MarketStatusClose,
 		}
@@ -250,29 +200,12 @@ var closeMarketCmd = &cobra.Command{
 		}
 		closeMarketReq.AssetID = asset
 
-		memo, err := mtg.Encode(clientID, int(core.ActionTypeProposalCloseMarket), closeMarketReq)
+		url, err := buildProposalTransferURL(ctx, system, dapp.Client, core.ActionTypeProposalCloseMarket, closeMarketReq)
 		if err != nil {
-			panic(err)
+			cmd.PrintErr(err)
+			return
 		}
 
-		sign := mtg.Sign(memo, system.SignKey)
-		memo = mtg.Pack(memo, sign)
-
-		input := mixin.TransferInput{
-			AssetID: system.VoteAsset,
-			Amount:  system.VoteAmount,
-			TraceID: traceID.String(),
-			Memo:    base64.StdEncoding.EncodeToString(memo),
-		}
-		input.OpponentMultisig.Receivers = system.MemberIDs
-		input.OpponentMultisig.Threshold = system.Threshold
-
-		payment, err := dapp.Client.VerifyPayment(ctx, input)
-		if err != nil {
-			panic(err)
-		}
-
-		url := mixin.URL.Codes(payment.CodeID)
 		cmd.Println(url)
 		qrcode.Fprint(cmd.OutOrStdout(), url)
 	},
@@ -289,15 +222,6 @@ var openMarketCmd = &cobra.Command{
 		system := provideSystem()
 		dapp := provideDapp()
 
-		clientID, err := uuid.FromString(system.ClientID)
-		if err != nil {
-			panic(err)
-		}
-		traceID, err := uuid.FromString(id.GenTraceID())
-		if err != nil {
-			panic(err)
-		}
-
 		openMarketReq := proposal.MarketStatusReq{
 			Status: core.MarketStatusOpen,
 		}
@@ -308,38 +232,21 @@ var openMarketCmd = &cobra.Command{
 		}
 		openMarketReq.AssetID = asset
 
-		memo, err := mtg.Encode(clientID, int(core.ActionTypeProposalOpenMarket), openMarketReq)
+		url, err := buildProposalTransferURL(ctx, system, dapp.Client, core.ActionTypeProposalOpenMarket, openMarketReq)
 		if err != nil {
-			panic(err)
+			cmd.PrintErr(err)
+			return
 		}
 
-		sign := mtg.Sign(memo, system.SignKey)
-		memo = mtg.Pack(memo, sign)
-
-		input := mixin.TransferInput{
-			AssetID: system.VoteAsset,
-			Amount:  system.VoteAmount,
-			TraceID: traceID.String(),
-			Memo:    base64.StdEncoding.EncodeToString(memo),
-		}
-		input.OpponentMultisig.Receivers = system.MemberIDs
-		input.OpponentMultisig.Threshold = system.Threshold
-
-		payment, err := dapp.Client.VerifyPayment(ctx, input)
-		if err != nil {
-			panic(err)
-		}
-
-		url := mixin.URL.Codes(payment.CodeID)
 		cmd.Println(url)
 		qrcode.Fprint(cmd.OutOrStdout(), url)
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(addMarketCmd)
-	rootCmd.AddCommand(closeMarketCmd)
-	rootCmd.AddCommand(openMarketCmd)
+	proposalCmd.AddCommand(addMarketCmd)
+	proposalCmd.AddCommand(closeMarketCmd)
+	proposalCmd.AddCommand(openMarketCmd)
 
 	addMarketCmd.Flags().String("symbol", "", "market symbol")
 	addMarketCmd.Flags().String("asset", "", "asset id")

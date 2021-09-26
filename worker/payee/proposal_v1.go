@@ -24,9 +24,13 @@ func (w *Payee) handleMakeProposal(ctx context.Context, output *core.Output, mes
 	log := logger.FromContext(ctx).WithField("handler", "proposal_make")
 
 	var action core.ActionType
-	if _, err := mtg.Scan(message, &action); err != nil {
-		log.WithError(err).Errorln("scan action failed")
-		return nil
+	{
+		var v int
+		if _, err := mtg.Scan(message, &v); err != nil {
+			log.WithError(err).Errorln("scan action failed")
+			return nil
+		}
+		action = core.ActionType(v)
 	}
 
 	if !action.IsProposalAction() {

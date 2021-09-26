@@ -178,11 +178,13 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 	}
 
 	var action core.ActionType
-	if body, err := mtg.Scan(message, &action); err != nil {
-		log.WithError(err).Errorln("scan action failed")
-		return nil
-	} else {
-		message = body
+	{
+		var v int
+		if _, err := mtg.Scan(message, &v); err != nil {
+			log.WithError(err).Errorln("scan action failed")
+			return nil
+		}
+		action = core.ActionType(v)
 	}
 
 	if output.Sender == "" {
