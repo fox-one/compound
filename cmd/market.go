@@ -206,7 +206,7 @@ var addMarketCmd = &cobra.Command{
 			Memo:    memoStr,
 		}
 
-		input.OpponentMultisig.Receivers = system.MemberIDs()
+		input.OpponentMultisig.Receivers = system.MemberIDs
 		input.OpponentMultisig.Threshold = system.Threshold
 
 		payment, err := dapp.Client.VerifyPayment(ctx, input)
@@ -264,7 +264,7 @@ var closeMarketCmd = &cobra.Command{
 			TraceID: traceID.String(),
 			Memo:    base64.StdEncoding.EncodeToString(memo),
 		}
-		input.OpponentMultisig.Receivers = system.MemberIDs()
+		input.OpponentMultisig.Receivers = system.MemberIDs
 		input.OpponentMultisig.Threshold = system.Threshold
 
 		payment, err := dapp.Client.VerifyPayment(ctx, input)
@@ -322,7 +322,7 @@ var openMarketCmd = &cobra.Command{
 			TraceID: traceID.String(),
 			Memo:    base64.StdEncoding.EncodeToString(memo),
 		}
-		input.OpponentMultisig.Receivers = system.MemberIDs()
+		input.OpponentMultisig.Receivers = system.MemberIDs
 		input.OpponentMultisig.Threshold = system.Threshold
 
 		payment, err := dapp.Client.VerifyPayment(ctx, input)

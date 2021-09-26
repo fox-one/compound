@@ -41,7 +41,7 @@ var depositCmd = &cobra.Command{
 			TraceID: id.GenTraceID(),
 			Memo:    "deposit",
 		}
-		input.OpponentMultisig.Receivers = system.MemberIDs()
+		input.OpponentMultisig.Receivers = system.MemberIDs
 		input.OpponentMultisig.Threshold = system.Threshold
 
 		payment, err := dapp.Client.VerifyPayment(ctx, input)

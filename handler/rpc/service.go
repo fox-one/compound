@@ -234,7 +234,7 @@ func (s *RPCService) PayRequest(ctx context.Context, req *PayReq) (*PayResp, err
 		TraceID: req.TraceId,
 		Memo:    base64.StdEncoding.EncodeToString(memoEncrypt),
 	}
-	input.OpponentMultisig.Receivers = s.System.MemberIDs()
+	input.OpponentMultisig.Receivers = s.System.MemberIDs
 	input.OpponentMultisig.Threshold = s.System.Threshold
 
 	payment, err := s.Dapp.Client.VerifyPayment(ctx, input)

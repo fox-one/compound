@@ -58,6 +58,7 @@ func provideDapp() *core.Wallet {
 // provide system config info
 func provideSystem() *core.System {
 	members := make([]*core.Member, 0, len(cfg.Group.Members))
+	memberIDs := make([]string, 0, len(cfg.Group.Members))
 	for _, m := range cfg.Group.Members {
 		verifyKey, err := mtg.DecodePublicKey(m.VerifyKey)
 		if err != nil {
@@ -68,6 +69,8 @@ func provideSystem() *core.System {
 			ClientID:  m.ClientID,
 			VerifyKey: verifyKey,
 		})
+
+		memberIDs = append(memberIDs, m.ClientID)
 	}
 
 	privateKey, err := mtg.DecodePrivateKey(cfg.Group.PrivateKey)
@@ -84,6 +87,7 @@ func provideSystem() *core.System {
 		Admins:     cfg.Group.Admins,
 		ClientID:   cfg.Dapp.ClientID,
 		Members:    members,
+		MemberIDs:  memberIDs,
 		Threshold:  cfg.Group.Threshold,
 		VoteAsset:  cfg.Group.Vote.Asset,
 		VoteAmount: cfg.Group.Vote.Amount,
@@ -162,8 +166,16 @@ func provideMessageService(client *mixin.Client) core.MessageService {
 	return messageservice.New(client)
 }
 
-func provideWalletService(client *mixin.Client, cfg walletservice.Config) core.WalletService {
-	return walletservice.New(client, cfg)
+func provideWalletService(client *mixin.Client) core.WalletService {
+	members := make([]string, len(cfg.Group.Members))
+	for i, member := range cfg.Group.Members {
+		members[i] = member.ClientID
+	}
+	return walletservice.New(client, walletservice.Config{
+		Pin:       cfg.Dapp.Pin,
+		Members:   members,
+		Threshold: cfg.Group.Threshold,
+	})
 }
 
 func provideBlockService() core.IBlockService {

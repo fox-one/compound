@@ -57,7 +57,7 @@ func (p *service) ProposalCreated(ctx context.Context, proposal *core.Proposal, 
 		TraceID: uuid.Modify(proposal.TraceID, p.system.ClientID),
 		Memo:    base64.StdEncoding.EncodeToString(memo),
 	}
-	input.OpponentMultisig.Receivers = p.system.MemberIDs()
+	input.OpponentMultisig.Receivers = p.system.MemberIDs
 	input.OpponentMultisig.Threshold = p.system.Threshold
 
 	payment, err := p.client.VerifyPayment(ctx, input)

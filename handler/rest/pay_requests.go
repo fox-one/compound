@@ -60,7 +60,7 @@ func payRequestsHandler(system *core.System, dapp *core.Wallet) http.HandlerFunc
 			TraceID: params.TraceID,
 			Memo:    base64.StdEncoding.EncodeToString(memoEncrypt),
 		}
-		input.OpponentMultisig.Receivers = system.MemberIDs()
+		input.OpponentMultisig.Receivers = system.MemberIDs
 		input.OpponentMultisig.Threshold = system.Threshold
 
 		payment, err := dapp.Client.VerifyPayment(ctx, input)

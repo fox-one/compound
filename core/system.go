@@ -3,6 +3,7 @@ package core
 import (
 	"crypto/ed25519"
 
+	"github.com/asaskevich/govalidator"
 	"github.com/shopspring/decimal"
 )
 
@@ -16,6 +17,7 @@ type (
 		Admins     []string
 		ClientID   string
 		Members    []*Member
+		MemberIDs  []string
 		Threshold  uint8
 		VoteAsset  string
 		VoteAmount decimal.Decimal
@@ -26,27 +28,10 @@ type (
 	}
 )
 
-// MemberIDs member ids
-func (s *System) MemberIDs() []string {
-	ids := make([]string, len(s.Members))
-	for idx, m := range s.Members {
-		ids[idx] = m.ClientID
-	}
-
-	return ids
+func (s *System) IsMember(id string) bool {
+	return govalidator.IsIn(id, s.MemberIDs...)
 }
 
-// IsAdmin is admin
-func (s *System) IsAdmin(userID string) bool {
-	if len(s.Admins) == 0 {
-		return false
-	}
-
-	for _, a := range s.Admins {
-		if a == userID {
-			return true
-		}
-	}
-
-	return false
+func (s *System) IsStaff(id string) bool {
+	return govalidator.IsIn(id, s.Admins...)
 }
