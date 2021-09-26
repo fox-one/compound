@@ -172,6 +172,10 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 		}
 	}
 
+	if output.Sender == "" {
+		return nil
+	}
+
 	// 2. decode tx message
 	if body, err := mtg.Decrypt(message, w.system.PrivateKey); err == nil {
 		message = body
@@ -180,16 +184,17 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 	var action core.ActionType
 	{
 		var v int
-		if _, err := mtg.Scan(message, &v); err != nil {
+		body, err := mtg.Scan(message, &v)
+		if err != nil {
 			log.WithError(err).Errorln("scan action failed")
 			return nil
 		}
+		message = body
 		action = core.ActionType(v)
 	}
 
-	if output.Sender == "" {
-		return nil
-	}
+	log = log.WithField("action", action.String())
+	ctx = logger.WithContext(ctx, log)
 
 	switch action {
 	case core.ActionTypeProposalMake:
@@ -203,7 +208,7 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 		var followID uuid.UUID
 		message, err := mtg.Scan(message, &followID)
 		if err != nil {
-			log.WithError(err).Errorln("scan userID and followID error")
+			log.WithError(err).Errorln("scan follow error")
 			return nil
 		}
 

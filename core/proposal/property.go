@@ -9,7 +9,7 @@ type SetProperty struct {
 	Value string `json:"value,omitempty"`
 }
 
-func (s SetProperty) MarshalBinary() (data []byte, err error) {
+func (s SetProperty) MarshalBinary() ([]byte, error) {
 	return mtg.Encode(s.Key, s.Value)
 }
 

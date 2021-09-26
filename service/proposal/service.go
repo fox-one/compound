@@ -39,17 +39,10 @@ func (p *service) ProposalCreated(ctx context.Context, proposal *core.Proposal, 
 	if err != nil {
 		return err
 	}
-	uid, err := uuid.FromString(p.system.ClientID)
+	memo, err := mtg.Encode(int(core.ActionTypeProposalVote), trace)
 	if err != nil {
 		return err
 	}
-	memo, err := mtg.Encode(uid, int(core.ActionTypeProposalVote), trace)
-	if err != nil {
-		return err
-	}
-
-	sign := mtg.Sign(memo, p.system.SignKey)
-	memo = mtg.Pack(memo, sign)
 
 	input := mixin.TransferInput{
 		AssetID: p.system.VoteAsset,

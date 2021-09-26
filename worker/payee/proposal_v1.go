@@ -26,11 +26,13 @@ func (w *Payee) handleMakeProposal(ctx context.Context, output *core.Output, mes
 	var action core.ActionType
 	{
 		var v int
-		if _, err := mtg.Scan(message, &v); err != nil {
+		body, err := mtg.Scan(message, &v)
+		if err != nil {
 			log.WithError(err).Errorln("scan action failed")
 			return nil
 		}
 		action = core.ActionType(v)
+		message = body
 	}
 
 	if !action.IsProposalAction() {
@@ -53,7 +55,7 @@ func (w *Payee) handleMakeProposal(ctx context.Context, output *core.Output, mes
 			return err
 		}
 	} else if w.system.IsStaff(output.Sender) {
-		if err := w.forwardProposal(ctx, output, proposal); err != nil {
+		if err := w.forwardProposal(ctx, output, proposal, core.ActionTypeProposalShout); err != nil {
 			return err
 		}
 	}
@@ -115,7 +117,7 @@ func (w *Payee) handleVoteProposal(ctx context.Context, output *core.Output, mes
 	}
 
 	if w.system.IsStaff(output.Sender) {
-		if err := w.forwardProposal(ctx, output, proposal); err != nil {
+		if err := w.forwardProposal(ctx, output, proposal, core.ActionTypeProposalVote); err != nil {
 			return err
 		}
 		return nil
@@ -203,6 +205,7 @@ func (w *Payee) buildProposal(ctx context.Context, output *core.Output, action c
 		log.WithError(err).Debugln("decode proposal content failed")
 	}
 
+	p.Content, _ = json.Marshal(content)
 	if err := w.validateProposal(ctx, p); err != nil {
 		if err == errProposalSkip {
 			return nil, nil
@@ -210,7 +213,6 @@ func (w *Payee) buildProposal(ctx context.Context, output *core.Output, action c
 		return nil, err
 	}
 
-	p.Content, _ = json.Marshal(content)
 	return p, nil
 }
 
@@ -243,9 +245,9 @@ func (w *Payee) validateProposal(ctx context.Context, p *core.Proposal) error {
 	return nil
 }
 
-func (w *Payee) forwardProposal(ctx context.Context, output *core.Output, p *core.Proposal) error {
+func (w *Payee) forwardProposal(ctx context.Context, output *core.Output, p *core.Proposal, action core.ActionType) error {
 	pid, _ := uuidutil.FromString(p.TraceID)
-	data, _ := mtg.Encode(p.Action, pid)
+	data, _ := mtg.Encode(int(action), pid)
 	data, _ = mtg.Encrypt(data, mixin.GenerateEd25519Key(), w.system.PrivateKey.Public().(ed25519.PublicKey))
 	memo := base64.StdEncoding.EncodeToString(data)
 
