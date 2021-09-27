@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/fox-one/pkg/logger"
+	"github.com/fox-one/pkg/uuid"
 )
 
 var (
@@ -60,5 +61,36 @@ func (w *Payee) migrateSystem(ctx context.Context, sysversion, version int64) er
 }
 
 func (w *Payee) migrateV1(ctx context.Context, version int64) error {
+	log := logger.FromContext(ctx)
+
+	var from uint64
+	const limit = 500
+	for {
+		users, err := w.userStore.List(ctx, from, limit)
+		if err != nil {
+			log.WithError(err).Errorln("users.List")
+			return err
+		}
+
+		var updates = make([]*core.User, 0, len(users))
+		for _, user := range users {
+			from = user.ID
+			addressV0 := core.BuildUserAddressV0(user.UserID)
+			if user.Address == addressV0 {
+				user.AddressV0 = addressV0
+				user.Address = uuid.New()
+				updates = append(updates, user)
+			}
+		}
+
+		if err := w.userStore.MigrateToV1(ctx, updates); err != nil {
+			log.WithError(err).Errorln("users.MigrateToV1")
+			return err
+		}
+
+		if len(users) < limit {
+			break
+		}
+	}
 	return nil
 }

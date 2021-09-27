@@ -8,7 +8,6 @@ import (
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/gofrs/uuid"
-	"github.com/jinzhu/gorm"
 	"github.com/shopspring/decimal"
 )
 
@@ -30,10 +29,9 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 
 	seizedUser, e := w.userStore.FindByAddress(ctx, seizedAddress.String())
 	if e != nil {
-		if gorm.IsRecordNotFoundError(e) {
-			return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrInvalidArgument)
-		}
 		return e
+	} else if seizedUser.ID == 0 {
+		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrInvalidArgument)
 	}
 
 	// check allowlist

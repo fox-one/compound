@@ -212,14 +212,24 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 			return nil
 		}
 
-		//upsert user
-		user := core.User{
-			UserID:  output.Sender,
-			Address: core.BuildUserAddress(output.Sender),
-		}
-		if err = w.userStore.Save(ctx, &user); err != nil {
+		user, err := w.userStore.Find(ctx, output.Sender)
+		if err != nil {
+			log.WithError(err).Errorln("users.Find")
 			return err
 		}
+
+		if user.ID == 0 {
+			//upsert user
+			user = &core.User{
+				UserID:    output.Sender,
+				Address:   uuidutil.New(),
+				AddressV0: core.BuildUserAddressV0(output.Sender),
+			}
+			if err = w.userStore.Create(ctx, user); err != nil {
+				return err
+			}
+		}
+
 		// handle user action
 		return w.handleUserAction(ctx, output, action, output.Sender, followID.String(), message)
 	}

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"compound/handler/hc"
+	"compound/pkg/sysversion"
 	"compound/worker"
 	"compound/worker/assigner"
 	"compound/worker/cashier"
@@ -61,6 +62,14 @@ var workerCmd = &cobra.Command{
 		proposalService := provideProposalService(dapp.Client, system, marketStore, messageStore)
 		allowListService := provideAllowListService(propertyStore, allowListStore)
 
+		sysver, err := sysversion.ReadSysVersion(ctx, propertyStore)
+		if err != nil {
+			cmd.PrintErr("sysversion.ReadSysVersion")
+			return
+		}
+
+		ctx = sysversion.WithContext(ctx, sysver)
+
 		//hc api
 		{
 			mux := chi.NewMux()
@@ -112,7 +121,7 @@ var workerCmd = &cobra.Command{
 			),
 		}
 
-		logrus.Infof("rings worker %s launched", rootCmd.Version)
+		logrus.Infof("rings worker (version: %s, sysver: %d) launched", rootCmd.Version, sysver)
 
 		wg := sync.WaitGroup{}
 		for _, w := range workers {
