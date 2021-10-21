@@ -6,15 +6,12 @@ import (
 	"compound/handler/render"
 	"net/http"
 	"time"
-
-	"github.com/fox-one/pkg/logger"
 )
 
 // response user transactions
 func transactionsHandler(transactionStr core.TransactionStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		log := logger.FromContext(ctx).WithField("api", "transactions")
 
 		var params struct {
 			Offset string `json:"offset"`
@@ -25,8 +22,6 @@ func transactionsHandler(transactionStr core.TransactionStore) http.HandlerFunc 
 			render.BadRequest(w, e)
 			return
 		}
-
-		log.Infoln("offset:", params.Offset)
 
 		limit := params.Limit
 		if limit <= 0 {

@@ -2,11 +2,9 @@ package rest
 
 import (
 	"compound/core"
-	"compound/handler/param"
 	"compound/handler/render"
 	"compound/handler/views"
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/shopspring/decimal"
@@ -34,29 +32,6 @@ func allMarketsHandler(marketStr core.IMarketStore, supplyStr core.ISupplyStore,
 		}
 		response.Data = marketViews
 		render.JSON(w, response)
-	}
-}
-
-func marketHandler(marketStr core.IMarketStore, supplyStr core.ISupplyStore, borrowStr core.IBorrowStore, marketSrv core.IMarketService) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		var params struct {
-			Asset string `json:"asset"`
-		}
-		if err := param.Binding(r, &params); err != nil {
-			render.BadRequest(w, err)
-			return
-		}
-		market, e := marketStr.Find(ctx, params.Asset)
-		if e != nil || market.ID == 0 {
-			render.BadRequest(w, errors.New("no market"))
-			return
-		}
-
-		marketView := getMarketView(ctx, market, supplyStr, borrowStr, marketSrv)
-
-		render.JSON(w, marketView)
 	}
 }
 
