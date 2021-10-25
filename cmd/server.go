@@ -42,6 +42,7 @@ var serverCmd = &cobra.Command{
 		mux.Use(middleware.StripSlashes)
 		mux.Use(cors.AllowAll().Handler)
 		mux.Use(logger.WithRequestID)
+		mux.Use(middleware.RealIP)
 		mux.Use(middleware.Logger)
 		mux.Use(middleware.NewCompressor(5).Handler)
 
