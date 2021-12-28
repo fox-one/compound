@@ -1,5 +1,7 @@
 package core
 
+import "github.com/fox-one/msgpack"
+
 //go:generate stringer -type ActionType -trimprefix ActionType
 
 // ActionType compound action type
@@ -107,4 +109,22 @@ func (a ActionType) IsProposalAction() bool {
 		a == ActionTypeProposalAddOracleSigner ||
 		a == ActionTypeProposalRemoveOracleSigner ||
 		a == ActionTypeProposalSetProperty
+}
+
+type TransactionAction struct {
+	FollowID []byte `msgpack:"f,omitempty"`
+	Body     []byte `msgpack:"b,omitempty"`
+}
+
+func (action TransactionAction) Encode() ([]byte, error) {
+	return msgpack.Marshal(action)
+}
+
+func DecodeTransactionAction(b []byte) (*TransactionAction, error) {
+	var action TransactionAction
+	if err := msgpack.Unmarshal(b, &action); err != nil {
+		return nil, err
+	}
+
+	return &action, nil
 }

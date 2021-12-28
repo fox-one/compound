@@ -4,8 +4,6 @@ import (
 	"compound/core"
 	"compound/handler/param"
 	"compound/handler/render"
-	"compound/pkg/mtg"
-	"crypto/ed25519"
 	"encoding/base64"
 	"net/http"
 
@@ -37,15 +35,6 @@ func payRequestsHandler(system *core.System, dapp *core.Wallet) http.HandlerFunc
 			return
 		}
 
-		key := mixin.GenerateEd25519Key()
-		pub := system.PrivateKey.Public().(ed25519.PublicKey)
-
-		memoEncrypt, err := mtg.Encrypt(memoBytes, key, pub)
-		if err != nil {
-			render.BadRequest(w, err)
-			return
-		}
-
 		assetID := params.AssetID
 		amount := params.Amount
 
@@ -58,7 +47,7 @@ func payRequestsHandler(system *core.System, dapp *core.Wallet) http.HandlerFunc
 			AssetID: assetID,
 			Amount:  amount,
 			TraceID: params.TraceID,
-			Memo:    base64.StdEncoding.EncodeToString(memoEncrypt),
+			Memo:    base64.StdEncoding.EncodeToString(memoBytes),
 		}
 		input.OpponentMultisig.Receivers = system.MemberIDs
 		input.OpponentMultisig.Threshold = system.Threshold

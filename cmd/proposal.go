@@ -19,7 +19,6 @@ import (
 	"compound/core"
 	"compound/pkg/mtg"
 	"context"
-	"crypto/ed25519"
 	"encoding/base64"
 
 	"github.com/fox-one/mixin-sdk-go"
@@ -45,24 +44,12 @@ func buildProposalTransferURL(ctx context.Context, system *core.System, dapp *mi
 		return "", err
 	}
 
-	key := mixin.GenerateEd25519Key()
-	pub := system.PrivateKey.Public().(ed25519.PublicKey)
-	encryptedData, err := mtg.Encrypt(data, key, pub)
-	if err != nil {
-		return "", err
-	}
-
-	memo := base64.StdEncoding.EncodeToString(encryptedData)
-	if len(memo) > 200 {
-		memo = base64.StdEncoding.EncodeToString(data)
-	}
-
 	input := mixin.TransferInput{
 		AssetID: cfg.Group.Vote.Asset,
 		Amount:  cfg.Group.Vote.Amount,
 
 		TraceID: uuid.New(),
-		Memo:    memo,
+		Memo:    base64.StdEncoding.EncodeToString(data),
 	}
 	input.OpponentMultisig.Receivers = system.MemberIDs
 	input.OpponentMultisig.Threshold = system.Threshold

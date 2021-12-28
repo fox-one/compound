@@ -139,8 +139,14 @@ func (w *Payee) run(ctx context.Context) error {
 	}
 
 	for _, u := range outputs {
-		if err := w.handleOutput(ctx, u); err != nil {
-			return err
+		if w.sysversion < 2 {
+			if err := w.handleOutputV1(ctx, u); err != nil {
+				return err
+			}
+		} else {
+			if err := w.handleOutput(ctx, u); err != nil {
+				return err
+			}
 		}
 
 		if err := w.propertyStore.Save(ctx, checkpointKey, u.ID); err != nil {
@@ -165,32 +171,20 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 		return w.handlePriceEvent(ctx, output, priceData)
 	}
 
-	if w.sysversion < 1 {
-		// handle v0 member proposal action
-		if member, action, body, err := core.DecodeMemberActionV0(message, w.system.Members); err == nil {
-			return w.handleProposalActionV0(ctx, output, member, action, body)
-		}
-	}
-
 	if output.Sender == "" {
 		return nil
 	}
 
-	// 2. decode tx message
-	if body, err := mtg.Decrypt(message, w.system.PrivateKey); err == nil {
-		message = body
-	}
-
-	var action core.ActionType
-	{
-		var v int
-		body, err := mtg.Scan(message, &v)
-		if err != nil {
-			log.WithError(err).Errorln("scan action failed")
-			return nil
+	var (
+		action   core.ActionType
+		followID string
+	)
+	if payload, err := core.DecodeTransactionAction(message); err == nil {
+		if message, err = mtg.Scan(payload.Body, &action); err == nil {
+			if follow, _ := uuid.FromBytes(payload.FollowID); follow != uuid.Nil {
+				followID = follow.String()
+			}
 		}
-		message = body
-		action = core.ActionType(v)
 	}
 
 	log = log.WithField("action", action.String())
@@ -204,14 +198,6 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 	case core.ActionTypeProposalVote:
 		return w.handleVoteProposal(ctx, output, message)
 	default:
-		// transaction trace id as order id, different from output trace id
-		var followID uuid.UUID
-		message, err := mtg.Scan(message, &followID)
-		if err != nil {
-			log.WithError(err).Errorln("scan follow error")
-			return nil
-		}
-
 		user, err := w.userStore.Find(ctx, output.Sender)
 		if err != nil {
 			log.WithError(err).Errorln("users.Find")
@@ -231,7 +217,7 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 		}
 
 		// handle user action
-		return w.handleUserAction(ctx, output, action, output.Sender, followID.String(), message)
+		return w.handleUserAction(ctx, output, action, output.Sender, followID, message)
 	}
 }
 

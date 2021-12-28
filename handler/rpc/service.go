@@ -2,9 +2,7 @@ package rpc
 
 import (
 	"compound/core"
-	"compound/pkg/mtg"
 	context "context"
-	"crypto/ed25519"
 	"encoding/base64"
 	"fmt"
 	"time"
@@ -212,14 +210,6 @@ func (s *RPCService) PayRequest(ctx context.Context, req *PayReq) (*PayResp, err
 		return nil, err
 	}
 
-	key := mixin.GenerateEd25519Key()
-	pub := s.System.PrivateKey.Public().(ed25519.PublicKey)
-
-	memoEncrypt, err := mtg.Encrypt(memoBytes, key, pub)
-	if err != nil {
-		return nil, err
-	}
-
 	assetID := req.AssetId
 	amount, _ := decimal.NewFromString(req.Amount)
 
@@ -232,7 +222,7 @@ func (s *RPCService) PayRequest(ctx context.Context, req *PayReq) (*PayResp, err
 		AssetID: assetID,
 		Amount:  amount,
 		TraceID: req.TraceId,
-		Memo:    base64.StdEncoding.EncodeToString(memoEncrypt),
+		Memo:    base64.StdEncoding.EncodeToString(memoBytes),
 	}
 	input.OpponentMultisig.Receivers = s.System.MemberIDs
 	input.OpponentMultisig.Threshold = s.System.Threshold

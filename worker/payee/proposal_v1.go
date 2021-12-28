@@ -6,7 +6,6 @@ import (
 	"compound/pkg/mtg"
 	"compound/pkg/sysversion"
 	"context"
-	"crypto/ed25519"
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
@@ -14,7 +13,6 @@ import (
 	"strconv"
 
 	"github.com/asaskevich/govalidator"
-	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
 	uuidutil "github.com/fox-one/pkg/uuid"
 	"github.com/gofrs/uuid"
@@ -248,7 +246,6 @@ func (w *Payee) validateProposal(ctx context.Context, p *core.Proposal) error {
 func (w *Payee) forwardProposal(ctx context.Context, output *core.Output, p *core.Proposal, action core.ActionType) error {
 	pid, _ := uuidutil.FromString(p.TraceID)
 	data, _ := mtg.Encode(int(action), pid)
-	data, _ = mtg.Encrypt(data, mixin.GenerateEd25519Key(), w.system.PrivateKey.Public().(ed25519.PublicKey))
 	memo := base64.StdEncoding.EncodeToString(data)
 
 	if err := w.walletz.HandleTransfer(ctx, &core.Transfer{

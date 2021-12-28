@@ -10,6 +10,7 @@ require (
 	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/fatih/structs v1.1.0
 	github.com/fox-one/mixin-sdk-go v1.5.1
+	github.com/fox-one/msgpack v1.0.0 // indirect
 	github.com/fox-one/pkg v1.5.5
 	github.com/gin-gonic/gin v1.7.4 // indirect
 	github.com/go-chi/chi v4.1.2+incompatible
@@ -41,7 +42,7 @@ require (
 	github.com/ugorji/go v1.2.6 // indirect
 	github.com/yiplee/structs v1.0.3
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
-	golang.org/x/net v0.0.0-20211020060615-d418f374d309 // indirect
+	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20211020174200-9d6173849985 // indirect
 	golang.org/x/text v0.3.7 // indirect
