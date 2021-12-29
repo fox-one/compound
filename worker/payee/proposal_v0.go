@@ -51,7 +51,7 @@ func (w *Payee) handleVoteProposalEventV0(ctx context.Context, output *core.Outp
 		p.Votes = append(p.Votes, member.ClientID)
 		log.Infof("Proposal Voted by %s", member.ClientID)
 
-		if err := w.proposalService.ProposalApproved(ctx, p, member.ClientID); err != nil {
+		if err := w.proposalService.ProposalApproved(ctx, p, member.ClientID, w.sysversion); err != nil {
 			log.WithError(err).Errorln("notifier.ProposalVoted")
 			return err
 		}
@@ -63,7 +63,7 @@ func (w *Payee) handleVoteProposalEventV0(ctx context.Context, output *core.Outp
 			}
 
 			log.Infof("Proposal Approved")
-			if err := w.proposalService.ProposalPassed(ctx, p); err != nil {
+			if err := w.proposalService.ProposalPassed(ctx, p, w.sysversion); err != nil {
 				log.WithError(err).Errorln("notifier.ProposalApproved")
 				return err
 			}
@@ -203,7 +203,7 @@ func (w *Payee) handleCreateProposalEventV0(ctx context.Context, output *core.Ou
 		return err
 	}
 
-	if err := w.proposalService.ProposalCreated(ctx, &p, member.ClientID); err != nil {
+	if err := w.proposalService.ProposalCreated(ctx, &p, member.ClientID, w.sysversion); err != nil {
 		log.WithError(err).Errorln("proposalCreated error")
 		return err
 	}

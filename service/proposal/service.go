@@ -33,7 +33,7 @@ type service struct {
 	messages    core.MessageStore
 }
 
-func (p *service) ProposalCreated(ctx context.Context, proposal *core.Proposal, by string) error {
+func (p *service) ProposalCreated(ctx context.Context, proposal *core.Proposal, by string, sysver int64) error {
 	buttons := p.generateButtons(ctx, p.marketStore, proposal)
 	trace, err := uuid.FromString(proposal.TraceID)
 	if err != nil {
@@ -42,6 +42,13 @@ func (p *service) ProposalCreated(ctx context.Context, proposal *core.Proposal, 
 	memo, err := mtg.Encode(int(core.ActionTypeProposalVote), trace)
 	if err != nil {
 		return err
+	}
+
+	if sysver >= 2 {
+		memo, err = core.TransactionAction{Body: memo}.Encode()
+		if err != nil {
+			return err
+		}
 	}
 
 	input := mixin.TransferInput{
@@ -103,7 +110,7 @@ func (p *service) ProposalCreated(ctx context.Context, proposal *core.Proposal, 
 }
 
 // ProposalApproved send proposal approved message to all the node managers
-func (p *service) ProposalApproved(ctx context.Context, proposal *core.Proposal, by string) error {
+func (p *service) ProposalApproved(ctx context.Context, proposal *core.Proposal, by string, sysver int64) error {
 	var messages []*core.Message
 
 	post := renderApprovedBy(proposal, p.fetchUserName(ctx, by))
@@ -130,7 +137,7 @@ func (p *service) ProposalApproved(ctx context.Context, proposal *core.Proposal,
 }
 
 // ProposalPassed send proposal approved message to all the node managers
-func (p *service) ProposalPassed(ctx context.Context, proposal *core.Proposal) error {
+func (p *service) ProposalPassed(ctx context.Context, proposal *core.Proposal, sysver int64) error {
 	var messages []*core.Message
 
 	post := []byte(passedTpl)

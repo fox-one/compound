@@ -8,7 +8,8 @@ import (
 	"time"
 
 	"github.com/fox-one/mixin-sdk-go"
-	"github.com/fox-one/pkg/uuid"
+	uuidutil "github.com/fox-one/pkg/uuid"
+	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -145,7 +146,7 @@ func (s *RPCService) PriceRequest(ctx context.Context, req *PriceReq) (*PriceReq
 	for _, m := range markets {
 		if m.PriceThreshold > 0 && time.Now().After(m.PriceUpdatedAt.Add(10*time.Minute)) {
 			requests = append(requests, &Price{
-				TraceId: uuid.Modify(m.AssetID, fmt.Sprintf("price-request:%s:%d", s.System.ClientID, time.Now().Unix()/600)),
+				TraceId: uuidutil.Modify(m.AssetID, fmt.Sprintf("price-request:%s:%d", s.System.ClientID, time.Now().Unix()/600)),
 				AssetId: m.AssetID,
 				Symbol:  m.Symbol,
 				Receiver: &PriceReceiver{
@@ -205,17 +206,28 @@ func (s *RPCService) Transactions(ctx context.Context, req *TransactionReq) (*Tr
 }
 
 func (s *RPCService) PayRequest(ctx context.Context, req *PayReq) (*PayResp, error) {
-	memoBytes, err := base64.StdEncoding.DecodeString(req.MemoBase64)
+	var followID []byte
+	if follow, err := uuid.FromString(req.FollowId); err == nil && follow != uuid.Nil {
+		followID = follow.Bytes()
+	}
+
+	data, err := base64.StdEncoding.DecodeString(req.MemoBase64)
 	if err != nil {
 		return nil, err
 	}
 
-	assetID := req.AssetId
-	amount, _ := decimal.NewFromString(req.Amount)
+	memoBytes, err := core.TransactionAction{FollowID: followID, Body: data}.Encode()
+	if err != nil {
+		return nil, err
+	}
 
-	if req.WithGas {
-		assetID = s.System.VoteAsset
-		amount = s.System.VoteAmount
+	assetID := s.System.VoteAsset
+	amount := s.System.VoteAmount
+	if req.AssetId != "" {
+		assetID = req.AssetId
+	}
+	if req.Amount != "" {
+		amount, _ = decimal.NewFromString(req.Amount)
 	}
 
 	input := mixin.TransferInput{

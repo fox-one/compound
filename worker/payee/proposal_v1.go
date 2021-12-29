@@ -48,7 +48,7 @@ func (w *Payee) handleMakeProposal(ctx context.Context, output *core.Output, mes
 	}
 
 	if w.system.IsMember(output.Sender) {
-		if err := w.proposalService.ProposalCreated(ctx, proposal, output.Sender); err != nil {
+		if err := w.proposalService.ProposalCreated(ctx, proposal, output.Sender, w.sysversion); err != nil {
 			log.WithError(err).Errorln("proposalService.ProposalCreated")
 			return err
 		}
@@ -86,7 +86,7 @@ func (w *Payee) handleShoutProposal(ctx context.Context, output *core.Output, me
 		return err
 	}
 
-	if err := w.proposalService.ProposalCreated(ctx, proposal, output.Sender); err != nil {
+	if err := w.proposalService.ProposalCreated(ctx, proposal, output.Sender, w.sysversion); err != nil {
 		log.WithError(err).Errorln("proposalService.ProposalCreated")
 		return err
 	}
@@ -130,7 +130,7 @@ func (w *Payee) handleVoteProposal(ctx context.Context, output *core.Output, mes
 		if handled := proposal.PassedAt.Valid || govalidator.IsIn(output.Sender, proposal.Votes...); !handled {
 			proposal.Votes = append(proposal.Votes, output.Sender)
 
-			if err := w.proposalService.ProposalApproved(ctx, proposal, output.Sender); err != nil {
+			if err := w.proposalService.ProposalApproved(ctx, proposal, output.Sender, w.sysversion); err != nil {
 				logger.FromContext(ctx).WithError(err).Errorln("proposalService.ProposalApproved")
 				return err
 			}
@@ -141,7 +141,7 @@ func (w *Payee) handleVoteProposal(ctx context.Context, output *core.Output, mes
 					Valid: true,
 				}
 
-				if err := w.proposalService.ProposalPassed(ctx, proposal); err != nil {
+				if err := w.proposalService.ProposalPassed(ctx, proposal, w.sysversion); err != nil {
 					logger.FromContext(ctx).WithError(err).Errorln("proposalService.ProposalPassed")
 					return err
 				}

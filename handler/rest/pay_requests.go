@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/fox-one/mixin-sdk-go"
+	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
 )
 
@@ -21,7 +22,6 @@ func payRequestsHandler(system *core.System, dapp *core.Wallet) http.HandlerFunc
 			Amount     decimal.Decimal `json:"amount,omitempty"`
 			TraceID    string          `json:"trace_id,omitempty"`
 			FollowID   string          `json:"follow_id,omitempty"`
-			WithGas    bool            `json:"with_gas,omitempty"`
 		}
 
 		if err := param.Binding(r, &params); err != nil {
@@ -29,18 +29,30 @@ func payRequestsHandler(system *core.System, dapp *core.Wallet) http.HandlerFunc
 			return
 		}
 
-		memoBytes, err := base64.StdEncoding.DecodeString(params.MemoBase64)
+		var followID []byte
+		if follow, err := uuid.FromString(params.FollowID); err == nil && follow != uuid.Nil {
+			followID = follow.Bytes()
+		}
+
+		data, err := base64.StdEncoding.DecodeString(params.MemoBase64)
 		if err != nil {
 			render.BadRequest(w, err)
 			return
 		}
 
-		assetID := params.AssetID
-		amount := params.Amount
+		memoBytes, err := core.TransactionAction{FollowID: followID, Body: data}.Encode()
+		if err != nil {
+			render.BadRequest(w, err)
+			return
+		}
 
-		if params.WithGas {
-			assetID = system.VoteAsset
-			amount = system.VoteAmount
+		assetID := system.VoteAsset
+		amount := system.VoteAmount
+		if params.AssetID != "" {
+			assetID = params.AssetID
+		}
+		if params.Amount.IsPositive() {
+			amount = params.Amount
 		}
 
 		input := mixin.TransferInput{

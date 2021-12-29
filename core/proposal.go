@@ -37,8 +37,8 @@ type (
 
 	// ProposalService proposal service interface
 	ProposalService interface {
-		ProposalCreated(ctx context.Context, proposal *Proposal, by string) error
-		ProposalApproved(ctx context.Context, proposal *Proposal, by string) error
-		ProposalPassed(ctx context.Context, proposal *Proposal) error
+		ProposalCreated(ctx context.Context, proposal *Proposal, by string, sysver int64) error
+		ProposalApproved(ctx context.Context, proposal *Proposal, by string, sysver int64) error
+		ProposalPassed(ctx context.Context, proposal *Proposal, sysver int64) error
 	}
 )

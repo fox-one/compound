@@ -43,6 +43,10 @@ func buildProposalTransferURL(ctx context.Context, system *core.System, dapp *mi
 	if err != nil {
 		return "", err
 	}
+	data, err = core.TransactionAction{Body: data}.Encode()
+	if err != nil {
+		return "", err
+	}
 
 	input := mixin.TransferInput{
 		AssetID: cfg.Group.Vote.Asset,
