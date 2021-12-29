@@ -68,10 +68,7 @@ func (w *SpentSync) run(ctx context.Context) error {
 	}
 
 	for _, transfer := range transfers {
-		err = w.handleTransfer(ctx, transfer)
-		if err != nil {
-			continue
-		}
+		_ = w.handleTransfer(ctx, transfer)
 	}
 
 	return nil
@@ -109,14 +106,12 @@ func (w *SpentSync) handleTransfer(ctx context.Context, transfer *core.Transfer)
 		log.WithError(err).Errorln("get snapshot trace id error")
 		return nil
 	}
-	transaction, err := core.BuildTransactionFromTransfer(ctx, transfer, snapshotTraceID)
-	if err != nil {
-		log.WithError(err).Debugln("BuildTransactionFromTransfer")
-		return err
-	}
-	if err = w.transactionStore.Create(ctx, transaction); err != nil {
-		log.WithError(err).Errorln("create transaction error")
-		return err
+
+	if transaction, err := core.BuildTransactionFromTransfer(ctx, transfer, snapshotTraceID); err == nil && transaction != nil {
+		if err = w.transactionStore.Create(ctx, transaction); err != nil {
+			log.WithError(err).Errorln("create transaction error")
+			return err
+		}
 	}
 
 	//update transfer
