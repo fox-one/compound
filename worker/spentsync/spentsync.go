@@ -79,12 +79,12 @@ func (w *SpentSync) run(ctx context.Context) error {
 
 func (w *SpentSync) handleTransfer(ctx context.Context, transfer *core.Transfer) error {
 	log := logger.FromContext(ctx).WithField("trace", transfer.TraceID)
-
-	log.Debugf("handle transfer")
+	log.Debugln("handle transfer")
 
 	output, err := w.walletStore.FindSpentBy(ctx, transfer.AssetID, transfer.TraceID)
 	if err != nil {
 		if store.IsErrNotFound(err) {
+			log.Debugln("FindSpentBy empty return")
 			return nil
 		}
 
@@ -111,6 +111,7 @@ func (w *SpentSync) handleTransfer(ctx context.Context, transfer *core.Transfer)
 	}
 	transaction, err := core.BuildTransactionFromTransfer(ctx, transfer, snapshotTraceID)
 	if err != nil {
+		log.WithError(err).Debugln("BuildTransactionFromTransfer")
 		return err
 	}
 	if err = w.transactionStore.Create(ctx, transaction); err != nil {
