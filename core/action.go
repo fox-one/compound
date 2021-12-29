@@ -1,6 +1,10 @@
 package core
 
-import "github.com/fox-one/msgpack"
+import (
+	"compound/pkg/mtg/types"
+
+	"github.com/fox-one/msgpack"
+)
 
 //go:generate stringer -type ActionType -trimprefix ActionType
 
@@ -109,6 +113,20 @@ func (a ActionType) IsProposalAction() bool {
 		a == ActionTypeProposalAddOracleSigner ||
 		a == ActionTypeProposalRemoveOracleSigner ||
 		a == ActionTypeProposalSetProperty
+}
+
+func (i ActionType) MarshalBinary() (data []byte, err error) {
+	return types.BitInt(i).MarshalBinary()
+}
+
+func (i *ActionType) UnmarshalBinary(data []byte) error {
+	var b types.BitInt
+	if err := b.UnmarshalBinary(data); err != nil {
+		return err
+	}
+
+	*i = ActionType(b)
+	return nil
 }
 
 type TransactionAction struct {

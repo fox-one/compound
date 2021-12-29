@@ -39,7 +39,7 @@ func init() {
 }
 
 func buildProposalTransferURL(ctx context.Context, system *core.System, dapp *mixin.Client, action core.ActionType, content interface{}) (string, error) {
-	data, err := mtg.Encode(int(core.ActionTypeProposalMake), int(action), content)
+	data, err := mtg.Encode(core.ActionTypeProposalMake, action, content)
 	if err != nil {
 		return "", err
 	}

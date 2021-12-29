@@ -12,6 +12,13 @@ const (
 )
 
 type (
+	// Member member
+	Member struct {
+		ClientID  string
+		Name      string
+		VerifyKey ed25519.PublicKey
+	}
+
 	// System stores system information.
 	System struct {
 		Admins     []string

@@ -181,7 +181,7 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 	)
 	if payload, err := core.DecodeTransactionAction(message); err == nil {
 		if message, err = mtg.Scan(payload.Body, &action); err == nil {
-			if follow, _ := uuid.FromBytes(payload.FollowID); follow != uuid.Nil {
+			if follow, err := uuid.FromBytes(payload.FollowID); err == nil && follow != uuid.Nil {
 				followID = follow.String()
 			}
 		}

@@ -10,19 +10,14 @@ import (
 	uuidutil "github.com/fox-one/pkg/uuid"
 )
 
-func (w *Payee) handleMakeProposalV1(ctx context.Context, output *core.Output, message []byte) error {
+func (w *Payee) handleMakeProposal(ctx context.Context, output *core.Output, message []byte) error {
 	log := logger.FromContext(ctx).WithField("handler", "proposal_make")
 
 	var action core.ActionType
-	{
-		var v int
-		body, err := mtg.Scan(message, &v)
-		if err != nil {
-			log.WithError(err).Errorln("scan action failed")
-			return nil
-		}
-		action = core.ActionType(v)
-		message = body
+	message, err := mtg.Scan(message, &action)
+	if err != nil {
+		log.WithError(err).Errorln("scan action failed")
+		return nil
 	}
 
 	if !action.IsProposalAction() {
@@ -45,7 +40,7 @@ func (w *Payee) handleMakeProposalV1(ctx context.Context, output *core.Output, m
 			return err
 		}
 	} else if w.system.IsStaff(output.Sender) {
-		if err := w.forwardProposalV1(ctx, output, proposal, core.ActionTypeProposalShout); err != nil {
+		if err := w.forwardProposal(ctx, output, proposal, core.ActionTypeProposalShout); err != nil {
 			return err
 		}
 	}
@@ -53,9 +48,10 @@ func (w *Payee) handleMakeProposalV1(ctx context.Context, output *core.Output, m
 	return nil
 }
 
-func (w *Payee) forwardProposalV1(ctx context.Context, output *core.Output, p *core.Proposal, action core.ActionType) error {
+func (w *Payee) forwardProposal(ctx context.Context, output *core.Output, p *core.Proposal, action core.ActionType) error {
 	pid, _ := uuidutil.FromString(p.TraceID)
-	data, _ := mtg.Encode(int(action), pid)
+	data, _ := mtg.Encode(action, pid)
+	data, _ = core.TransactionAction{Body: data}.Encode()
 	memo := base64.StdEncoding.EncodeToString(data)
 
 	if err := w.walletz.HandleTransfer(ctx, &core.Transfer{

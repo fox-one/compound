@@ -56,7 +56,7 @@ func (w *Payee) handleOutputV1(ctx context.Context, output *core.Output) error {
 
 	switch action {
 	case core.ActionTypeProposalMake:
-		return w.handleMakeProposal(ctx, output, message)
+		return w.handleMakeProposalV1(ctx, output, message)
 	case core.ActionTypeProposalShout:
 		return w.handleShoutProposal(ctx, output, message)
 	case core.ActionTypeProposalVote:

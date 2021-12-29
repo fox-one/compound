@@ -2,18 +2,10 @@ package core
 
 import (
 	"compound/pkg/mtg"
-	"crypto/ed25519"
 	"errors"
 
 	"github.com/gofrs/uuid"
 )
-
-// Member member
-type Member struct {
-	ClientID  string
-	Name      string
-	VerifyKey ed25519.PublicKey
-}
 
 // Deprecated since sysver 1
 //	high risks, did not verify the node's signature
