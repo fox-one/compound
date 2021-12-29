@@ -246,6 +246,7 @@ func (w *Payee) validateProposal(ctx context.Context, p *core.Proposal) error {
 func (w *Payee) forwardProposal(ctx context.Context, output *core.Output, p *core.Proposal, action core.ActionType) error {
 	pid, _ := uuidutil.FromString(p.TraceID)
 	data, _ := mtg.Encode(int(action), pid)
+	data, _ = core.TransactionAction{Body: data}.Encode()
 	memo := base64.StdEncoding.EncodeToString(data)
 
 	if err := w.walletz.HandleTransfer(ctx, &core.Transfer{
