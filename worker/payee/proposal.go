@@ -8,7 +8,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"strconv"
 
 	"github.com/asaskevich/govalidator"
@@ -113,60 +112,6 @@ func (w *Payee) handleVoteProposal(ctx context.Context, output *core.Output, mes
 		}
 	}
 	return nil
-}
-
-func (w *Payee) buildProposal(ctx context.Context, output *core.Output, action core.ActionType, message []byte) (*core.Proposal, error) {
-	log := logger.FromContext(ctx)
-
-	// new proposal
-	p := &core.Proposal{
-		CreatedAt: output.CreatedAt,
-		UpdatedAt: output.CreatedAt,
-		TraceID:   output.TraceID,
-		Creator:   output.Sender,
-		AssetID:   output.AssetID,
-		Amount:    output.Amount,
-		Action:    action,
-		Version:   output.ID,
-	}
-
-	var content interface{}
-	switch p.Action {
-	case core.ActionTypeProposalAddMarket:
-		content = &proposal.MarketReq{}
-	case core.ActionTypeProposalWithdrawReserves:
-		content = &proposal.WithdrawReq{}
-	case core.ActionTypeProposalCloseMarket:
-		content = &proposal.MarketStatusReq{}
-	case core.ActionTypeProposalOpenMarket:
-		content = &proposal.MarketStatusReq{}
-	case core.ActionTypeProposalAddScope, core.ActionTypeProposalRemoveScope:
-		content = &proposal.ScopeReq{}
-	case core.ActionTypeProposalAddAllowList, core.ActionTypeProposalRemoveAllowList:
-		content = &proposal.AllowListReq{}
-	case core.ActionTypeProposalAddOracleSigner:
-		content = &proposal.AddOracleSignerReq{}
-	case core.ActionTypeProposalRemoveOracleSigner:
-		content = &proposal.RemoveOracleSignerReq{}
-	case core.ActionTypeProposalSetProperty:
-		content = &proposal.SetProperty{}
-	default:
-		return nil, fmt.Errorf("unknown proposal action %d", p.Action)
-	}
-
-	if _, err := mtg.Scan(message, content); err != nil {
-		log.WithError(err).Debugln("decode proposal content failed")
-	}
-
-	p.Content, _ = json.Marshal(content)
-	if err := w.validateProposal(ctx, p); err != nil {
-		if err == errProposalSkip {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	return p, nil
 }
 
 func (w *Payee) validateProposal(ctx context.Context, p *core.Proposal) error {

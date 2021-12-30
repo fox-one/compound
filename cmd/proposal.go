@@ -19,7 +19,9 @@ import (
 	"compound/core"
 	"compound/pkg/mtg"
 	"context"
+	"encoding"
 	"encoding/base64"
+	"fmt"
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/uuid"
@@ -38,11 +40,20 @@ func init() {
 	rootCmd.AddCommand(proposalCmd)
 }
 
-func buildProposalTransferURL(ctx context.Context, system *core.System, dapp *mixin.Client, action core.ActionType, content interface{}) (string, error) {
-	data, err := mtg.Encode(core.ActionTypeProposalMake, action, content)
+func buildProposalTransferURL(ctx context.Context, system *core.System, dapp *mixin.Client, action core.ActionType, content encoding.BinaryMarshaler) (string, error) {
+	data, err := mtg.Encode(core.ActionTypeProposalMake, action)
 	if err != nil {
 		return "", err
 	}
+
+	if content != nil {
+		if bts, err := content.MarshalBinary(); err != nil {
+			return "", err
+		} else {
+			data = append(data, bts...)
+		}
+	}
+
 	data, err = core.TransactionAction{Body: data}.Encode()
 	if err != nil {
 		return "", err
@@ -58,6 +69,7 @@ func buildProposalTransferURL(ctx context.Context, system *core.System, dapp *mi
 	input.OpponentMultisig.Receivers = system.MemberIDs
 	input.OpponentMultisig.Threshold = system.Threshold
 
+	fmt.Println(input.Memo)
 	payment, err := dapp.VerifyPayment(ctx, input)
 	if err != nil {
 		return "", err
