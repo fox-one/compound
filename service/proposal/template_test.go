@@ -15,7 +15,7 @@ func TestRenderProposal(t *testing.T) {
 		Creator: uuid.New(),
 		AssetID: uuid.New(),
 		Amount:  decimal.New(7, 2),
-		Action:  core.ActionTypeProposalAddMarket,
+		Action:  core.ActionTypeProposalUpsertMarket,
 		Content: []byte(`{"a":"b"}`),
 	}
 

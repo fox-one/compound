@@ -9,7 +9,7 @@ import (
 
 func (w *Payee) handlePassedProposal(ctx context.Context, p *core.Proposal, output *core.Output) error {
 	switch p.Action {
-	case core.ActionTypeProposalAddMarket:
+	case core.ActionTypeProposalUpsertMarket:
 		var proposalReq proposal.MarketReq
 		err := json.Unmarshal(p.Content, &proposalReq)
 		if err != nil {

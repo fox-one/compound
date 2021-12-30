@@ -95,7 +95,7 @@ func (w *Payee) handleCreateProposalEventV0(ctx context.Context, output *core.Ou
 	}
 
 	switch p.Action {
-	case core.ActionTypeProposalAddMarket:
+	case core.ActionTypeProposalUpsertMarket:
 		var content proposal.MarketReq
 		if _, err := mtg.Scan(body, &content); err != nil {
 			log.WithError(err).Errorln("decode proposal AddMarket content error")

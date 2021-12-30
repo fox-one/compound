@@ -168,7 +168,7 @@ var addMarketCmd = &cobra.Command{
 			}
 		}
 
-		url, err := buildProposalTransferURL(ctx, system, dapp.Client, core.ActionTypeProposalAddMarket, req)
+		url, err := buildProposalTransferURL(ctx, system, dapp.Client, core.ActionTypeProposalUpsertMarket, req)
 		if err != nil {
 			cmd.PrintErr(err)
 			return

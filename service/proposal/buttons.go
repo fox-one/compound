@@ -17,7 +17,7 @@ func (s *service) generateButtons(ctx context.Context, marketStore core.IMarketS
 	buttons = appendUser(buttons, "Creator: "+s.fetchUserName(ctx, p.Creator), p.Creator)
 
 	switch p.Action {
-	case core.ActionTypeProposalAddMarket:
+	case core.ActionTypeProposalUpsertMarket:
 		var action proposal.MarketReq
 		err := json.Unmarshal(p.Content, &action)
 		if err != nil {

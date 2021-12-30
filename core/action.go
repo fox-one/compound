@@ -44,8 +44,8 @@ const (
 	ActionTypeRepayRefundTransfer
 	// ActionTypeLiquidateRefundTransfer seize refund action
 	ActionTypeLiquidateRefundTransfer
-	// ActionTypeProposalAddMarket add market proposal action
-	ActionTypeProposalAddMarket
+	// ActionTypeProposalUpsertMarket add market proposal action
+	ActionTypeProposalUpsertMarket
 	// ActionTypeProposalUpdateMarket update market proposal action
 	ActionTypeProposalUpdateMarket
 	// ActionTypeProposalWithdrawReserves withdraw reserves proposal action
@@ -95,7 +95,7 @@ const (
 )
 
 func (a ActionType) IsProposalAction() bool {
-	return a == ActionTypeProposalAddMarket ||
+	return a == ActionTypeProposalUpsertMarket ||
 		a == ActionTypeProposalUpdateMarket ||
 		a == ActionTypeProposalWithdrawReserves ||
 		a == ActionTypeProposalProvidePrice ||

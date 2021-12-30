@@ -24,7 +24,7 @@ func _() {
 	_ = x[ActionTypeRefundTransfer-13]
 	_ = x[ActionTypeRepayRefundTransfer-14]
 	_ = x[ActionTypeLiquidateRefundTransfer-15]
-	_ = x[ActionTypeProposalAddMarket-16]
+	_ = x[ActionTypeProposalUpsertMarket-16]
 	_ = x[ActionTypeProposalUpdateMarket-17]
 	_ = x[ActionTypeProposalWithdrawReserves-18]
 	_ = x[ActionTypeProposalProvidePrice-19]
@@ -51,9 +51,9 @@ func _() {
 	_ = x[ActionTypeProposalShout-40]
 }
 
-const _ActionType_name = "DefaultSupplyBorrowRedeemRepayMintPledgeUnpledgeLiquidateRedeemTransferUnpledgeTransferBorrowTransferLiquidateTransferRefundTransferRepayRefundTransferLiquidateRefundTransferProposalAddMarketProposalUpdateMarketProposalWithdrawReservesProposalProvidePriceProposalVoteProposalInjectCTokenForMintProposalUpdateMarketAdvanceProposalTransferProposalCloseMarketProposalOpenMarketProposalAddScopeProposalRemoveScopeProposalAddAllowListProposalRemoveAllowListUpdateMarketQuickPledgeQuickBorrowQuickBorrowTransferQuickRedeemQuickRedeemTransferProposalAddOracleSignerProposalRemoveOracleSignerProposalSetPropertyProposalMakeProposalShout"
+const _ActionType_name = "DefaultSupplyBorrowRedeemRepayMintPledgeUnpledgeLiquidateRedeemTransferUnpledgeTransferBorrowTransferLiquidateTransferRefundTransferRepayRefundTransferLiquidateRefundTransferProposalUpsertMarketProposalUpdateMarketProposalWithdrawReservesProposalProvidePriceProposalVoteProposalInjectCTokenForMintProposalUpdateMarketAdvanceProposalTransferProposalCloseMarketProposalOpenMarketProposalAddScopeProposalRemoveScopeProposalAddAllowListProposalRemoveAllowListUpdateMarketQuickPledgeQuickBorrowQuickBorrowTransferQuickRedeemQuickRedeemTransferProposalAddOracleSignerProposalRemoveOracleSignerProposalSetPropertyProposalMakeProposalShout"
 
-var _ActionType_index = [...]uint16{0, 7, 13, 19, 25, 30, 34, 40, 48, 57, 71, 87, 101, 118, 132, 151, 174, 191, 211, 235, 255, 267, 294, 321, 337, 356, 374, 390, 409, 429, 452, 464, 475, 486, 505, 516, 535, 558, 584, 603, 615, 628}
+var _ActionType_index = [...]uint16{0, 7, 13, 19, 25, 30, 34, 40, 48, 57, 71, 87, 101, 118, 132, 151, 174, 194, 214, 238, 258, 270, 297, 324, 340, 359, 377, 393, 412, 432, 455, 467, 478, 489, 508, 519, 538, 561, 587, 606, 618, 631}
 
 func (i ActionType) String() string {
 	if i < 0 || i >= ActionType(len(_ActionType_index)-1) {

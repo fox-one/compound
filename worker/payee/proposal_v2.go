@@ -69,7 +69,7 @@ func (w *Payee) buildProposal(ctx context.Context, output *core.Output, action c
 
 	var content encoding.BinaryUnmarshaler
 	switch p.Action {
-	case core.ActionTypeProposalAddMarket:
+	case core.ActionTypeProposalUpsertMarket:
 		content = &proposal.MarketReq{}
 	case core.ActionTypeProposalWithdrawReserves:
 		content = &proposal.WithdrawReq{}
