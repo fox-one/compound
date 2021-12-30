@@ -60,7 +60,7 @@ func (w *Payee) handleOutputV1(ctx context.Context, output *core.Output) error {
 	case core.ActionTypeProposalShout:
 		return w.handleShoutProposal(ctx, output, message)
 	case core.ActionTypeProposalVote:
-		return w.handleVoteProposal(ctx, output, message)
+		return w.handleVoteProposalV1(ctx, output, message)
 	default:
 		// transaction trace id as order id, different from output trace id
 		var followID uuid.UUID
