@@ -39,12 +39,18 @@ func (p *service) ProposalCreated(ctx context.Context, proposal *core.Proposal, 
 	if err != nil {
 		return err
 	}
-	memo, err := mtg.Encode(int(core.ActionTypeProposalVote), trace)
-	if err != nil {
-		return err
-	}
 
-	if sysver >= 2 {
+	var memo []byte
+	if sysver < 2 {
+		memo, err = mtg.Encode(int(core.ActionTypeProposalVote), trace)
+		if err != nil {
+			return err
+		}
+	} else {
+		memo, err = mtg.Encode(core.ActionTypeProposalVote, trace)
+		if err != nil {
+			return err
+		}
 		memo, err = core.TransactionAction{Body: memo}.Encode()
 		if err != nil {
 			return err
