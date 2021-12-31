@@ -167,7 +167,10 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 	message := w.decodeMemo(output.Memo)
 
 	// handle price provided by dirtoracle
-	if priceData, err := w.decodePriceTransaction(ctx, message); err == nil {
+	if priceData, err := w.decodePriceTransaction(ctx, message); err != nil {
+		log.WithError(err).Errorln("decodePriceTransaction error")
+		return err
+	} else if priceData != nil {
 		return w.handlePriceEvent(ctx, output, priceData)
 	}
 

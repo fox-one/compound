@@ -4,8 +4,6 @@ import (
 	"compound/core"
 	"context"
 	"encoding/base64"
-	"errors"
-	"fmt"
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/pandodao/blst"
@@ -44,7 +42,7 @@ func (w *Payee) handlePriceEvent(ctx context.Context, output *core.Output, price
 func (w *Payee) decodePriceTransaction(ctx context.Context, businessData []byte) (*core.PriceData, error) {
 	var p core.PriceData
 	if err := p.UnmarshalBinary(businessData); err != nil {
-		return nil, err
+		return nil, nil
 	}
 
 	ss, err := w.oracleSignerStore.FindAll(ctx)
@@ -56,19 +54,19 @@ func (w *Payee) decodePriceTransaction(ctx context.Context, businessData []byte)
 	if err != nil {
 		return nil, err
 	} else if market.ID == 0 {
-		return nil, fmt.Errorf("market not found: %s", p.AssetID)
+		return nil, nil
 	}
 
 	signers := make([]*core.Signer, len(ss))
 	for idx, s := range ss {
 		bts, err := base64.StdEncoding.DecodeString(s.PublicKey)
 		if err != nil {
-			return nil, err
+			return nil, nil
 		}
 
 		pub := blst.PublicKey{}
 		if err := pub.FromBytes(bts); err != nil {
-			return nil, err
+			return nil, nil
 		}
 
 		signers[idx] = &core.Signer{
@@ -81,7 +79,7 @@ func (w *Payee) decodePriceTransaction(ctx context.Context, businessData []byte)
 		return &p, nil
 	}
 
-	return nil, errors.New("price data verify error")
+	return nil, nil
 }
 
 func verifyPriceData(p *core.PriceData, signers []*core.Signer, threshold int) bool {
