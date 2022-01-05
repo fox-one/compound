@@ -40,7 +40,7 @@ func init() {
 	rootCmd.AddCommand(proposalCmd)
 }
 
-func buildProposalTransferURL(ctx context.Context, system *core.System, dapp *mixin.Client, action core.ActionType, content encoding.BinaryMarshaler) (string, error) {
+func buildProposalMemo(ctx context.Context, system *core.System, dapp *mixin.Client, action core.ActionType, content encoding.BinaryMarshaler) (string, error) {
 	data, err := mtg.Encode(core.ActionTypeProposalMake, action)
 	if err != nil {
 		return "", err
@@ -58,13 +58,21 @@ func buildProposalTransferURL(ctx context.Context, system *core.System, dapp *mi
 	if err != nil {
 		return "", err
 	}
+	return base64.StdEncoding.EncodeToString(data), nil
+}
+
+func buildProposalTransferURL(ctx context.Context, system *core.System, dapp *mixin.Client, action core.ActionType, content encoding.BinaryMarshaler) (string, error) {
+	memo, err := buildProposalMemo(ctx, system, dapp, action, content)
+	if err != nil {
+		return "", err
+	}
 
 	input := mixin.TransferInput{
 		AssetID: cfg.Group.Vote.Asset,
 		Amount:  cfg.Group.Vote.Amount,
 
 		TraceID: uuid.New(),
-		Memo:    base64.StdEncoding.EncodeToString(data),
+		Memo:    memo,
 	}
 	input.OpponentMultisig.Receivers = system.MemberIDs
 	input.OpponentMultisig.Threshold = system.Threshold

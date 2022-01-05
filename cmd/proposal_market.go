@@ -10,7 +10,7 @@ import (
 )
 
 // governing command for market
-var addMarketCmd = &cobra.Command{
+var upsertMarketCmd = &cobra.Command{
 	Use:     "market",
 	Aliases: []string{"m"},
 	Short:   "Create or update market",
@@ -179,92 +179,22 @@ var addMarketCmd = &cobra.Command{
 	},
 }
 
-// governing command for market
-var closeMarketCmd = &cobra.Command{
-	Use:     "close-market",
-	Aliases: []string{"cm"},
-	Short:   "close market",
-	Long:    "close the market when it is under attack. if the market closed, tradings are disabled. asset for asset_id",
-	Run: func(cmd *cobra.Command, args []string) {
-		ctx := cmd.Context()
-		system := provideSystem()
-		dapp := provideDapp()
-
-		closeMarketReq := proposal.MarketStatusReq{
-			Status: core.MarketStatusClose,
-		}
-
-		asset, e := cmd.Flags().GetString("asset")
-		if e != nil || asset == "" {
-			panic("invalid asset")
-		}
-		closeMarketReq.AssetID = asset
-
-		url, err := buildProposalTransferURL(ctx, system, dapp.Client, core.ActionTypeProposalCloseMarket, closeMarketReq)
-		if err != nil {
-			cmd.PrintErr(err)
-			return
-		}
-
-		cmd.Println(url)
-		qrcode.Fprint(cmd.OutOrStdout(), url)
-	},
-}
-
-// governing command for market
-var openMarketCmd = &cobra.Command{
-	Use:     "open-market",
-	Aliases: []string{"om"},
-	Short:   "open market",
-	Long:    "open the market when the attacking disapeared. asset for asset_id",
-	Run: func(cmd *cobra.Command, args []string) {
-		ctx := cmd.Context()
-		system := provideSystem()
-		dapp := provideDapp()
-
-		openMarketReq := proposal.MarketStatusReq{
-			Status: core.MarketStatusOpen,
-		}
-
-		asset, e := cmd.Flags().GetString("asset")
-		if e != nil || asset == "" {
-			panic("invalid asset")
-		}
-		openMarketReq.AssetID = asset
-
-		url, err := buildProposalTransferURL(ctx, system, dapp.Client, core.ActionTypeProposalOpenMarket, openMarketReq)
-		if err != nil {
-			cmd.PrintErr(err)
-			return
-		}
-
-		cmd.Println(url)
-		qrcode.Fprint(cmd.OutOrStdout(), url)
-	},
-}
-
 func init() {
-	proposalCmd.AddCommand(addMarketCmd)
-	proposalCmd.AddCommand(closeMarketCmd)
-	proposalCmd.AddCommand(openMarketCmd)
+	proposalCmd.AddCommand(upsertMarketCmd)
 
-	addMarketCmd.Flags().String("symbol", "", "market symbol")
-	addMarketCmd.Flags().String("asset", "", "asset id")
-	addMarketCmd.Flags().String("ctoken", "", "ctoken asset id")
-	addMarketCmd.Flags().String("init_exchange_rate", "1", "intial exchange rate")
-	addMarketCmd.Flags().String("reserve_factor", "0.1", "reserve factor")
-	addMarketCmd.Flags().String("liquidation_incentive", "0.05", "liquidation incentive")
-	addMarketCmd.Flags().String("borrow_cap", "0", "borrow cap")
-	addMarketCmd.Flags().String("collateral_factor", "0.75", "collateral factor")
-	addMarketCmd.Flags().String("close_factor", "0.5", "close factor")
-	addMarketCmd.Flags().String("base_rate", "0.025", "base rate")
-	addMarketCmd.Flags().String("multi", "0.4", "multiplier")
-	addMarketCmd.Flags().String("jump_multi", "0", "jump multiplier")
-	addMarketCmd.Flags().String("kink", "0", "kink")
-	addMarketCmd.Flags().String("price", "0", "price")
-	addMarketCmd.Flags().Int("price_threshold", 0, "price threshold")
-
-	closeMarketCmd.Flags().String("asset", "", "asset id")
-
-	openMarketCmd.Flags().String("asset", "", "asset id")
+	upsertMarketCmd.Flags().String("symbol", "", "market symbol")
+	upsertMarketCmd.Flags().String("asset", "", "asset id")
+	upsertMarketCmd.Flags().String("ctoken", "", "ctoken asset id")
+	upsertMarketCmd.Flags().String("init_exchange_rate", "1", "intial exchange rate")
+	upsertMarketCmd.Flags().String("reserve_factor", "0.1", "reserve factor")
+	upsertMarketCmd.Flags().String("liquidation_incentive", "0.05", "liquidation incentive")
+	upsertMarketCmd.Flags().String("borrow_cap", "0", "borrow cap")
+	upsertMarketCmd.Flags().String("collateral_factor", "0.75", "collateral factor")
+	upsertMarketCmd.Flags().String("close_factor", "0.5", "close factor")
+	upsertMarketCmd.Flags().String("base_rate", "0.025", "base rate")
+	upsertMarketCmd.Flags().String("multi", "0.4", "multiplier")
+	upsertMarketCmd.Flags().String("jump_multi", "0", "jump multiplier")
+	upsertMarketCmd.Flags().String("kink", "0", "kink")
+	upsertMarketCmd.Flags().String("price", "0", "price")
+	upsertMarketCmd.Flags().Int("price_threshold", 0, "price threshold")
 }
