@@ -24,13 +24,13 @@ func (s *service) ListItems(ctx context.Context, p *core.Proposal) ([]core.Propo
 				Value: action.Symbol,
 			},
 			{
-				Key:    "asset_id",
+				Key:    "asset",
 				Value:  action.AssetID,
 				Hint:   s.fetchAssetSymbol(ctx, action.AssetID),
 				Action: assetAction(action.AssetID),
 			},
 			{
-				Key:    "ctoken_asset_id",
+				Key:    "ctoken",
 				Value:  action.CTokenAssetID,
 				Hint:   s.fetchAssetSymbol(ctx, action.CTokenAssetID),
 				Action: assetAction(action.CTokenAssetID),
@@ -92,13 +92,13 @@ func (s *service) ListItems(ctx context.Context, p *core.Proposal) ([]core.Propo
 
 		items = []core.ProposalItem{
 			{
-				Key:    "asset_id",
+				Key:    "asset",
 				Value:  action.Asset,
 				Hint:   s.fetchAssetSymbol(ctx, action.Asset),
 				Action: assetAction(action.Asset),
 			},
 			{
-				Key:    "opponent",
+				Key:    "receiver",
 				Value:  action.Opponent,
 				Hint:   s.fetchUserName(ctx, action.Opponent),
 				Action: userAction(action.Opponent),
@@ -111,7 +111,7 @@ func (s *service) ListItems(ctx context.Context, p *core.Proposal) ([]core.Propo
 		}
 		items = []core.ProposalItem{
 			{
-				Key:    "asset_id",
+				Key:    "asset",
 				Value:  action.AssetID,
 				Hint:   s.fetchAssetSymbol(ctx, action.AssetID),
 				Action: assetAction(action.AssetID),
@@ -124,7 +124,7 @@ func (s *service) ListItems(ctx context.Context, p *core.Proposal) ([]core.Propo
 		}
 		items = []core.ProposalItem{
 			{
-				Key:    "asset_id",
+				Key:    "asset",
 				Value:  action.AssetID,
 				Hint:   s.fetchAssetSymbol(ctx, action.AssetID),
 				Action: assetAction(action.AssetID),
@@ -159,7 +159,7 @@ func (s *service) ListItems(ctx context.Context, p *core.Proposal) ([]core.Propo
 		}
 		items = []core.ProposalItem{
 			{
-				Key:    "user_id",
+				Key:    "user",
 				Value:  action.UserID,
 				Hint:   s.fetchUserName(ctx, action.UserID),
 				Action: userAction(action.UserID),
@@ -173,7 +173,7 @@ func (s *service) ListItems(ctx context.Context, p *core.Proposal) ([]core.Propo
 		}
 		items = []core.ProposalItem{
 			{
-				Key:    "user_id",
+				Key:    "client",
 				Value:  action.UserID,
 				Hint:   s.fetchUserName(ctx, action.UserID),
 				Action: userAction(action.UserID),
