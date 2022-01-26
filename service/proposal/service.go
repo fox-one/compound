@@ -2,14 +2,20 @@ package proposal
 
 import (
 	"compound/core"
-	"compound/pkg/mtg"
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"text/template"
+	"time"
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/uuid"
 )
+
+type Config struct {
+	Links map[string]string
+}
 
 // New new proposal service
 func New(
@@ -17,12 +23,25 @@ func New(
 	client *mixin.Client,
 	marketStore core.IMarketStore,
 	messages core.MessageStore,
+	cfg Config,
 ) core.ProposalService {
+	links := &template.Template{}
+	for name, tpl := range cfg.Links {
+		if tpl == "" {
+			continue
+		}
+
+		links = template.Must(
+			links.New(name).Parse(tpl),
+		)
+	}
+
 	return &service{
 		system:      system,
 		client:      client,
 		marketStore: marketStore,
 		messages:    messages,
+		links:       links,
 	}
 }
 
@@ -31,61 +50,64 @@ type service struct {
 	client      *mixin.Client
 	marketStore core.IMarketStore
 	messages    core.MessageStore
+	links       *template.Template
 }
 
-func (p *service) ProposalCreated(ctx context.Context, proposal *core.Proposal, by string, sysver int64) error {
-	buttons := p.generateButtons(ctx, p.marketStore, proposal)
-	trace, err := uuid.FromString(proposal.TraceID)
+func (s *service) ProposalCreated(ctx context.Context, p *core.Proposal, by string, sysver int64) error {
+	view := Proposal{
+		Number: p.ID,
+		Action: p.Action.String(),
+		Info: []Item{
+			{
+				Key:   "action",
+				Value: p.Action.String(),
+			},
+			{
+				Key:   "id",
+				Value: p.TraceID,
+			},
+			{
+				Key:   "date",
+				Value: p.CreatedAt.Format(time.RFC3339),
+			},
+			{
+				Key:    "creator",
+				Value:  s.fetchUserName(ctx, p.Creator),
+				Action: userAction(p.Creator),
+			},
+			{
+				Key:    "pay",
+				Value:  fmt.Sprintf("%s %s", p.Amount, s.fetchAssetSymbol(ctx, p.AssetID)),
+				Action: assetAction(p.AssetID),
+			},
+		},
+	}
+
+	view.Meta = s.renderProposalItems(ctx, p)
+
+	items := append(view.Info, view.Meta...)
+	voteAction, err := s.requestVoteAction(ctx, p, sysver)
 	if err != nil {
 		return err
 	}
 
-	var memo []byte
-	if sysver < 2 {
-		memo, err = mtg.Encode(int(core.ActionTypeProposalVote), trace)
-		if err != nil {
-			return err
-		}
-	} else {
-		memo, err = mtg.Encode(core.ActionTypeProposalVote, trace)
-		if err != nil {
-			return err
-		}
-		memo, err = core.TransactionAction{Body: memo}.Encode()
-		if err != nil {
-			return err
-		}
-	}
+	items = append(items, Item{
+		Key:    "Vote",
+		Value:  "Vote",
+		Action: voteAction,
+	})
 
-	input := mixin.TransferInput{
-		AssetID: p.system.VoteAsset,
-		Amount:  p.system.VoteAmount,
-		TraceID: uuid.Modify(proposal.TraceID, p.system.ClientID),
-		Memo:    base64.StdEncoding.EncodeToString(memo),
-	}
-	input.OpponentMultisig.Receivers = p.system.MemberIDs
-	input.OpponentMultisig.Threshold = p.system.Threshold
-
-	payment, err := p.client.VerifyPayment(ctx, input)
-	if err != nil {
-		return err
-	}
-
-	buttons = appendCode(buttons, "Vote", payment.CodeID)
-	buttonsData, err := json.Marshal(buttons)
-	if err != nil {
-		return err
-	}
-
-	post := renderProposal(proposal)
+	buttons := generateButtons(items)
+	buttonsData, _ := json.Marshal(buttons)
+	post := execute("proposal_created", view)
 
 	var messages []*core.Message
-	for _, admin := range p.system.Admins {
+	for _, admin := range s.system.Admins {
 		// post
 		postMsg := &mixin.MessageRequest{
 			RecipientID:    admin,
-			ConversationID: mixin.UniqueConversationID(p.system.ClientID, admin),
-			MessageID:      uuid.Modify(proposal.TraceID, p.system.ClientID+admin),
+			ConversationID: mixin.UniqueConversationID(s.system.ClientID, admin),
+			MessageID:      uuid.Modify(p.TraceID, s.system.ClientID+admin),
 			Category:       mixin.MessageCategoryPlainPost,
 			Data:           base64.StdEncoding.EncodeToString(post),
 		}
@@ -93,78 +115,59 @@ func (p *service) ProposalCreated(ctx context.Context, proposal *core.Proposal, 
 		// buttons
 		buttonMsg := &mixin.MessageRequest{
 			RecipientID:    admin,
-			ConversationID: mixin.UniqueConversationID(p.system.ClientID, admin),
+			ConversationID: mixin.UniqueConversationID(s.system.ClientID, admin),
 			MessageID:      uuid.Modify(postMsg.MessageID, "buttons"),
 			Category:       mixin.MessageCategoryAppButtonGroup,
 			Data:           base64.StdEncoding.EncodeToString(buttonsData),
 		}
 
-		pmsg, err := core.BuildMessage(postMsg)
-		if err != nil {
-			return err
-		}
-		messages = append(messages, pmsg)
-
-		bmsg, err := core.BuildMessage(buttonMsg)
-		if err != nil {
-			return err
-		}
-		messages = append(messages, bmsg)
+		messages = append(messages, core.BuildMessage(postMsg), core.BuildMessage(buttonMsg))
 	}
 
-	return p.messages.Create(ctx, messages)
+	return s.messages.Create(ctx, messages)
 }
 
 // ProposalApproved send proposal approved message to all the node managers
-func (p *service) ProposalApproved(ctx context.Context, proposal *core.Proposal, by string, sysver int64) error {
-	var messages []*core.Message
+func (s *service) ProposalApproved(ctx context.Context, p *core.Proposal, by string, sysver int64) error {
+	view := Proposal{
+		ApprovedCount: len(p.Votes),
+		ApprovedBy:    s.fetchUserName(ctx, by),
+	}
 
-	post := renderApprovedBy(proposal, p.fetchUserName(ctx, by))
-	for _, admin := range p.system.Admins {
-		quote := uuid.Modify(proposal.TraceID, p.system.ClientID+admin)
-		msgReq := &mixin.MessageRequest{
+	post := execute("proposal_approved", view)
+
+	var messages []*core.Message
+	for _, admin := range s.system.Admins {
+		quote := uuid.Modify(p.TraceID, s.system.ClientID+admin)
+		messages = append(messages, core.BuildMessage(&mixin.MessageRequest{
 			RecipientID:    admin,
-			ConversationID: mixin.UniqueConversationID(p.system.ClientID, admin),
+			ConversationID: mixin.UniqueConversationID(s.system.ClientID, admin),
 			MessageID:      uuid.Modify(quote, "Approved By "+by),
 			Category:       mixin.MessageCategoryPlainText,
 			Data:           base64.StdEncoding.EncodeToString(post),
 			QuoteMessageID: quote,
-		}
-
-		msg, err := core.BuildMessage(msgReq)
-		if err != nil {
-			return err
-		}
-
-		messages = append(messages, msg)
+		}))
 	}
 
-	return p.messages.Create(ctx, messages)
+	return s.messages.Create(ctx, messages)
 }
 
 // ProposalPassed send proposal approved message to all the node managers
-func (p *service) ProposalPassed(ctx context.Context, proposal *core.Proposal, sysver int64) error {
-	var messages []*core.Message
+func (s *service) ProposalPassed(ctx context.Context, p *core.Proposal, sysver int64) error {
+	post := execute("proposal_passed", nil)
 
-	post := []byte(passedTpl)
-	for _, admin := range p.system.Admins {
-		quote := uuid.Modify(proposal.TraceID, p.system.ClientID+admin)
-		msgReq := &mixin.MessageRequest{
+	var messages []*core.Message
+	for _, admin := range s.system.Admins {
+		quote := uuid.Modify(p.TraceID, s.system.ClientID+admin)
+		messages = append(messages, core.BuildMessage(&mixin.MessageRequest{
 			RecipientID:    admin,
-			ConversationID: mixin.UniqueConversationID(p.system.ClientID, admin),
+			ConversationID: mixin.UniqueConversationID(s.system.ClientID, admin),
 			MessageID:      uuid.Modify(quote, "Proposal Passed"),
 			Category:       mixin.MessageCategoryPlainText,
 			Data:           base64.StdEncoding.EncodeToString(post),
 			QuoteMessageID: quote,
-		}
-
-		msg, err := core.BuildMessage(msgReq)
-		if err != nil {
-			return err
-		}
-
-		messages = append(messages, msg)
+		}))
 	}
 
-	return p.messages.Create(ctx, messages)
+	return s.messages.Create(ctx, messages)
 }

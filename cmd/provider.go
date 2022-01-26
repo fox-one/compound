@@ -159,7 +159,15 @@ func provideOracleSignerStore(db *db.DB) core.OracleSignerStore {
 
 // ------------------service------------------------------------
 func provideProposalService(client *mixin.Client, system *core.System, marketStore core.IMarketStore, messageStore core.MessageStore) core.ProposalService {
-	return proposalservice.New(system, client, marketStore, messageStore)
+	return proposalservice.New(
+		system,
+		client,
+		marketStore,
+		messageStore,
+		proposalservice.Config{
+			Links: map[string]string{},
+		},
+	)
 }
 
 func provideMessageService(client *mixin.Client) core.MessageService {

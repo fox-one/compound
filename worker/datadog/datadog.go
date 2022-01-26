@@ -162,14 +162,14 @@ func (w *Datadog) run(ctx context.Context) error {
 		return nil
 	}
 
-	msg, _ := core.BuildMessage(&mixin.MessageRequest{
-		ConversationID: w.conversationID,
-		MessageID:      uuid.New(),
-		Category:       mixin.MessageCategoryPlainPost,
-		Data:           base64.StdEncoding.EncodeToString(b.Bytes()),
-	})
-
-	if err := w.messagez.Send(ctx, []*core.Message{msg}, false); err != nil {
+	if err := w.messagez.Send(ctx, []*core.Message{
+		core.BuildMessage(&mixin.MessageRequest{
+			ConversationID: w.conversationID,
+			MessageID:      uuid.New(),
+			Category:       mixin.MessageCategoryPlainPost,
+			Data:           base64.StdEncoding.EncodeToString(b.Bytes()),
+		}),
+	}, false); err != nil {
 		log.WithError(err).Errorln("messagez.Send")
 		return err
 	}

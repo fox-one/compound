@@ -1,77 +1,52 @@
 package proposal
 
 import (
-	"compound/core"
-
 	"bytes"
-	"encoding/json"
-	"fmt"
+	"embed"
+	"path"
+	"path/filepath"
+	"strings"
 	"text/template"
 )
 
-func codeBlock(data []byte, tag string) []byte {
-	var b bytes.Buffer
-	_, _ = fmt.Fprintf(&b, "```%s\n", tag)
-	b.Write(data)
-	b.WriteByte('\n')
-	b.WriteString("```")
+//go:embed files/*.tmpl
+var files embed.FS
 
-	return b.Bytes()
-}
+var T *template.Template
 
-const proposalTpl = `### #{{.ID}} NEW PROPOSAL "{{.Action}}"
+func init() {
+	T = template.New("_").Funcs(template.FuncMap{
+		"upper": strings.ToUpper,
+	})
 
-{{.Proposal}}
-`
-
-type view struct {
-	ID       int64
-	Action   string
-	Proposal string
-}
-
-func renderProposal(p *core.Proposal) []byte {
-	v := view{
-		ID:     p.ID,
-		Action: p.Action.String(),
-	}
-
-	data, _ := json.MarshalIndent(p, "", "  ")
-	v.Proposal = string(codeBlock(data, "json"))
-
-	t, err := template.New("-").Parse(proposalTpl)
+	dir := "files"
+	entries, err := files.ReadDir(dir)
 	if err != nil {
 		panic(err)
 	}
 
-	var b bytes.Buffer
-	if err := t.Execute(&b, v); err != nil {
-		panic(err)
-	}
+	for _, entry := range entries {
+		name := entry.Name()
+		b, err := files.ReadFile(path.Join(dir, name))
+		if err != nil {
+			panic(err)
+		}
 
-	return b.Bytes()
+		ext := filepath.Ext(name)
+		name = name[0 : len(name)-len(ext)]
+
+		T = template.Must(
+			T.New(name).Parse(string(b)),
+		)
+	}
 }
 
-const approvedByTpl = `✅ Approved By {{.Reviewer}}
-
-({{.ApprovedCount}} Votes In Total)
-`
-
-func renderApprovedBy(p *core.Proposal, member string) []byte {
-	t, err := template.New("-").Parse(approvedByTpl)
-	if err != nil {
-		panic(err)
-	}
-
+func execute(name string, data interface{}) []byte {
 	var b bytes.Buffer
-	if err := t.Execute(&b, map[string]interface{}{
-		"ApprovedCount": len(p.Votes),
-		"Reviewer":      member,
-	}); err != nil {
+
+	if err := T.ExecuteTemplate(&b, name, data); err != nil {
 		panic(err)
 	}
 
-	return b.Bytes()
+	return bytes.TrimSpace(b.Bytes())
 }
-
-const passedTpl = "🎉 Proposal Passed"

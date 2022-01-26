@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/fox-one/pkg/logger"
@@ -144,6 +145,12 @@ func (w *Payee) run(ctx context.Context) error {
 				return err
 			}
 		} else {
+			if w.sysversion > 2 {
+				if strings.ToLower(u.Memo) == "deposit" {
+					continue
+				}
+			}
+
 			if err := w.handleOutput(ctx, u); err != nil {
 				return err
 			}

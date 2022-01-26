@@ -27,6 +27,17 @@ type (
 		Votes     pq.StringArray  `sql:"type:varchar(1024)" json:"votes,omitempty"`
 	}
 
+	ProposalItem struct {
+		// Key is the parameter name
+		Key string `json:"key,omitempty"`
+		// Value the proposal applied
+		Value string `json:"value,omitempty"`
+		// Hint the parameter hint
+		Hint string `json:"hint,omitempty"`
+		// Action the value applied
+		Action string `json:"action,omitempty"`
+	}
+
 	// ProposalStore proposal store interface
 	ProposalStore interface {
 		Create(ctx context.Context, proposal *Proposal) error
@@ -37,6 +48,7 @@ type (
 
 	// ProposalService proposal service interface
 	ProposalService interface {
+		ListItems(ctx context.Context, proposal *Proposal) ([]ProposalItem, error)
 		ProposalCreated(ctx context.Context, proposal *Proposal, by string, sysver int64) error
 		ProposalApproved(ctx context.Context, proposal *Proposal, by string, sysver int64) error
 		ProposalPassed(ctx context.Context, proposal *Proposal, sysver int64) error
