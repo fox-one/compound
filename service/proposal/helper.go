@@ -1,7 +1,6 @@
 package proposal
 
 import (
-	"bytes"
 	"compound/core"
 	"compound/pkg/mtg"
 	"context"
@@ -31,15 +30,6 @@ func (s *service) fetchUserName(ctx context.Context, userID string) string {
 	}
 
 	return user.FullName
-}
-
-func (s *service) executeLink(name string, data interface{}) (string, error) {
-	b := bytes.Buffer{}
-	if err := s.links.ExecuteTemplate(&b, name, data); err != nil {
-		return "", err
-	}
-
-	return b.String(), nil
 }
 
 func (s *service) requestVoteAction(ctx context.Context, proposal *core.Proposal, sysver int64) (string, error) {

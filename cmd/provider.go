@@ -164,9 +164,6 @@ func provideProposalService(client *mixin.Client, system *core.System, marketSto
 		client,
 		marketStore,
 		messageStore,
-		proposalservice.Config{
-			Links: map[string]string{},
-		},
 	)
 }
 

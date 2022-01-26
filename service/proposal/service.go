@@ -6,16 +6,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"text/template"
 	"time"
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/uuid"
 )
-
-type Config struct {
-	Links map[string]string
-}
 
 // New new proposal service
 func New(
@@ -23,25 +18,12 @@ func New(
 	client *mixin.Client,
 	marketStore core.IMarketStore,
 	messages core.MessageStore,
-	cfg Config,
 ) core.ProposalService {
-	links := &template.Template{}
-	for name, tpl := range cfg.Links {
-		if tpl == "" {
-			continue
-		}
-
-		links = template.Must(
-			links.New(name).Parse(tpl),
-		)
-	}
-
 	return &service{
 		system:      system,
 		client:      client,
 		marketStore: marketStore,
 		messages:    messages,
-		links:       links,
 	}
 }
 
@@ -50,7 +32,6 @@ type service struct {
 	client      *mixin.Client
 	marketStore core.IMarketStore
 	messages    core.MessageStore
-	links       *template.Template
 }
 
 func (s *service) ProposalCreated(ctx context.Context, p *core.Proposal, by string, sysver int64) error {
