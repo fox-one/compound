@@ -57,11 +57,12 @@ func handleProposal(proposals core.ProposalStore, proposalz core.ProposalService
 		trace := param.String(r, "trace_id")
 		proposal, found, err := proposals.Find(ctx, trace)
 		if err != nil {
+			if found {
+				render.BadRequest(w, errors.New("proposal not found"))
+				return
+			}
+
 			render.BadRequest(w, err)
-			return
-		}
-		if !found {
-			render.BadRequest(w, errors.New("not found"))
 			return
 		}
 
