@@ -52,7 +52,6 @@ var workerCmd = &cobra.Command{
 		oracleSignerStore := provideOracleSignerStore(db)
 
 		walletService := provideWalletService(dapp.Client)
-
 		blockService := provideBlockService()
 		marketService := provideMarketService(blockService)
 		accountService := provideAccountService(marketStore, supplyStore, borrowStore, blockService, marketService)

@@ -31,11 +31,13 @@ var serverCmd = &cobra.Command{
 		supplyStore := provideSupplyStore(db)
 		borrowStore := provideBorrowStore(db)
 		oracleSignerStore := provideOracleSignerStore(db)
+		transactionStore := provideTransactionStore(db)
+		messageStore := provideMessageStore(db)
+		proposals := provideProposalStore(db)
 
 		blockService := provideBlockService()
 		marketService := provideMarketService(blockService)
-
-		transactionStore := provideTransactionStore(db)
+		proposalz := provideProposalService(dapp.Client, system, marketStore, messageStore)
 
 		mux := chi.NewMux()
 		mux.Use(middleware.Recoverer)
@@ -53,11 +55,31 @@ var serverCmd = &cobra.Command{
 
 		{
 			//restful api
-			mux.Mount("/api/v1", rest.Handle(system, dapp, marketStore, supplyStore, borrowStore, transactionStore, oracleSignerStore, marketService))
+			mux.Mount("/api/v1", rest.Handle(
+				system,
+				dapp,
+				marketStore,
+				supplyStore,
+				borrowStore,
+				transactionStore,
+				oracleSignerStore,
+				proposals,
+				marketService,
+				proposalz,
+			))
 		}
 
 		{
-			rpcService := rpc.NewServiceImpl(system, dapp, transactionStore, marketStore, oracleSignerStore, supplyStore, borrowStore, marketService)
+			rpcService := rpc.NewServiceImpl(
+				system,
+				dapp,
+				transactionStore,
+				marketStore,
+				oracleSignerStore,
+				supplyStore,
+				borrowStore,
+				marketService,
+			)
 			rpcHandler := rpc.NewCompoundServer(rpcService, nil)
 			mux.Mount("/", rpcHandler)
 		}
