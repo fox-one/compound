@@ -23,6 +23,7 @@ type (
 		ID        string          `json:"id,omitempty"`
 		CreatedAt time.Time       `json:"created_at"`
 		UpdatedAt time.Time       `json:"updated_at"`
+		PassedAt  *time.Time      `json:"passed_at,omitempty"`
 		Creator   string          `json:"creator,omitempty"`
 		AssetID   string          `json:"asset_id,omitempty"`
 		Amount    decimal.Decimal `json:"amount,omitempty"`
@@ -50,7 +51,7 @@ func ProposalItemViews(pitems []core.ProposalItem) []ProposalItem {
 }
 
 func ProposalView(p core.Proposal) Proposal {
-	return Proposal{
+	view := Proposal{
 		ID:        p.TraceID,
 		CreatedAt: p.CreatedAt,
 		UpdatedAt: p.UpdatedAt,
@@ -60,6 +61,10 @@ func ProposalView(p core.Proposal) Proposal {
 		Action:    p.Action.String(),
 		Votes:     p.Votes,
 	}
+	if p.PassedAt.Valid {
+		view.PassedAt = &p.PassedAt.Time
+	}
+	return view
 }
 
 func ProposalViews(ps []*core.Proposal) []Proposal {

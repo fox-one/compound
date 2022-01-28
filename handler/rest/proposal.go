@@ -41,10 +41,12 @@ func handleProposals(proposals core.ProposalStore, proposalz core.ProposalServic
 		}
 
 		render.JSON(w, render.H{
-			"data": pviews,
-			"pagination": render.H{
-				"next_cursor": nextCursor,
-				"has_next":    nextCursor != "",
+			"data": render.H{
+				"proposals": pviews,
+				"pagination": render.H{
+					"next_cursor": nextCursor,
+					"has_next":    nextCursor != "",
+				},
 			},
 		})
 	}
