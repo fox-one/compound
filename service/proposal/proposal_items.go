@@ -141,30 +141,6 @@ func (s *service) ListItems(ctx context.Context, p *core.Proposal) ([]core.Propo
 				Value: action.Value,
 			},
 		}
-	case core.ActionTypeProposalAddScope, core.ActionTypeProposalRemoveScope: // TODO Deprecated
-		var action proposal.ScopeReq
-		if err := json.Unmarshal(p.Content, &action); err != nil {
-			return nil, err
-		}
-		items = []core.ProposalItem{
-			{
-				Key:   "scope",
-				Value: action.Scope,
-			},
-		}
-	case core.ActionTypeProposalAddAllowList, core.ActionTypeProposalRemoveAllowList: // TODO Deprecated
-		var action proposal.RemoveOracleSignerReq
-		if err := json.Unmarshal(p.Content, &action); err != nil {
-			return nil, err
-		}
-		items = []core.ProposalItem{
-			{
-				Key:    "user",
-				Value:  action.UserID,
-				Hint:   s.fetchUserName(ctx, action.UserID),
-				Action: userAction(action.UserID),
-			},
-		}
 
 	case core.ActionTypeProposalAddOracleSigner:
 		var action proposal.AddOracleSignerReq

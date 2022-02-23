@@ -34,10 +34,6 @@ func _() {
 	_ = x[ActionTypeProposalTransfer-23]
 	_ = x[ActionTypeProposalCloseMarket-24]
 	_ = x[ActionTypeProposalOpenMarket-25]
-	_ = x[ActionTypeProposalAddScope-26]
-	_ = x[ActionTypeProposalRemoveScope-27]
-	_ = x[ActionTypeProposalAddAllowList-28]
-	_ = x[ActionTypeProposalRemoveAllowList-29]
 	_ = x[ActionTypeUpdateMarket-30]
 	_ = x[ActionTypeQuickPledge-31]
 	_ = x[ActionTypeQuickBorrow-32]
@@ -51,13 +47,24 @@ func _() {
 	_ = x[ActionTypeProposalShout-40]
 }
 
-const _ActionType_name = "DefaultSupplyBorrowRedeemRepayMintPledgeUnpledgeLiquidateRedeemTransferUnpledgeTransferBorrowTransferLiquidateTransferRefundTransferRepayRefundTransferLiquidateRefundTransferProposalUpsertMarketProposalUpdateMarketProposalWithdrawReservesProposalProvidePriceProposalVoteProposalInjectCTokenForMintProposalUpdateMarketAdvanceProposalTransferProposalCloseMarketProposalOpenMarketProposalAddScopeProposalRemoveScopeProposalAddAllowListProposalRemoveAllowListUpdateMarketQuickPledgeQuickBorrowQuickBorrowTransferQuickRedeemQuickRedeemTransferProposalAddOracleSignerProposalRemoveOracleSignerProposalSetPropertyProposalMakeProposalShout"
+const (
+	_ActionType_name_0 = "DefaultSupplyBorrowRedeemRepayMintPledgeUnpledgeLiquidateRedeemTransferUnpledgeTransferBorrowTransferLiquidateTransferRefundTransferRepayRefundTransferLiquidateRefundTransferProposalUpsertMarketProposalUpdateMarketProposalWithdrawReservesProposalProvidePriceProposalVoteProposalInjectCTokenForMintProposalUpdateMarketAdvanceProposalTransferProposalCloseMarketProposalOpenMarket"
+	_ActionType_name_1 = "UpdateMarketQuickPledgeQuickBorrowQuickBorrowTransferQuickRedeemQuickRedeemTransferProposalAddOracleSignerProposalRemoveOracleSignerProposalSetPropertyProposalMakeProposalShout"
+)
 
-var _ActionType_index = [...]uint16{0, 7, 13, 19, 25, 30, 34, 40, 48, 57, 71, 87, 101, 118, 132, 151, 174, 194, 214, 238, 258, 270, 297, 324, 340, 359, 377, 393, 412, 432, 455, 467, 478, 489, 508, 519, 538, 561, 587, 606, 618, 631}
+var (
+	_ActionType_index_0 = [...]uint16{0, 7, 13, 19, 25, 30, 34, 40, 48, 57, 71, 87, 101, 118, 132, 151, 174, 194, 214, 238, 258, 270, 297, 324, 340, 359, 377}
+	_ActionType_index_1 = [...]uint8{0, 12, 23, 34, 53, 64, 83, 106, 132, 151, 163, 176}
+)
 
 func (i ActionType) String() string {
-	if i < 0 || i >= ActionType(len(_ActionType_index)-1) {
+	switch {
+	case 0 <= i && i <= 25:
+		return _ActionType_name_0[_ActionType_index_0[i]:_ActionType_index_0[i+1]]
+	case 30 <= i && i <= 40:
+		i -= 30
+		return _ActionType_name_1[_ActionType_index_1[i]:_ActionType_index_1[i+1]]
+	default:
 		return "ActionType(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _ActionType_name[_ActionType_index[i]:_ActionType_index[i+1]]
 }

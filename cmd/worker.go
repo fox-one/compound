@@ -48,7 +48,6 @@ var workerCmd = &cobra.Command{
 		proposalStore := provideProposalStore(db)
 		userStore := provideUserStore(db)
 		transactionStore := provideTransactionStore(db)
-		allowListStore := provideAllowListStore(db)
 		oracleSignerStore := provideOracleSignerStore(db)
 
 		walletService := provideWalletService(dapp.Client)
@@ -59,7 +58,6 @@ var workerCmd = &cobra.Command{
 		borrowService := provideBorrowService(blockService, accountService)
 		messageService := provideMessageService(dapp.Client)
 		proposalService := provideProposalService(dapp.Client, system, marketStore, messageStore)
-		allowListService := provideAllowListService(propertyStore, allowListStore)
 
 		sysver, err := sysversion.ReadSysVersion(ctx, propertyStore)
 		if err != nil {
@@ -116,7 +114,6 @@ var workerCmd = &cobra.Command{
 				supplyService,
 				borrowService,
 				accountService,
-				allowListService,
 			),
 		}
 

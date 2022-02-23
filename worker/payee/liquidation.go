@@ -34,22 +34,6 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrInvalidArgument)
 	}
 
-	// check allowlist
-	needAllowListCheck, e := w.allowListService.IsScopeInAllowList(ctx, core.OSLiquidation)
-	if e != nil {
-		return e
-	}
-	if needAllowListCheck {
-		userAllowed, e := w.allowListService.CheckAllowList(ctx, liquidator, core.OSLiquidation)
-		if e != nil {
-			return e
-		}
-		if !userAllowed {
-			// not allowed, refund
-			return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrOperationForbidden)
-		}
-	}
-
 	seizedUserID := seizedUser.UserID
 	seizedCTokenAssetID := seizedCTokenAsset.String()
 

@@ -139,28 +139,6 @@ func (w *Payee) handleCreateProposalEventV0(ctx context.Context, output *core.Ou
 			return err
 		}
 		p.Content = bs
-	case core.ActionTypeProposalAddScope, core.ActionTypeProposalRemoveScope:
-		var content proposal.ScopeReq
-		if _, err := mtg.Scan(body, &content); err != nil {
-			log.WithError(err).Errorln("decode proposal scopereq content error")
-			return nil
-		}
-		bs, err := json.Marshal(content)
-		if err != nil {
-			return err
-		}
-		p.Content = bs
-	case core.ActionTypeProposalAddAllowList, core.ActionTypeProposalRemoveAllowList:
-		var content proposal.AllowListReq
-		if _, err := mtg.Scan(body, &content); err != nil {
-			log.WithError(err).Errorln("decode proposal allowlist content error")
-			return nil
-		}
-		bs, err := json.Marshal(content)
-		if err != nil {
-			return err
-		}
-		p.Content = bs
 	case core.ActionTypeProposalAddOracleSigner:
 		var content proposal.AddOracleSignerReq
 		if _, err := mtg.Scan(body, &content); err != nil {

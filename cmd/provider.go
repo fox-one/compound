@@ -9,14 +9,12 @@ import (
 	borrowservice "compound/service/borrow"
 	marketservice "compound/service/market"
 	messageservice "compound/service/message"
-	operationservice "compound/service/operation"
 	proposalservice "compound/service/proposal"
 	supplyservice "compound/service/supply"
 	walletservice "compound/service/wallet"
 	"compound/store/borrow"
 	"compound/store/market"
 	"compound/store/message"
-	"compound/store/operation"
 	"compound/store/oracle"
 	"compound/store/proposal"
 	"compound/store/supply"
@@ -149,10 +147,6 @@ func provideTransactionStore(db *db.DB) core.TransactionStore {
 	return transaction.New(db)
 }
 
-func provideAllowListStore(db *db.DB) core.IAllowListStore {
-	return operation.NewAllowListStore(db)
-}
-
 func provideOracleSignerStore(db *db.DB) core.OracleSignerStore {
 	return oracle.NewSignerStore(db)
 }
@@ -215,11 +209,4 @@ func provideAccountService(
 	marketSrv core.IMarketService) core.IAccountService {
 
 	return accountservice.New(marketStore, supplyStore, borrowStore, blockSrv, marketSrv)
-}
-
-func provideAllowListService(
-	propertyStore property.Store,
-	allowListStore core.IAllowListStore,
-) core.IAllowListService {
-	return operationservice.New(propertyStore, allowListStore)
 }

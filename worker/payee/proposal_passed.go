@@ -41,38 +41,6 @@ func (w *Payee) handlePassedProposal(ctx context.Context, p *core.Proposal, outp
 		}
 		return w.handleOpenMarketEvent(ctx, p, req, output)
 
-	case core.ActionTypeProposalAddScope:
-		var req proposal.ScopeReq
-		err := json.Unmarshal(p.Content, &req)
-		if err != nil {
-			return err
-		}
-		return w.handleAddScopeEvent(ctx, p, req, output)
-
-	case core.ActionTypeProposalRemoveScope:
-		var req proposal.ScopeReq
-		err := json.Unmarshal(p.Content, &req)
-		if err != nil {
-			return err
-		}
-		return w.handleRemoveScopeEvent(ctx, p, req, output)
-
-	case core.ActionTypeProposalAddAllowList:
-		var req proposal.AllowListReq
-		err := json.Unmarshal(p.Content, &req)
-		if err != nil {
-			return err
-		}
-		return w.handleAddAllowListEvent(ctx, p, req, output)
-
-	case core.ActionTypeProposalRemoveAllowList:
-		var req proposal.AllowListReq
-		err := json.Unmarshal(p.Content, &req)
-		if err != nil {
-			return err
-		}
-		return w.handleRemoveAllowListEvent(ctx, p, req, output)
-
 	case core.ActionTypeProposalAddOracleSigner:
 		var req proposal.AddOracleSignerReq
 		err := json.Unmarshal(p.Content, &req)

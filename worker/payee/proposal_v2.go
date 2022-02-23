@@ -147,10 +147,6 @@ func (w *Payee) buildProposal(ctx context.Context, output *core.Output, action c
 		content = &proposal.MarketStatusReq{}
 	case core.ActionTypeProposalOpenMarket:
 		content = &proposal.MarketStatusReq{}
-	case core.ActionTypeProposalAddScope, core.ActionTypeProposalRemoveScope:
-		content = &proposal.ScopeReq{}
-	case core.ActionTypeProposalAddAllowList, core.ActionTypeProposalRemoveAllowList:
-		content = &proposal.AllowListReq{}
 	case core.ActionTypeProposalAddOracleSigner:
 		content = &proposal.AddOracleSignerReq{}
 	case core.ActionTypeProposalRemoveOracleSigner:

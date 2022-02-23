@@ -43,7 +43,6 @@ type (
 		supplyService     core.ISupplyService
 		borrowService     core.IBorrowService
 		accountService    core.IAccountService
-		allowListService  core.IAllowListService
 
 		sysversion int64
 	}
@@ -69,7 +68,7 @@ func NewPayee(
 	supplyService core.ISupplyService,
 	borrowService core.IBorrowService,
 	accountService core.IAccountService,
-	allowListService core.IAllowListService) *Payee {
+) *Payee {
 
 	payee := Payee{
 		system:            system,
@@ -90,7 +89,6 @@ func NewPayee(
 		supplyService:     supplyService,
 		borrowService:     borrowService,
 		accountService:    accountService,
-		allowListService:  allowListService,
 	}
 
 	return &payee

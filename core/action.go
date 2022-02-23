@@ -64,14 +64,10 @@ const (
 	ActionTypeProposalCloseMarket
 	// ActionTypeProposalOpenMarket proposal open market action
 	ActionTypeProposalOpenMarket
-	// ActionTypeProposalAddScope proposal add allowlist scope action
-	ActionTypeProposalAddScope
-	// ActionTypeProposalRemoveScope proposal remove allowlist scope action
-	ActionTypeProposalRemoveScope
-	// ActionTypeProposalAddAllowList proposal add to allowlist action
-	ActionTypeProposalAddAllowList
-	// ActionTypeProposalRemoveAllowList proposal remove from allowlist action
-	ActionTypeProposalRemoveAllowList
+	_
+	_
+	_
+	_
 	// ActionTypeUpdateMarket update market
 	ActionTypeUpdateMarket
 	// ActionTypeQuickPledge supply -> pledge
@@ -106,10 +102,6 @@ func (a ActionType) IsProposalAction() bool {
 		a == ActionTypeProposalUpdateMarketAdvance ||
 		a == ActionTypeProposalCloseMarket ||
 		a == ActionTypeProposalOpenMarket ||
-		a == ActionTypeProposalAddScope ||
-		a == ActionTypeProposalRemoveScope ||
-		a == ActionTypeProposalAddAllowList ||
-		a == ActionTypeProposalRemoveAllowList ||
 		a == ActionTypeProposalAddOracleSigner ||
 		a == ActionTypeProposalRemoveOracleSigner ||
 		a == ActionTypeProposalSetProperty
