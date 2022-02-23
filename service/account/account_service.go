@@ -2,6 +2,7 @@ package account
 
 import (
 	"compound/core"
+	"compound/pkg/compound"
 	"context"
 	"errors"
 
@@ -9,11 +10,9 @@ import (
 )
 
 type accountService struct {
-	marketStore   core.IMarketStore
-	supplyStore   core.ISupplyStore
-	borrowStore   core.IBorrowStore
-	blockService  core.IBlockService
-	marketService core.IMarketService
+	marketStore core.IMarketStore
+	supplyStore core.ISupplyStore
+	borrowStore core.IBorrowStore
 }
 
 // New new account service
@@ -21,15 +20,11 @@ func New(
 	marketStore core.IMarketStore,
 	supplyStore core.ISupplyStore,
 	borrowStore core.IBorrowStore,
-	blockSrv core.IBlockService,
-	marketServie core.IMarketService,
 ) core.IAccountService {
 	return &accountService{
-		marketStore:   marketStore,
-		supplyStore:   supplyStore,
-		borrowStore:   borrowStore,
-		blockService:  blockSrv,
-		marketService: marketServie,
+		marketStore: marketStore,
+		supplyStore: supplyStore,
+		borrowStore: borrowStore,
 	}
 }
 
@@ -85,7 +80,7 @@ func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID s
 
 		price := market.Price
 
-		borrowBalance, e := borrow.Balance(ctx, market)
+		borrowBalance, e := compound.BorrowBalance(ctx, borrow, market)
 		if e != nil {
 			return decimal.Zero, e
 		}

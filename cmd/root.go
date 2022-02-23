@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"compound/config"
+	"compound/pkg/compound"
 	"flag"
 	"fmt"
 	"os"
@@ -86,6 +87,8 @@ func initConfig() {
 	if err := config.Load(cfgFile, &cfg); err != nil {
 		panic(err)
 	}
+
+	compound.SetupGenesis(cfg.Genesis)
 }
 
 func initLogging() {

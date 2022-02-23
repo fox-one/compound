@@ -3,14 +3,12 @@ module compound
 go 1.16
 
 require (
-	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/bluele/gcache v0.0.2
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
-	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/fatih/structs v1.1.0
 	github.com/fox-one/mixin-sdk-go v1.5.1
-	github.com/fox-one/msgpack v1.0.0 // indirect
+	github.com/fox-one/msgpack v1.0.0
 	github.com/fox-one/pkg v1.5.5
 	github.com/gin-gonic/gin v1.7.4 // indirect
 	github.com/go-chi/chi v4.1.2+incompatible
@@ -29,7 +27,6 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/gomega v1.14.0 // indirect
 	github.com/pandodao/blst v1.0.3
-	github.com/qinix/gods v1.12.0
 	github.com/rs/cors v1.8.0
 	github.com/shopspring/decimal v1.3.1
 	github.com/sirupsen/logrus v1.8.1

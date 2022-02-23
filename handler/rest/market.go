@@ -4,6 +4,7 @@ import (
 	"compound/core"
 	"compound/handler/render"
 	"compound/handler/views"
+	"compound/pkg/compound"
 	"context"
 	"net/http"
 
@@ -11,7 +12,7 @@ import (
 )
 
 // response all market infos
-func allMarketsHandler(marketStr core.IMarketStore, supplyStr core.ISupplyStore, borrowStr core.IBorrowStore, marketSrv core.IMarketService) http.HandlerFunc {
+func allMarketsHandler(marketStr core.IMarketStore, supplyStr core.ISupplyStore, borrowStr core.IBorrowStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -23,7 +24,7 @@ func allMarketsHandler(marketStr core.IMarketStore, supplyStr core.ISupplyStore,
 
 		marketViews := make([]*views.Market, 0)
 		for _, m := range markets {
-			marketView := getMarketView(ctx, m, supplyStr, borrowStr, marketSrv)
+			marketView := getMarketView(ctx, m, supplyStr, borrowStr)
 			marketViews = append(marketViews, marketView)
 		}
 
@@ -35,12 +36,12 @@ func allMarketsHandler(marketStr core.IMarketStore, supplyStr core.ISupplyStore,
 	}
 }
 
-func getMarketView(ctx context.Context, market *core.Market, supplyStr core.ISupplyStore, borrowStr core.IBorrowStore, marketSrv core.IMarketService) *views.Market {
-	supplyRate, e := marketSrv.CurSupplyRate(ctx, market)
+func getMarketView(ctx context.Context, market *core.Market, supplyStr core.ISupplyStore, borrowStr core.IBorrowStore) *views.Market {
+	supplyRate, e := compound.CurSupplyRate(ctx, market)
 	if e != nil {
 		supplyRate = decimal.Zero
 	}
-	borrowRate, e := marketSrv.CurBorrowRate(ctx, market)
+	borrowRate, e := compound.CurBorrowRate(ctx, market)
 	if e != nil {
 		borrowRate = decimal.Zero
 	}

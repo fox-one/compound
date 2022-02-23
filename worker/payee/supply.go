@@ -2,6 +2,7 @@ package payee
 
 import (
 	"compound/core"
+	"compound/pkg/compound"
 	"context"
 
 	"github.com/fox-one/pkg/logger"
@@ -29,7 +30,7 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 	}
 
 	//accrue interest
-	if e = w.marketService.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
+	if e = compound.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
 		log.Errorln(e)
 		return e
 	}
@@ -40,7 +41,7 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 	}
 
 	if tx.ID == 0 {
-		exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
+		exchangeRate, e := compound.CurExchangeRate(ctx, market)
 		if e != nil {
 			log.Errorln(e)
 			return e

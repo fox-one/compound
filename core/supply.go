@@ -30,8 +30,3 @@ type ISupplyStore interface {
 	All(ctx context.Context) ([]*Supply, error)
 	Users(ctx context.Context) ([]string, error)
 }
-
-// ISupplyService supply service interface
-type ISupplyService interface {
-	RedeemAllowed(ctx context.Context, redeemTokens decimal.Decimal, market *Market) bool
-}

@@ -1,4 +1,4 @@
-package borrow
+package compound
 
 import (
 	"compound/core"
@@ -8,23 +8,26 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-type borrowService struct {
-	blockService   core.IBlockService
-	accountService core.IAccountService
-}
-
-// New new borrow service
-func New(
-	blockService core.IBlockService,
-	accountService core.IAccountService) core.IBorrowService {
-	return &borrowService{
-		blockService:   blockService,
-		accountService: accountService,
+// Balance caculate borrow balance
+// balance = borrow.principal * market.borrow_index / borrow.interest_index
+func BorrowBalance(ctx context.Context, b *core.Borrow, market *core.Market) (decimal.Decimal, error) {
+	if !market.BorrowIndex.IsPositive() {
+		market.BorrowIndex = decimal.New(1, 0)
 	}
+
+	if !b.InterestIndex.IsPositive() {
+		b.InterestIndex = market.BorrowIndex
+	}
+
+	principalTimesIndex := b.Principal.Mul(market.BorrowIndex)
+	result := principalTimesIndex.Div(b.InterestIndex).
+		Shift(MaxPricision).Ceil().Shift(-MaxPricision)
+
+	return result, nil
 }
 
 // BorrowAllowed check borrow capacity, check account liquidity
-func (s *borrowService) BorrowAllowed(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *core.Market, liquidity decimal.Decimal) bool {
+func BorrowAllowed(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *core.Market, liquidity decimal.Decimal) bool {
 	log := logger.FromContext(ctx)
 
 	if !borrowAmount.IsPositive() {
@@ -53,8 +56,4 @@ func (s *borrowService) BorrowAllowed(ctx context.Context, borrowAmount decimal.
 	}
 
 	return true
-}
-
-func (s *borrowService) BorrowBalance(ctx context.Context, borrow *core.Borrow, market *core.Market) (decimal.Decimal, error) {
-	return borrow.Balance(ctx, market)
 }

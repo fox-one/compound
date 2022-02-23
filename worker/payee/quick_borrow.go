@@ -2,7 +2,7 @@ package payee
 
 import (
 	"compound/core"
-	"compound/internal/compound"
+	"compound/pkg/compound"
 	"compound/pkg/mtg"
 	"context"
 	"errors"
@@ -82,12 +82,12 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 	}
 
 	// supply market accrue interest
-	if e = w.marketService.AccrueInterest(ctx, supplyMarket, output.CreatedAt); e != nil {
+	if e = compound.AccrueInterest(ctx, supplyMarket, output.CreatedAt); e != nil {
 		return e
 	}
 
 	//borrow market accrue interest
-	if e = w.marketService.AccrueInterest(ctx, borrowMarket, output.CreatedAt); e != nil {
+	if e = compound.AccrueInterest(ctx, borrowMarket, output.CreatedAt); e != nil {
 		log.Errorln(e)
 		return e
 	}
@@ -137,7 +137,7 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 		}
 
 		// supply
-		exchangeRate, e := w.marketService.CurExchangeRate(ctx, supplyMarket)
+		exchangeRate, e := compound.CurExchangeRate(ctx, supplyMarket)
 		if e != nil {
 			log.Errorln(e)
 			return e
@@ -166,7 +166,7 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 		if borrow.ID == 0 {
 			newBorrowBalance = borrowAmount
 		} else {
-			borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, borrowMarket)
+			borrowBalance, e := compound.BorrowBalance(ctx, borrow, borrowMarket)
 			if e != nil {
 				log.Errorln(e)
 				return e

@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"compound/core"
+	"compound/pkg/compound"
 	context "context"
 	"encoding/base64"
 	"fmt"
@@ -22,7 +23,6 @@ type RPCService struct {
 	OracleSignerStore core.OracleSignerStore
 	SupplyStore       core.ISupplyStore
 	BorrowStore       core.IBorrowStore
-	MarketService     core.IMarketService
 }
 
 func NewServiceImpl(system *core.System,
@@ -32,7 +32,7 @@ func NewServiceImpl(system *core.System,
 	oracleSignerStr core.OracleSignerStore,
 	supplyStr core.ISupplyStore,
 	borrowStr core.IBorrowStore,
-	marketSrv core.IMarketService) *RPCService {
+) *RPCService {
 	return &RPCService{
 		System:            system,
 		Dapp:              dapp,
@@ -41,7 +41,6 @@ func NewServiceImpl(system *core.System,
 		OracleSignerStore: oracleSignerStr,
 		SupplyStore:       supplyStr,
 		BorrowStore:       borrowStr,
-		MarketService:     marketSrv,
 	}
 }
 
@@ -53,11 +52,11 @@ func (s *RPCService) AllMarkets(ctx context.Context, req *MarketReq) (*MarketLis
 
 	marketViews := make([]*Market, 0)
 	for _, m := range markets {
-		supplyRate, e := s.MarketService.CurSupplyRate(ctx, m)
+		supplyRate, e := compound.CurSupplyRate(ctx, m)
 		if e != nil {
 			supplyRate = decimal.Zero
 		}
-		borrowRate, e := s.MarketService.CurBorrowRate(ctx, m)
+		borrowRate, e := compound.CurBorrowRate(ctx, m)
 		if e != nil {
 			borrowRate = decimal.Zero
 		}

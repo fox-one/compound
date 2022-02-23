@@ -19,7 +19,6 @@ func Handle(
 	transactionStore core.TransactionStore,
 	oracleSignerStore core.OracleSignerStore,
 	proposals core.ProposalStore,
-	marketService core.IMarketService,
 	proposalz core.ProposalService,
 ) http.Handler {
 
@@ -31,7 +30,7 @@ func Handle(
 
 	router.Get("/transactions", transactionsHandler(transactionStore))
 	router.Get("/price-requests", priceRequestsHandler(system, marketStore, oracleSignerStore))
-	router.Get("/markets/all", allMarketsHandler(marketStore, supplyStore, borrowStore, marketService))
+	router.Get("/markets/all", allMarketsHandler(marketStore, supplyStore, borrowStore))
 	router.Post("/pay-requests", payRequestsHandler(system, dapp))
 
 	router.Get("/proposals", handleProposals(proposals, proposalz))

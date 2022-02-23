@@ -96,16 +96,3 @@ type IMarketStore interface {
 	AllAsMap(ctx context.Context) (map[string]*Market, error)
 	Update(ctx context.Context, market *Market, version int64) error
 }
-
-// IMarketService market interface
-type IMarketService interface {
-	CurUtilizationRate(ctx context.Context, market *Market) (decimal.Decimal, error)
-	CurExchangeRate(ctx context.Context, market *Market) (decimal.Decimal, error)
-	CurBorrowRatePerBlock(ctx context.Context, market *Market) (decimal.Decimal, error)
-	CurSupplyRatePerBlock(ctx context.Context, market *Market) (decimal.Decimal, error)
-	CurBorrowRate(ctx context.Context, market *Market) (decimal.Decimal, error)
-	CurSupplyRate(ctx context.Context, market *Market) (decimal.Decimal, error)
-	CurTotalBorrows(ctx context.Context, market *Market) (decimal.Decimal, error)
-	CurTotalReserves(ctx context.Context, market *Market) (decimal.Decimal, error)
-	AccrueInterest(ctx context.Context, market *Market, time time.Time) error
-}

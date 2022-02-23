@@ -38,10 +38,6 @@ type (
 		oracleSignerStore core.OracleSignerStore
 		walletz           core.WalletService
 		proposalService   core.ProposalService
-		blockService      core.IBlockService
-		marketService     core.IMarketService
-		supplyService     core.ISupplyService
-		borrowService     core.IBorrowService
 		accountService    core.IAccountService
 
 		sysversion int64
@@ -63,10 +59,6 @@ func NewPayee(
 	oracleSignerStr core.OracleSignerStore,
 	walletz core.WalletService,
 	proposalService core.ProposalService,
-	blockService core.IBlockService,
-	marketSrv core.IMarketService,
-	supplyService core.ISupplyService,
-	borrowService core.IBorrowService,
 	accountService core.IAccountService,
 ) *Payee {
 
@@ -84,10 +76,6 @@ func NewPayee(
 		oracleSignerStore: oracleSignerStr,
 		walletz:           walletz,
 		proposalService:   proposalService,
-		blockService:      blockService,
-		marketService:     marketSrv,
-		supplyService:     supplyService,
-		borrowService:     borrowService,
 		accountService:    accountService,
 	}
 

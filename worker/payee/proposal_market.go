@@ -3,7 +3,7 @@ package payee
 import (
 	"compound/core"
 	"compound/core/proposal"
-	"compound/internal/compound"
+	"compound/pkg/compound"
 	"context"
 	"strings"
 
@@ -49,7 +49,7 @@ func (w *Payee) handleMarketEvent(ctx context.Context, p *core.Proposal, req pro
 	}
 
 	if market.InitExchangeRate.GreaterThan(decimal.Zero) {
-		if e = w.marketService.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
+		if e = compound.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
 			return e
 		}
 	}

@@ -1,7 +1,6 @@
 package core
 
 import (
-	"compound/internal/compound"
 	"context"
 	"errors"
 	"time"
@@ -28,24 +27,6 @@ var (
 	ErrBorrowsOverCap = errors.New("borrows over market borrow cap")
 )
 
-// Balance caculate borrow balance
-// balance = borrow.principal * market.borrow_index / borrow.interest_index
-func (b *Borrow) Balance(ctx context.Context, market *Market) (decimal.Decimal, error) {
-	if !market.BorrowIndex.IsPositive() {
-		market.BorrowIndex = decimal.New(1, 0)
-	}
-
-	if !b.InterestIndex.IsPositive() {
-		b.InterestIndex = market.BorrowIndex
-	}
-
-	principalTimesIndex := b.Principal.Mul(market.BorrowIndex)
-	result := principalTimesIndex.Div(b.InterestIndex).
-		Shift(compound.MaxPricision).Ceil().Shift(-compound.MaxPricision)
-
-	return result, nil
-}
-
 // IBorrowStore supply store interface
 type IBorrowStore interface {
 	Create(ctx context.Context, borrow *Borrow) error
@@ -56,10 +37,4 @@ type IBorrowStore interface {
 	Update(ctx context.Context, borrow *Borrow, version int64) error
 	All(ctx context.Context) ([]*Borrow, error)
 	Users(ctx context.Context) ([]string, error)
-}
-
-// IBorrowService supply service interface
-type IBorrowService interface {
-	BorrowAllowed(ctx context.Context, borrowAmount decimal.Decimal, userID string, market *Market, liquidity decimal.Decimal) bool
-	BorrowBalance(ctx context.Context, borrow *Borrow, market *Market) (decimal.Decimal, error)
 }

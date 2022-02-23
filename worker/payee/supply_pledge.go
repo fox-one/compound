@@ -2,6 +2,7 @@ package payee
 
 import (
 	"compound/core"
+	"compound/pkg/compound"
 	"context"
 	"errors"
 
@@ -30,7 +31,7 @@ func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, user
 	}
 
 	//accrue interest
-	if err := w.marketService.AccrueInterest(ctx, market, output.CreatedAt); err != nil {
+	if err := compound.AccrueInterest(ctx, market, output.CreatedAt); err != nil {
 		log.WithError(err).Errorln("accrue interest error")
 		return err
 	}

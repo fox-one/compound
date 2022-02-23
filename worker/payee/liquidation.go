@@ -2,7 +2,7 @@ package payee
 
 import (
 	"compound/core"
-	"compound/internal/compound"
+	"compound/pkg/compound"
 	"compound/pkg/mtg"
 	"context"
 
@@ -75,13 +75,13 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 	}
 
 	//supply market accrue interest
-	if e = w.marketService.AccrueInterest(ctx, supplyMarket, output.CreatedAt); e != nil {
+	if e = compound.AccrueInterest(ctx, supplyMarket, output.CreatedAt); e != nil {
 		log.Errorln(e)
 		return e
 	}
 
 	//borrow market accrue interest
-	if e = w.marketService.AccrueInterest(ctx, borrowMarket, output.CreatedAt); e != nil {
+	if e = compound.AccrueInterest(ctx, borrowMarket, output.CreatedAt); e != nil {
 		log.Errorln(e)
 		return e
 	}
@@ -92,7 +92,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 	}
 
 	if tx.ID == 0 {
-		supplyExchangeRate, e := w.marketService.CurExchangeRate(ctx, supplyMarket)
+		supplyExchangeRate, e := compound.CurExchangeRate(ctx, supplyMarket)
 		if e != nil {
 			log.Errorln(e)
 			return e
@@ -121,7 +121,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 			return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrSeizeNotAllowed)
 		}
 
-		borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, borrowMarket)
+		borrowBalance, e := compound.BorrowBalance(ctx, borrow, borrowMarket)
 		if e != nil {
 			log.Errorln(e)
 			return e

@@ -2,7 +2,7 @@ package payee
 
 import (
 	"compound/core"
-	"compound/internal/compound"
+	"compound/pkg/compound"
 	"compound/pkg/mtg"
 	"context"
 
@@ -37,7 +37,7 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 	}
 
 	// accrue interest
-	if e = w.marketService.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
+	if e = compound.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
 		return e
 	}
 
@@ -62,7 +62,7 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 			return e
 		}
 
-		if !w.borrowService.BorrowAllowed(ctx, borrowAmount, userID, market, liquidity) {
+		if !compound.BorrowAllowed(ctx, borrowAmount, userID, market, liquidity) {
 			log.Errorln("borrow not allowed")
 			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeBorrow, core.ErrBorrowNotAllowed)
 		}
@@ -71,7 +71,7 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 		if borrow.ID == 0 {
 			newBorrowBalance = borrowAmount.Truncate(compound.MaxPricision)
 		} else {
-			borrowBalance, e := w.borrowService.BorrowBalance(ctx, borrow, market)
+			borrowBalance, e := compound.BorrowBalance(ctx, borrow, market)
 			if e != nil {
 				log.Errorln(e)
 				return e

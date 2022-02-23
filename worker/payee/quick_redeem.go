@@ -2,6 +2,7 @@ package payee
 
 import (
 	"compound/core"
+	"compound/pkg/compound"
 	"compound/pkg/mtg"
 	"context"
 	"errors"
@@ -47,7 +48,7 @@ func (w *Payee) handleQuickRedeemEvent(ctx context.Context, output *core.Output,
 	}
 
 	//accrue interest
-	if e = w.marketService.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
+	if e = compound.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
 		log.Errorln(e)
 		return e
 	}
@@ -68,7 +69,7 @@ func (w *Payee) handleQuickRedeemEvent(ctx context.Context, output *core.Output,
 		}
 
 		// check redeem allowed
-		if allowed := w.supplyService.RedeemAllowed(ctx, redeemTokens, market); !allowed {
+		if allowed := compound.RedeemAllowed(ctx, redeemTokens, market); !allowed {
 			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrRedeemNotAllowed)
 		}
 
@@ -80,7 +81,7 @@ func (w *Payee) handleQuickRedeemEvent(ctx context.Context, output *core.Output,
 		}
 
 		price := market.Price
-		exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
+		exchangeRate, e := compound.CurExchangeRate(ctx, market)
 		if e != nil {
 			log.Errorln(e)
 			return e

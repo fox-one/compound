@@ -2,6 +2,7 @@ package payee
 
 import (
 	"compound/core"
+	"compound/pkg/compound"
 	"context"
 	"errors"
 
@@ -41,7 +42,7 @@ func (w *Payee) handleQuickPledgeEvent(ctx context.Context, output *core.Output,
 	}
 
 	//accrue interest
-	if e = w.marketService.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
+	if e = compound.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
 		log.Errorln(e)
 		return e
 	}
@@ -52,7 +53,7 @@ func (w *Payee) handleQuickPledgeEvent(ctx context.Context, output *core.Output,
 	}
 
 	if tx.ID == 0 {
-		exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
+		exchangeRate, e := compound.CurExchangeRate(ctx, market)
 		if e != nil {
 			log.Errorln(e)
 			return e

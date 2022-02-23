@@ -5,12 +5,8 @@ import (
 	"compound/core"
 	"compound/pkg/mtg"
 	accountservice "compound/service/account"
-	"compound/service/block"
-	borrowservice "compound/service/borrow"
-	marketservice "compound/service/market"
 	messageservice "compound/service/message"
 	proposalservice "compound/service/proposal"
-	supplyservice "compound/service/supply"
 	walletservice "compound/service/wallet"
 	"compound/store/borrow"
 	"compound/store/market"
@@ -177,36 +173,10 @@ func provideWalletService(client *mixin.Client) core.WalletService {
 	})
 }
 
-func provideBlockService() core.IBlockService {
-	return block.New(block.Config{
-		Genesis: cfg.Genesis,
-	})
-}
-
-func provideMarketService(blockSrv core.IBlockService) core.IMarketService {
-	return marketservice.New(
-		blockSrv)
-}
-
-func provideSupplyService(marketSrv core.IMarketService) core.ISupplyService {
-	return supplyservice.New(
-		marketSrv,
-	)
-}
-
-func provideBorrowService(blockSrv core.IBlockService, accountSrv core.IAccountService) core.IBorrowService {
-	return borrowservice.New(
-		blockSrv,
-		accountSrv,
-	)
-}
-
 func provideAccountService(
 	marketStore core.IMarketStore,
 	supplyStore core.ISupplyStore,
 	borrowStore core.IBorrowStore,
-	blockSrv core.IBlockService,
-	marketSrv core.IMarketService) core.IAccountService {
-
-	return accountservice.New(marketStore, supplyStore, borrowStore, blockSrv, marketSrv)
+) core.IAccountService {
+	return accountservice.New(marketStore, supplyStore, borrowStore)
 }

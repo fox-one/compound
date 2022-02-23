@@ -2,6 +2,7 @@ package payee
 
 import (
 	"compound/core"
+	"compound/pkg/compound"
 	"context"
 	"encoding/base64"
 
@@ -22,7 +23,7 @@ func (w *Payee) handlePriceEvent(ctx context.Context, output *core.Output, price
 	}
 
 	// accrue interest
-	if e = w.marketService.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
+	if e = compound.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
 		return e
 	}
 

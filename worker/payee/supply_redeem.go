@@ -2,6 +2,7 @@ package payee
 
 import (
 	"compound/core"
+	"compound/pkg/compound"
 	"context"
 
 	"github.com/fox-one/pkg/logger"
@@ -35,7 +36,7 @@ func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, user
 	}
 
 	//accrue interest
-	if e = w.marketService.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
+	if e = compound.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
 		log.Errorln(e)
 		return e
 	}
@@ -46,12 +47,12 @@ func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, user
 		}
 
 		// check redeem allowed
-		if allowed := w.supplyService.RedeemAllowed(ctx, redeemTokens, market); !allowed {
+		if allowed := compound.RedeemAllowed(ctx, redeemTokens, market); !allowed {
 			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrRedeemNotAllowed)
 		}
 
 		// transfer asset to user
-		exchangeRate, e := w.marketService.CurExchangeRate(ctx, market)
+		exchangeRate, e := compound.CurExchangeRate(ctx, market)
 		if e != nil {
 			log.Errorln(e)
 			return e

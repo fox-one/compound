@@ -35,8 +35,6 @@ var serverCmd = &cobra.Command{
 		messageStore := provideMessageStore(db)
 		proposals := provideProposalStore(db)
 
-		blockService := provideBlockService()
-		marketService := provideMarketService(blockService)
 		proposalz := provideProposalService(dapp.Client, system, marketStore, messageStore)
 
 		mux := chi.NewMux()
@@ -64,7 +62,6 @@ var serverCmd = &cobra.Command{
 				transactionStore,
 				oracleSignerStore,
 				proposals,
-				marketService,
 				proposalz,
 			))
 		}
@@ -78,7 +75,6 @@ var serverCmd = &cobra.Command{
 				oracleSignerStore,
 				supplyStore,
 				borrowStore,
-				marketService,
 			)
 			rpcHandler := rpc.NewCompoundServer(rpcService, nil)
 			mux.Mount("/", rpcHandler)
