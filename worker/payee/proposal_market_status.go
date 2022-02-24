@@ -3,7 +3,6 @@ package payee
 import (
 	"compound/core"
 	"compound/core/proposal"
-	"compound/pkg/compound"
 	"context"
 
 	"github.com/fox-one/pkg/logger"
@@ -21,7 +20,7 @@ func (w *Payee) handleOpenMarketEvent(ctx context.Context, p *core.Proposal, req
 		return nil
 	}
 
-	if e = compound.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
+	if e = AccrueInterest(ctx, market, output.CreatedAt); e != nil {
 		return e
 	}
 
@@ -46,7 +45,7 @@ func (w *Payee) handleCloseMarketEvent(ctx context.Context, p *core.Proposal, re
 		return nil
 	}
 
-	if e = compound.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
+	if e = AccrueInterest(ctx, market, output.CreatedAt); e != nil {
 		return e
 	}
 

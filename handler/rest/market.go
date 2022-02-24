@@ -7,6 +7,8 @@ import (
 	"compound/pkg/compound"
 	"context"
 	"net/http"
+
+	"github.com/shopspring/decimal"
 )
 
 // response all market infos
@@ -35,8 +37,8 @@ func allMarketsHandler(marketStr core.IMarketStore, supplyStr core.ISupplyStore,
 }
 
 func getMarketView(ctx context.Context, market *core.Market, supplyStr core.ISupplyStore, borrowStr core.IBorrowStore) *views.Market {
-	supplyRate := compound.CurSupplyRate(market)
-	borrowRate := compound.CurBorrowRate(market)
+	supplyRate := CurSupplyRate(market)
+	borrowRate := CurBorrowRate(market)
 	countOfSupplies, e := supplyStr.CountOfSuppliers(ctx, market.CTokenAssetID)
 	if e != nil {
 		countOfSupplies = 0
@@ -56,4 +58,29 @@ func getMarketView(ctx context.Context, market *core.Market, supplyStr core.ISup
 	}
 
 	return &marketView
+}
+
+// CurBorrowRate current borrow APY
+func CurBorrowRate(market *core.Market) decimal.Decimal {
+	borrowRatePerBlock := compound.GetBorrowRatePerBlock(
+		compound.UtilizationRate(market.TotalCash, market.TotalBorrows, market.Reserves),
+		market.BaseRate,
+		market.Multiplier,
+		market.JumpMultiplier,
+		market.Kink,
+	)
+	return borrowRatePerBlock.Mul(compound.BlocksPerYear).Truncate(compound.MaxPricision)
+}
+
+// CurSupplyRate current supply APY
+func CurSupplyRate(market *core.Market) decimal.Decimal {
+	supplyRatePerBlock := compound.GetSupplyRatePerBlock(
+		compound.UtilizationRate(market.TotalCash, market.TotalBorrows, market.Reserves),
+		market.BaseRate,
+		market.Multiplier,
+		market.JumpMultiplier,
+		market.Kink,
+		market.ReserveFactor,
+	)
+	return supplyRatePerBlock.Mul(compound.BlocksPerYear).Truncate(compound.MaxPricision)
 }

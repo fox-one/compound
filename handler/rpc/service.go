@@ -52,8 +52,8 @@ func (s *RPCService) AllMarkets(ctx context.Context, req *MarketReq) (*MarketLis
 
 	marketViews := make([]*Market, 0)
 	for _, m := range markets {
-		supplyRate := compound.CurSupplyRate(m)
-		borrowRate := compound.CurBorrowRate(m)
+		supplyRate := CurSupplyRate(m)
+		borrowRate := CurBorrowRate(m)
 
 		countOfSupplies, e := s.SupplyStore.CountOfSuppliers(ctx, m.CTokenAssetID)
 		if e != nil {
@@ -260,4 +260,29 @@ func (s *RPCService) PayRequest(ctx context.Context, req *PayReq) (*PayResp, err
 	}
 
 	return &payResp, nil
+}
+
+// CurBorrowRate current borrow APY
+func CurBorrowRate(market *core.Market) decimal.Decimal {
+	borrowRatePerBlock := compound.GetBorrowRatePerBlock(
+		compound.UtilizationRate(market.TotalCash, market.TotalBorrows, market.Reserves),
+		market.BaseRate,
+		market.Multiplier,
+		market.JumpMultiplier,
+		market.Kink,
+	)
+	return borrowRatePerBlock.Mul(compound.BlocksPerYear).Truncate(compound.MaxPricision)
+}
+
+// CurSupplyRate current supply APY
+func CurSupplyRate(market *core.Market) decimal.Decimal {
+	supplyRatePerBlock := compound.GetSupplyRatePerBlock(
+		compound.UtilizationRate(market.TotalCash, market.TotalBorrows, market.Reserves),
+		market.BaseRate,
+		market.Multiplier,
+		market.JumpMultiplier,
+		market.Kink,
+		market.ReserveFactor,
+	)
+	return supplyRatePerBlock.Mul(compound.BlocksPerYear).Truncate(compound.MaxPricision)
 }

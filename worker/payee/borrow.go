@@ -36,7 +36,7 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 	}
 
 	// accrue interest
-	if e = compound.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
+	if e = AccrueInterest(ctx, market, output.CreatedAt); e != nil {
 		return e
 	}
 

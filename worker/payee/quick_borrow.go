@@ -82,12 +82,12 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 	}
 
 	// supply market accrue interest
-	if e = compound.AccrueInterest(ctx, supplyMarket, output.CreatedAt); e != nil {
+	if e = AccrueInterest(ctx, supplyMarket, output.CreatedAt); e != nil {
 		return e
 	}
 
 	//borrow market accrue interest
-	if e = compound.AccrueInterest(ctx, borrowMarket, output.CreatedAt); e != nil {
+	if e = AccrueInterest(ctx, borrowMarket, output.CreatedAt); e != nil {
 		log.Errorln(e)
 		return e
 	}

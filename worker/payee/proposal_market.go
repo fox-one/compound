@@ -49,7 +49,7 @@ func (w *Payee) handleMarketEvent(ctx context.Context, p *core.Proposal, req pro
 	}
 
 	if market.InitExchangeRate.GreaterThan(decimal.Zero) {
-		if e = compound.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
+		if e = AccrueInterest(ctx, market, output.CreatedAt); e != nil {
 			return e
 		}
 	}

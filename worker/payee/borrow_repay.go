@@ -29,7 +29,7 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 	}
 
 	//update interest
-	if e = compound.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
+	if e = AccrueInterest(ctx, market, output.CreatedAt); e != nil {
 		log.Errorln(e)
 		return e
 	}

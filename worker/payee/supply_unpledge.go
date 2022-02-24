@@ -2,7 +2,6 @@ package payee
 
 import (
 	"compound/core"
-	"compound/pkg/compound"
 	"compound/pkg/mtg"
 	"context"
 	"errors"
@@ -41,7 +40,7 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 	}
 
 	//accrue interest
-	if e = compound.AccrueInterest(ctx, market, output.CreatedAt); e != nil {
+	if e = AccrueInterest(ctx, market, output.CreatedAt); e != nil {
 		log.Errorln(e)
 		return e
 	}
