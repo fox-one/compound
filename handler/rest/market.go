@@ -7,8 +7,6 @@ import (
 	"compound/pkg/compound"
 	"context"
 	"net/http"
-
-	"github.com/shopspring/decimal"
 )
 
 // response all market infos
@@ -37,15 +35,8 @@ func allMarketsHandler(marketStr core.IMarketStore, supplyStr core.ISupplyStore,
 }
 
 func getMarketView(ctx context.Context, market *core.Market, supplyStr core.ISupplyStore, borrowStr core.IBorrowStore) *views.Market {
-	supplyRate, e := compound.CurSupplyRate(ctx, market)
-	if e != nil {
-		supplyRate = decimal.Zero
-	}
-	borrowRate, e := compound.CurBorrowRate(ctx, market)
-	if e != nil {
-		borrowRate = decimal.Zero
-	}
-
+	supplyRate := compound.CurSupplyRate(market)
+	borrowRate := compound.CurBorrowRate(market)
 	countOfSupplies, e := supplyStr.CountOfSuppliers(ctx, market.CTokenAssetID)
 	if e != nil {
 		countOfSupplies = 0

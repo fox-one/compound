@@ -92,11 +92,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 	}
 
 	if tx.ID == 0 {
-		supplyExchangeRate, e := compound.CurExchangeRate(ctx, supplyMarket)
-		if e != nil {
-			log.Errorln(e)
-			return e
-		}
+		supplyExchangeRate := supplyMarket.CurExchangeRate()
 
 		borrowPrice := borrowMarket.Price
 		if !borrowPrice.IsPositive() {

@@ -137,11 +137,7 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 		}
 
 		// supply
-		exchangeRate, e := compound.CurExchangeRate(ctx, supplyMarket)
-		if e != nil {
-			log.Errorln(e)
-			return e
-		}
+		exchangeRate := supplyMarket.CurExchangeRate()
 
 		// supply, calculate ctokens
 		ctokens := decimal.Zero

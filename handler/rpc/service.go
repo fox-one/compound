@@ -52,14 +52,8 @@ func (s *RPCService) AllMarkets(ctx context.Context, req *MarketReq) (*MarketLis
 
 	marketViews := make([]*Market, 0)
 	for _, m := range markets {
-		supplyRate, e := compound.CurSupplyRate(ctx, m)
-		if e != nil {
-			supplyRate = decimal.Zero
-		}
-		borrowRate, e := compound.CurBorrowRate(ctx, m)
-		if e != nil {
-			borrowRate = decimal.Zero
-		}
+		supplyRate := compound.CurSupplyRate(m)
+		borrowRate := compound.CurBorrowRate(m)
 
 		countOfSupplies, e := s.SupplyStore.CountOfSuppliers(ctx, m.CTokenAssetID)
 		if e != nil {

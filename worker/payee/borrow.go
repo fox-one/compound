@@ -13,8 +13,7 @@ import (
 
 // handle borrow event
 func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
-
-	log := logger.FromContext(ctx).WithField("worker", "borrow")
+	log := logger.FromContext(ctx).WithField("event", "borrow")
 
 	var asset uuid.UUID
 	var borrowAmount decimal.Decimal
@@ -62,7 +61,8 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 			return e
 		}
 
-		if !compound.BorrowAllowed(ctx, borrowAmount, userID, market, liquidity) {
+		if !market.BorrowAllowed(borrowAmount) ||
+			borrowAmount.Mul(market.Price).GreaterThan(liquidity) {
 			log.Errorln("borrow not allowed")
 			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeBorrow, core.ErrBorrowNotAllowed)
 		}

@@ -41,11 +41,7 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 	}
 
 	if tx.ID == 0 {
-		exchangeRate, e := compound.CurExchangeRate(ctx, market)
-		if e != nil {
-			log.Errorln(e)
-			return e
-		}
+		exchangeRate := market.CurExchangeRate()
 
 		ctokens := supplyAmount.Div(exchangeRate).Truncate(8)
 		if ctokens.IsZero() {

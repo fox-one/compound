@@ -69,7 +69,7 @@ func (w *Payee) handleQuickRedeemEvent(ctx context.Context, output *core.Output,
 		}
 
 		// check redeem allowed
-		if allowed := compound.RedeemAllowed(ctx, redeemTokens, market); !allowed {
+		if allowed := market.RedeemAllowed(redeemTokens); !allowed {
 			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrRedeemNotAllowed)
 		}
 
@@ -81,11 +81,7 @@ func (w *Payee) handleQuickRedeemEvent(ctx context.Context, output *core.Output,
 		}
 
 		price := market.Price
-		exchangeRate, e := compound.CurExchangeRate(ctx, market)
-		if e != nil {
-			log.Errorln(e)
-			return e
-		}
+		exchangeRate := market.CurExchangeRate()
 		unpledgedTokenLiquidity := redeemTokens.Mul(exchangeRate).Mul(market.CollateralFactor).Mul(price)
 		if unpledgedTokenLiquidity.GreaterThan(liquidity) {
 			log.Errorf("insufficient liquidity, liquidity:%v, changed_liquidity:%v", liquidity, unpledgedTokenLiquidity)

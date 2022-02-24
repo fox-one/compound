@@ -47,17 +47,12 @@ func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, user
 		}
 
 		// check redeem allowed
-		if allowed := compound.RedeemAllowed(ctx, redeemTokens, market); !allowed {
+		if allowed := market.RedeemAllowed(redeemTokens); !allowed {
 			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrRedeemNotAllowed)
 		}
 
 		// transfer asset to user
-		exchangeRate, e := compound.CurExchangeRate(ctx, market)
-		if e != nil {
-			log.Errorln(e)
-			return e
-		}
-
+		exchangeRate := market.CurExchangeRate()
 		amount := redeemTokens.Mul(exchangeRate).Truncate(8)
 
 		extra := core.NewTransactionExtra()
