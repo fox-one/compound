@@ -6,53 +6,66 @@ import (
 	"context"
 
 	"github.com/fox-one/pkg/logger"
+	"github.com/sirupsen/logrus"
 )
 
 func (w *Payee) handleOpenMarketEvent(ctx context.Context, p *core.Proposal, req proposal.MarketStatusReq, output *core.Output) error {
-	log := logger.FromContext(ctx).WithField("worker", "open-market")
+	log := logger.FromContext(ctx).WithFields(logrus.Fields{
+		"proposal": "open-market",
+		"asset":    req.AssetID,
+	})
 
-	market, e := w.marketStore.Find(ctx, req.AssetID)
-	if e != nil {
-		return e
+	market, err := w.marketStore.Find(ctx, req.AssetID)
+	if err != nil {
+		log.WithError(err).Errorln("markets.Find")
+		return err
 	}
 
 	if market.ID == 0 {
-		return nil
+		log.WithError(err).Errorln("skip: market not found")
+		return errProposalSkip
 	}
 
-	if e = AccrueInterest(ctx, market, output.CreatedAt); e != nil {
-		return e
+	if err := AccrueInterest(ctx, market, output.CreatedAt); err != nil {
+		log.WithError(err).Errorln("AccrueInterest")
+		return err
 	}
 
 	market.Status = core.MarketStatusOpen
-	if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
-		log.Errorln(e)
-		return e
+	if err := w.marketStore.Update(ctx, market, output.ID); err != nil {
+		log.WithError(err).Errorln("markets.Update")
+		return err
 	}
 
 	return nil
 }
 
 func (w *Payee) handleCloseMarketEvent(ctx context.Context, p *core.Proposal, req proposal.MarketStatusReq, output *core.Output) error {
-	log := logger.FromContext(ctx).WithField("worker", "close-market")
+	log := logger.FromContext(ctx).WithFields(logrus.Fields{
+		"proposal": "close-market",
+		"asset":    req.AssetID,
+	})
 
-	market, e := w.marketStore.Find(ctx, req.AssetID)
-	if e != nil {
-		return e
+	market, err := w.marketStore.Find(ctx, req.AssetID)
+	if err != nil {
+		log.WithError(err).Errorln("markets.Find")
+		return err
 	}
 
 	if market.ID == 0 {
-		return nil
+		log.WithError(err).Errorln("skip: market not found")
+		return errProposalSkip
 	}
 
-	if e = AccrueInterest(ctx, market, output.CreatedAt); e != nil {
-		return e
+	if err := AccrueInterest(ctx, market, output.CreatedAt); err != nil {
+		log.WithError(err).Errorln("AccrueInterest")
+		return err
 	}
 
 	market.Status = core.MarketStatusClose
-	if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
-		log.Errorln(e)
-		return e
+	if err := w.marketStore.Update(ctx, market, output.ID); err != nil {
+		log.WithError(err).Errorln("markets.Update")
+		return err
 	}
 
 	return nil

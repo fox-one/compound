@@ -8,59 +8,64 @@ import (
 )
 
 func (w *Payee) handlePassedProposal(ctx context.Context, p *core.Proposal, output *core.Output) error {
+	if err := w.handlePassedProposalInternal(ctx, p, output); err != nil {
+		if err != errProposalSkip {
+			return err
+		}
+		return nil
+	}
+
+	// TODO insert tx
+	return nil
+}
+
+func (w *Payee) handlePassedProposalInternal(ctx context.Context, p *core.Proposal, output *core.Output) error {
 	switch p.Action {
 	case core.ActionTypeProposalUpsertMarket:
 		var proposalReq proposal.MarketReq
-		err := json.Unmarshal(p.Content, &proposalReq)
-		if err != nil {
+		if err := json.Unmarshal(p.Content, &proposalReq); err != nil {
 			return err
 		}
 		return w.handleMarketEvent(ctx, p, proposalReq, output)
 
 	case core.ActionTypeProposalWithdrawReserves:
 		var proposalReq proposal.WithdrawReq
-		err := json.Unmarshal(p.Content, &proposalReq)
-		if err != nil {
+		if err := json.Unmarshal(p.Content, &proposalReq); err != nil {
 			return err
 		}
 		return w.handleWithdrawEvent(ctx, p, proposalReq, output)
 
 	case core.ActionTypeProposalCloseMarket:
 		var req proposal.MarketStatusReq
-		err := json.Unmarshal(p.Content, &req)
-		if err != nil {
+		if err := json.Unmarshal(p.Content, &req); err != nil {
 			return err
 		}
 		return w.handleCloseMarketEvent(ctx, p, req, output)
 
 	case core.ActionTypeProposalOpenMarket:
 		var req proposal.MarketStatusReq
-		err := json.Unmarshal(p.Content, &req)
-		if err != nil {
+		if err := json.Unmarshal(p.Content, &req); err != nil {
 			return err
 		}
 		return w.handleOpenMarketEvent(ctx, p, req, output)
 
 	case core.ActionTypeProposalAddOracleSigner:
 		var req proposal.AddOracleSignerReq
-		err := json.Unmarshal(p.Content, &req)
-		if err != nil {
+		if err := json.Unmarshal(p.Content, &req); err != nil {
 			return err
 		}
 		return w.handleAddOracleSignerEvent(ctx, p, req, output)
 
 	case core.ActionTypeProposalRemoveOracleSigner:
 		var req proposal.RemoveOracleSignerReq
-		err := json.Unmarshal(p.Content, &req)
-		if err != nil {
+		if err := json.Unmarshal(p.Content, &req); err != nil {
 			return err
 		}
 		return w.handleRemoveOracleSignerEvent(ctx, p, req, output)
 
 	case core.ActionTypeProposalSetProperty:
 		var req proposal.SetProperty
-		err := json.Unmarshal(p.Content, &req)
-		if err != nil {
+		if err := json.Unmarshal(p.Content, &req); err != nil {
 			return err
 		}
 		return w.setProperty(ctx, output, p, req)

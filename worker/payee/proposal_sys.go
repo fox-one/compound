@@ -10,6 +10,7 @@ import (
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -17,27 +18,35 @@ var (
 )
 
 func (w *Payee) setProperty(ctx context.Context, output *core.Output, _ *core.Proposal, action proposal.SetProperty) error {
-	log := logger.FromContext(ctx)
+	log := logger.FromContext(ctx).WithFields(logrus.Fields{
+		"proposal": "set-property",
+		"key":      action.Key,
+	})
+	ctx = logger.WithContext(ctx, log)
 
 	if action.Key == "" {
-		return nil
+		log.Errorln("skip: empty key")
+		return errProposalSkip
 	}
 
 	if action.Key == sysversion.SysVersionKey {
 		ver, err := strconv.ParseInt(action.Value, 10, 64)
 		if err != nil {
 			log.WithError(err).Errorln("skip: parse sysversion failled", action.Value)
-			return nil
+			return errProposalSkip
 		}
 
 		if err := w.validateNewSysVersion(ctx, ver); err != nil {
 			if err == errProposalSkip {
-				return nil
+				log.Errorln("skip: invalid value", action.Value)
+				return errProposalSkip
 			}
+			log.WithError(err).Errorln("validate sys version failed", ver)
 			return err
 		}
 
 		if err := w.migrateSystem(ctx, ver, output.ID); err != nil {
+			log.WithError(err).WithField("new-version", ver).Errorln("migrate system")
 			return err
 		}
 	}
@@ -46,7 +55,6 @@ func (w *Payee) setProperty(ctx context.Context, output *core.Output, _ *core.Pr
 		log.WithError(err).Errorln("update properties", action.Key, action.Value)
 		return err
 	}
-
 	return nil
 }
 

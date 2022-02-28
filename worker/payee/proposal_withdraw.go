@@ -4,39 +4,49 @@ import (
 	"compound/core"
 	"compound/core/proposal"
 	"context"
-	"errors"
 
 	"github.com/fox-one/pkg/logger"
+	"github.com/fox-one/pkg/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 func (w *Payee) handleWithdrawEvent(ctx context.Context, p *core.Proposal, req proposal.WithdrawReq, output *core.Output) error {
-	log := logger.FromContext(ctx).WithField("worker", "withdraw")
+	log := logger.FromContext(ctx).WithFields(logrus.Fields{
+		"proposal": "withdraw",
+		"asset":    req.Asset,
+		"amount":   req.Amount,
+		"opponent": req.Opponent,
+	})
+	ctx = logger.WithContext(ctx, log)
 
 	amount := req.Amount.Truncate(8)
 
 	// check the market
-	market, e := w.marketStore.Find(ctx, req.Asset)
-	if e != nil {
-		return e
+	market, err := w.marketStore.Find(ctx, req.Asset)
+	if err != nil {
+		log.WithError(err).Errorln("markets.Find")
+		return err
 	}
 	if market.ID == 0 {
-		log.Errorln(errors.New("invalid market"))
-		return nil
+		log.WithError(err).Errorln("skip: market not found")
+		return errProposalSkip
 	}
 
 	// check the amount
 	if amount.GreaterThan(market.Reserves) {
-		log.Errorln("insufficient reserves")
-		return nil
+		log.WithField("reserves", market.Reserves).Errorln("insufficient reserves")
+		return errProposalSkip
 	}
 
-	transfer, err := core.NewTransfer(p.TraceID, req.Asset, amount, req.Opponent)
-	if err != nil {
-		log.WithError(err).Errorln("new transfer error")
-		return err
-	}
-
-	if err := w.walletStore.CreateTransfers(ctx, []*core.Transfer{transfer}); err != nil {
+	if err := w.walletStore.CreateTransfers(ctx, []*core.Transfer{
+		{
+			TraceID:   uuid.Modify(p.TraceID, "withdraw-reverses"),
+			AssetID:   req.Asset,
+			Amount:    amount,
+			Threshold: 1,
+			Opponents: []string{req.Opponent},
+		},
+	}); err != nil {
 		log.WithError(err).Errorln("wallets.CreateTransfers")
 		return err
 	}

@@ -9,16 +9,21 @@ import (
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/shopspring/decimal"
+	"github.com/sirupsen/logrus"
 )
 
 func (w *Payee) handleMarketEvent(ctx context.Context, p *core.Proposal, req proposal.MarketReq, output *core.Output) error {
-	log := logger.FromContext(ctx).WithField("worker", "add-market")
+	log := logger.FromContext(ctx).WithFields(logrus.Fields{
+		"proposal": "add-market",
+		"asset":    req.AssetID,
+	})
 
-	log.Infof("asset:%s", req.AssetID)
-	market, e := w.marketStore.Find(ctx, req.AssetID)
-	if e != nil {
-		return e
+	market, err := w.marketStore.Find(ctx, req.AssetID)
+	if err != nil {
+		log.WithError(err).Errorln("markets.Find")
+		return err
 	}
+
 	if market.ID == 0 {
 		market = &core.Market{
 			Symbol:               strings.ToUpper(req.Symbol),
@@ -42,56 +47,60 @@ func (w *Payee) handleMarketEvent(ctx context.Context, p *core.Proposal, req pro
 			Status:               core.MarketStatusClose,
 		}
 
-		if e = w.marketStore.Create(ctx, market); e != nil {
-			return e
+		if err := w.marketStore.Create(ctx, market); err != nil {
+			log.WithError(err).Errorln("markets.Create")
+			return err
 		}
-
 		return nil
 	}
 
-	if market.InitExchangeRate.GreaterThan(decimal.Zero) {
-		if e = AccrueInterest(ctx, market, output.CreatedAt); e != nil {
-			return e
-		}
+	one := decimal.New(1, 0)
+
+	if err := AccrueInterest(ctx, market, output.CreatedAt); err != nil {
+		log.WithError(err).Errorln("AccrueInterest")
+		return err
 	}
 
-	if req.InitExchange.GreaterThan(decimal.Zero) {
+	if req.InitExchange.IsPositive() {
 		market.InitExchangeRate = req.InitExchange
 	}
 
-	if req.ReserveFactor.GreaterThan(decimal.Zero) && req.ReserveFactor.LessThan(decimal.NewFromInt(1)) {
+	if req.ReserveFactor.IsPositive() && req.ReserveFactor.LessThan(one) {
 		market.ReserveFactor = req.ReserveFactor
 	}
 
-	if req.LiquidationIncentive.GreaterThanOrEqual(compound.LiquidationIncentiveMin) && req.LiquidationIncentive.LessThanOrEqual(compound.LiquidationIncentiveMax) {
+	if req.LiquidationIncentive.GreaterThanOrEqual(compound.LiquidationIncentiveMin) &&
+		req.LiquidationIncentive.LessThanOrEqual(compound.LiquidationIncentiveMax) {
 		market.LiquidationIncentive = req.LiquidationIncentive
 	}
 
-	if req.CollateralFactor.GreaterThanOrEqual(decimal.Zero) && req.CollateralFactor.LessThanOrEqual(compound.CollateralFactorMax) {
+	if !req.CollateralFactor.IsNegative() &&
+		req.CollateralFactor.LessThanOrEqual(compound.CollateralFactorMax) {
 		market.CollateralFactor = req.CollateralFactor
 	}
 
-	if req.BaseRate.GreaterThan(decimal.Zero) && req.BaseRate.LessThan(decimal.NewFromInt(1)) {
+	if req.BaseRate.IsPositive() && req.BaseRate.LessThan(one) {
 		market.BaseRate = req.BaseRate
 	}
 
-	if req.BorrowCap.GreaterThanOrEqual(decimal.Zero) {
+	if !req.BorrowCap.IsNegative() {
 		market.BorrowCap = req.BorrowCap
 	}
 
-	if req.CloseFactor.GreaterThanOrEqual(compound.CloseFactorMin) && req.CloseFactor.LessThanOrEqual(compound.CloseFactorMax) {
+	if req.CloseFactor.GreaterThanOrEqual(compound.CloseFactorMin) &&
+		req.CloseFactor.LessThanOrEqual(compound.CloseFactorMax) {
 		market.CloseFactor = req.CloseFactor
 	}
 
-	if req.Multiplier.GreaterThan(decimal.Zero) && req.Multiplier.LessThan(decimal.NewFromInt(1)) {
+	if req.Multiplier.IsPositive() && req.Multiplier.LessThan(one) {
 		market.Multiplier = req.Multiplier
 	}
 
-	if req.JumpMultiplier.GreaterThanOrEqual(decimal.Zero) && req.JumpMultiplier.LessThan(decimal.NewFromInt(1)) {
+	if !req.JumpMultiplier.IsNegative() && req.JumpMultiplier.LessThan(one) {
 		market.JumpMultiplier = req.JumpMultiplier
 	}
 
-	if req.Kink.GreaterThanOrEqual(decimal.Zero) && req.Kink.LessThan(decimal.NewFromInt(1)) {
+	if !req.Kink.IsNegative() && req.Kink.LessThan(one) {
 		market.Kink = req.Kink
 	}
 
@@ -105,10 +114,9 @@ func (w *Payee) handleMarketEvent(ctx context.Context, p *core.Proposal, req pro
 		market.Price = req.Price
 	}
 
-	if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
-		log.Errorln(e)
-		return e
+	if err := w.marketStore.Update(ctx, market, output.ID); err != nil {
+		log.WithError(err).Errorln("markets.Update")
+		return err
 	}
-
 	return nil
 }
