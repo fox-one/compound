@@ -70,7 +70,7 @@ type (
 
 	// IMarketStore asset store interface
 	IMarketStore interface {
-		Save(ctx context.Context, market *Market) error
+		Create(ctx context.Context, market *Market) error
 		Find(ctx context.Context, assetID string) (*Market, error)
 		FindBySymbol(ctx context.Context, symbol string) (*Market, error)
 		FindByCToken(ctx context.Context, ctokenAssetID string) (*Market, error)

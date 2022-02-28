@@ -25,6 +25,7 @@ func (w *Payee) handleMarketEvent(ctx context.Context, p *core.Proposal, req pro
 			AssetID:              req.AssetID,
 			CTokenAssetID:        req.CTokenAssetID,
 			InitExchangeRate:     req.InitExchange,
+			ExchangeRate:         req.InitExchange,
 			ReserveFactor:        req.ReserveFactor,
 			LiquidationIncentive: req.LiquidationIncentive,
 			BorrowCap:            req.BorrowCap,
@@ -41,7 +42,7 @@ func (w *Payee) handleMarketEvent(ctx context.Context, p *core.Proposal, req pro
 			Status:               core.MarketStatusClose,
 		}
 
-		if e = w.marketStore.Save(ctx, market); e != nil {
+		if e = w.marketStore.Create(ctx, market); e != nil {
 			return e
 		}
 

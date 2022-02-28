@@ -6,6 +6,7 @@ import (
 
 	"github.com/fox-one/pkg/store/db"
 	"github.com/jinzhu/gorm"
+	"github.com/shopspring/decimal"
 )
 
 type marketStore struct {
@@ -28,7 +29,7 @@ func init() {
 	})
 }
 
-func (s *marketStore) Save(ctx context.Context, market *core.Market) error {
+func (s *marketStore) Create(ctx context.Context, market *core.Market) error {
 	return s.db.Update().Where("asset_id=?", market.AssetID).FirstOrCreate(market).Error
 }
 
@@ -45,7 +46,7 @@ func (s *marketStore) Find(ctx context.Context, assetID string) (*core.Market, e
 		return nil, err
 	}
 
-	return &market, nil
+	return afterFind(&market), nil
 }
 
 func (s *marketStore) FindBySymbol(ctx context.Context, symbol string) (*core.Market, error) {
@@ -61,7 +62,7 @@ func (s *marketStore) FindBySymbol(ctx context.Context, symbol string) (*core.Ma
 		return nil, err
 	}
 
-	return &market, nil
+	return afterFind(&market), nil
 }
 
 func (s *marketStore) FindByCToken(ctx context.Context, ctokenAssetID string) (*core.Market, error) {
@@ -77,13 +78,16 @@ func (s *marketStore) FindByCToken(ctx context.Context, ctokenAssetID string) (*
 		return nil, err
 	}
 
-	return &market, nil
+	return afterFind(&market), nil
 }
 
 func (s *marketStore) All(ctx context.Context) ([]*core.Market, error) {
 	var markets []*core.Market
 	if err := s.db.View().Find(&markets).Error; err != nil {
 		return nil, err
+	}
+	for _, m := range markets {
+		afterFind(m)
 	}
 	return markets, nil
 }
@@ -97,7 +101,7 @@ func (s *marketStore) AllAsMap(ctx context.Context) (map[string]*core.Market, er
 	maps := make(map[string]*core.Market)
 
 	for _, m := range markets {
-		maps[m.Symbol] = m
+		afterFind(m)
 	}
 
 	return maps, nil
@@ -120,4 +124,14 @@ func (s *marketStore) Update(ctx context.Context, market *core.Market, version i
 	}
 
 	return nil
+}
+
+func afterFind(market *core.Market) *core.Market {
+	if !market.ExchangeRate.IsPositive() {
+		market.ExchangeRate = decimal.New(1, 0)
+	}
+	if !market.BorrowIndex.IsPositive() {
+		market.BorrowIndex = decimal.New(1, 0)
+	}
+	return market
 }
