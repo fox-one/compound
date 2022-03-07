@@ -19,16 +19,15 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 
 	var asset uuid.UUID
 	var borrowAmount decimal.Decimal
-	if _, err := mtg.Scan(body, &asset, &borrowAmount); err != nil {
-		if w.sysversion < 3 {
-			log.Infoln("refund: scan memo failed")
-			return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeBorrow, core.ErrInvalidArgument)
+	{
+		_, err := mtg.Scan(body, &asset, &borrowAmount)
+		if compound.Require(err == nil, "payee/skip/mtgscan", compound.FlagNoisy); err != nil {
+			log.Infoln("skip: scan memo failed")
+			return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeBorrow, core.ErrInvalidArgument)
 		}
-		log.Infoln("skip: scan memo failed")
-		return nil
-	}
 
-	borrowAmount = borrowAmount.Truncate(8)
+		borrowAmount = borrowAmount.Truncate(8)
+	}
 
 	log = logger.FromContext(ctx).WithFields(logrus.Fields{
 		"asset_id": asset,
