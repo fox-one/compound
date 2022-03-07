@@ -66,13 +66,3 @@ func NewOutTransfer(userID, followID, outputTraceID, assetID string, amount deci
 		Memo:      memoStr,
 	}, nil
 }
-
-func NewTransfer(traceID, assetID string, amount decimal.Decimal, opponent string) (*Transfer, error) {
-	return &Transfer{
-		TraceID:   traceID,
-		AssetID:   assetID,
-		Amount:    amount,
-		Threshold: 1,
-		Opponents: []string{opponent},
-	}, nil
-}

@@ -56,10 +56,7 @@ func (w *Payee) handleMarketEvent(ctx context.Context, p *core.Proposal, req pro
 
 	one := decimal.New(1, 0)
 
-	if err := AccrueInterest(ctx, market, output.CreatedAt); err != nil {
-		log.WithError(err).Errorln("AccrueInterest")
-		return err
-	}
+	AccrueInterest(ctx, market, output.CreatedAt)
 
 	if req.InitExchange.IsPositive() {
 		market.InitExchangeRate = req.InitExchange

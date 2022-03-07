@@ -15,6 +15,7 @@ import (
 	uuidutil "github.com/fox-one/pkg/uuid"
 	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -152,9 +153,13 @@ func (w *Payee) run(ctx context.Context) error {
 }
 
 func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
-	log := logger.FromContext(ctx).
-		WithField("output", output.TraceID).
-		WithField("sysversion", w.sysversion)
+	log := logger.FromContext(ctx).WithFields(logrus.Fields{
+		"output":     output.TraceID,
+		"asset":      output.AssetID,
+		"amount":     output.Amount,
+		"sysversion": w.sysversion,
+		"sender":     output.Sender,
+	})
 	ctx = logger.WithContext(ctx, log)
 
 	message := w.decodeMemo(output.Memo)
@@ -183,7 +188,10 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 		}
 	}
 
-	log = log.WithField("action", action.String())
+	log = log.WithFields(logrus.Fields{
+		"action": action.String(),
+		"follow": followID,
+	})
 	ctx = logger.WithContext(ctx, log)
 
 	switch action {
@@ -240,7 +248,7 @@ func (w *Payee) handleUserAction(ctx context.Context, output *core.Output, actio
 	case core.ActionTypeLiquidate:
 		return w.handleLiquidationEvent(ctx, output, userID, followID, body)
 	default:
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRefundTransfer, core.ErrUnknown)
+		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeRefundTransfer, core.ErrUnknown)
 	}
 }
 

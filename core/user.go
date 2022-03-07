@@ -1,10 +1,10 @@
 package core
 
 import (
-	"compound/pkg/id"
+	"context"
 	"fmt"
 
-	"context"
+	"github.com/fox-one/pkg/uuid"
 )
 
 // User user info
@@ -18,7 +18,7 @@ type User struct {
 
 // BuildUserAddress build compound user address
 func BuildUserAddressV0(mixinUserID string) string {
-	return id.UUIDFromString(fmt.Sprintf("compound-%s", mixinUserID))
+	return uuid.MD5(fmt.Sprintf("compound-%s", mixinUserID))
 }
 
 // UserStore user store interface

@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"compound/pkg/id"
 	"encoding/json"
 
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/qrcode"
+	"github.com/fox-one/pkg/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
 )
@@ -38,7 +38,7 @@ var depositCmd = &cobra.Command{
 		input := mixin.TransferInput{
 			AssetID: assetID,
 			Amount:  amountNum,
-			TraceID: id.GenTraceID(),
+			TraceID: uuid.New(),
 			Memo:    "deposit",
 		}
 		input.OpponentMultisig.Receivers = system.MemberIDs

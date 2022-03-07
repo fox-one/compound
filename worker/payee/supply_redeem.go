@@ -27,27 +27,24 @@ func (w *Payee) handleRedeemEvent(ctx context.Context, output *core.Output, user
 	}
 
 	if market.ID == 0 {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrMarketNotFound)
+		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrMarketNotFound)
 	}
 
 	if market.IsMarketClosed() {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrMarketClosed)
+		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrMarketClosed)
 	}
 
 	//accrue interest
-	if e = AccrueInterest(ctx, market, output.CreatedAt); e != nil {
-		log.Errorln(e)
-		return e
-	}
+	AccrueInterest(ctx, market, output.CreatedAt)
 
 	if tx.ID == 0 {
 		if redeemTokens.GreaterThan(market.CTokens) {
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrRedeemNotAllowed)
+			return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrRedeemNotAllowed)
 		}
 
 		// check redeem allowed
 		if allowed := market.RedeemAllowed(redeemTokens); !allowed {
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrRedeemNotAllowed)
+			return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeRedeem, core.ErrRedeemNotAllowed)
 		}
 
 		// transfer asset to user

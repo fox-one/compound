@@ -23,7 +23,7 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 	var borrowAsset uuid.UUID
 	var borrowAmount decimal.Decimal
 	if _, err := mtg.Scan(body, &borrowAsset, &borrowAmount); err != nil {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrInvalidArgument)
+		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrInvalidArgument)
 	}
 
 	borrowAmount = borrowAmount.Truncate(8)
@@ -48,16 +48,16 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 	}
 
 	if supplyMarket.ID == 0 {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrMarketNotFound)
+		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrMarketNotFound)
 	}
 	if supplyMarket.IsMarketClosed() {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrMarketClosed)
+		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrMarketClosed)
 	}
 
 	// check collateral
 	if !supplyMarket.CollateralFactor.IsPositive() {
 		log.Errorln(errors.New("pledge disallowed"))
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrPledgeNotAllowed)
+		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrPledgeNotAllowed)
 	}
 
 	borrowMarket, e := w.marketStore.Find(ctx, borrowAssetID)
@@ -65,10 +65,10 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 		return e
 	}
 	if borrowMarket.ID == 0 {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrMarketNotFound)
+		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrMarketNotFound)
 	}
 	if borrowMarket.IsMarketClosed() {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrMarketClosed)
+		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrMarketClosed)
 	}
 
 	supply, e := w.supplyStore.Find(ctx, userID, supplyMarket.CTokenAssetID)
@@ -82,15 +82,9 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 	}
 
 	// supply market accrue interest
-	if e = AccrueInterest(ctx, supplyMarket, output.CreatedAt); e != nil {
-		return e
-	}
-
+	AccrueInterest(ctx, supplyMarket, output.CreatedAt)
 	//borrow market accrue interest
-	if e = AccrueInterest(ctx, borrowMarket, output.CreatedAt); e != nil {
-		log.Errorln(e)
-		return e
-	}
+	AccrueInterest(ctx, borrowMarket, output.CreatedAt)
 
 	tx, e := w.transactionStore.FindByTraceID(ctx, output.TraceID)
 	if e != nil {
@@ -101,19 +95,19 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 		// check borrow ability
 		if !borrowAmount.IsPositive() {
 			log.Errorln("invalid borrow amount")
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrBorrowNotAllowed)
+			return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrBorrowNotAllowed)
 		}
 
 		// check borrow cap
 		borrowableSupplies := borrowMarket.TotalCash.Sub(borrowMarket.Reserves)
 		if borrowableSupplies.LessThan(borrowMarket.BorrowCap) {
 			log.Errorln("insufficient market cash")
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrBorrowNotAllowed)
+			return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrBorrowNotAllowed)
 		}
 
 		if borrowAmount.GreaterThan(borrowableSupplies.Sub(borrowMarket.BorrowCap)) {
 			log.Errorln("insufficient market cash")
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrBorrowNotAllowed)
+			return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrBorrowNotAllowed)
 		}
 
 		// check liquidity
@@ -133,7 +127,7 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 		borrowValue := borrowAmount.Mul(borrowMarket.Price)
 		if borrowValue.GreaterThan(liquidity) {
 			log.Errorln("insufficient liquidity")
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrBorrowNotAllowed)
+			return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrBorrowNotAllowed)
 		}
 
 		// supply
@@ -148,7 +142,7 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 		}
 
 		if ctokens.LessThan(decimal.NewFromFloat(0.00000001)) {
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrInvalidAmount)
+			return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrInvalidAmount)
 		}
 
 		newCollaterals := decimal.Zero

@@ -26,10 +26,7 @@ func (w *Payee) handleOpenMarketEvent(ctx context.Context, p *core.Proposal, req
 		return errProposalSkip
 	}
 
-	if err := AccrueInterest(ctx, market, output.CreatedAt); err != nil {
-		log.WithError(err).Errorln("AccrueInterest")
-		return err
-	}
+	AccrueInterest(ctx, market, output.CreatedAt)
 
 	market.Status = core.MarketStatusOpen
 	if err := w.marketStore.Update(ctx, market, output.ID); err != nil {
@@ -57,10 +54,7 @@ func (w *Payee) handleCloseMarketEvent(ctx context.Context, p *core.Proposal, re
 		return errProposalSkip
 	}
 
-	if err := AccrueInterest(ctx, market, output.CreatedAt); err != nil {
-		log.WithError(err).Errorln("AccrueInterest")
-		return err
-	}
+	AccrueInterest(ctx, market, output.CreatedAt)
 
 	market.Status = core.MarketStatusClose
 	if err := w.marketStore.Update(ctx, market, output.ID); err != nil {

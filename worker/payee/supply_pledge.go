@@ -22,18 +22,15 @@ func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, user
 		return err
 	}
 	if market.ID == 0 {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypePledge, core.ErrMarketNotFound)
+		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypePledge, core.ErrMarketNotFound)
 	}
 
 	if market.IsMarketClosed() {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypePledge, core.ErrMarketClosed)
+		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypePledge, core.ErrMarketClosed)
 	}
 
 	//accrue interest
-	if err := AccrueInterest(ctx, market, output.CreatedAt); err != nil {
-		log.WithError(err).Errorln("accrue interest error")
-		return err
-	}
+	AccrueInterest(ctx, market, output.CreatedAt)
 
 	supply, e := w.supplyStore.Find(ctx, userID, ctokenAssetID)
 	if e != nil {
@@ -48,13 +45,13 @@ func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, user
 	if tx.ID == 0 {
 		if ctokens.GreaterThan(market.CTokens) {
 			log.Errorln(errors.New("ctoken overflow"))
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypePledge, core.ErrPledgeNotAllowed)
+			return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypePledge, core.ErrPledgeNotAllowed)
 		}
 
 		// check collateral
 		if !market.CollateralFactor.IsPositive() {
 			log.Errorln(errors.New("pledge disallowed"))
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypePledge, core.ErrPledgeNotAllowed)
+			return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypePledge, core.ErrPledgeNotAllowed)
 		}
 
 		newCollaterals := decimal.Zero

@@ -18,7 +18,7 @@ func (w *Payee) handleQuickRedeemEvent(ctx context.Context, output *core.Output,
 	var redeemTokens decimal.Decimal
 
 	if _, err := mtg.Scan(body, &ctokenAsset, &redeemTokens); err != nil {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrInvalidArgument)
+		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrInvalidArgument)
 	}
 
 	log.Infof("ctokenAssetID:%s, amount:%s", ctokenAsset.String(), redeemTokens)
@@ -31,11 +31,11 @@ func (w *Payee) handleQuickRedeemEvent(ctx context.Context, output *core.Output,
 	}
 
 	if market.ID == 0 {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrMarketNotFound)
+		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrMarketNotFound)
 	}
 
 	if market.IsMarketClosed() {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrMarketClosed)
+		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrMarketClosed)
 	}
 
 	supply, e := w.supplyStore.Find(ctx, userID, market.CTokenAssetID)
@@ -43,14 +43,11 @@ func (w *Payee) handleQuickRedeemEvent(ctx context.Context, output *core.Output,
 		return e
 	}
 	if supply.ID == 0 {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrSupplyNotFound)
+		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrSupplyNotFound)
 	}
 
 	//accrue interest
-	if e = AccrueInterest(ctx, market, output.CreatedAt); e != nil {
-		log.Errorln(e)
-		return e
-	}
+	AccrueInterest(ctx, market, output.CreatedAt)
 
 	tx, e := w.transactionStore.FindByTraceID(ctx, output.TraceID)
 	if e != nil {
@@ -59,17 +56,17 @@ func (w *Payee) handleQuickRedeemEvent(ctx context.Context, output *core.Output,
 
 	if tx.ID == 0 {
 		if redeemTokens.GreaterThan(market.CTokens) {
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrRedeemNotAllowed)
+			return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrRedeemNotAllowed)
 		}
 
 		if redeemTokens.GreaterThan(supply.Collaterals) {
 			log.Errorln(errors.New("insufficient collaterals"))
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrInsufficientCollaterals)
+			return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrInsufficientCollaterals)
 		}
 
 		// check redeem allowed
 		if allowed := market.RedeemAllowed(redeemTokens); !allowed {
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrRedeemNotAllowed)
+			return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrRedeemNotAllowed)
 		}
 
 		// check liqudity
@@ -84,7 +81,7 @@ func (w *Payee) handleQuickRedeemEvent(ctx context.Context, output *core.Output,
 		unpledgedTokenLiquidity := redeemTokens.Mul(exchangeRate).Mul(market.CollateralFactor).Mul(price)
 		if unpledgedTokenLiquidity.GreaterThan(liquidity) {
 			log.Errorf("insufficient liquidity, liquidity:%v, changed_liquidity:%v", liquidity, unpledgedTokenLiquidity)
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrInsufficientLiquidity)
+			return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrInsufficientLiquidity)
 		}
 
 		underlyingAmount := redeemTokens.Mul(exchangeRate).Truncate(8)

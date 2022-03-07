@@ -4,6 +4,7 @@ import (
 	"compound/core"
 	"compound/pkg/compound"
 	"context"
+	"encoding/json"
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/shopspring/decimal"
@@ -11,123 +12,105 @@ import (
 
 // handle borrow repay event
 func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
+	log := logger.FromContext(ctx).WithField("event", "borrow_repay")
+	ctx = logger.WithContext(ctx, log)
 
-	log := logger.FromContext(ctx).WithField("worker", "borrow_repay")
-
-	repayAmount := output.Amount
-	assetID := output.AssetID
-
-	log.Infoln(":asset:", output.AssetID, "amount:", repayAmount)
-
-	market, e := w.marketStore.Find(ctx, assetID)
-	if e != nil {
-		return e
-	}
-
-	if market.ID == 0 {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRepay, core.ErrMarketNotFound)
+	market, err := w.requireMarket(ctx, output.AssetID)
+	if err != nil {
+		log.WithError(err).Infoln("invalid market")
+		return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeRepay, core.ErrMarketNotFound)
 	}
 
 	//update interest
-	if e = AccrueInterest(ctx, market, output.CreatedAt); e != nil {
-		log.Errorln(e)
-		return e
+	AccrueInterest(ctx, market, output.CreatedAt)
+
+	borrow, err := w.requireBorrow(ctx, userID, output.AssetID)
+	if err != nil {
+		log.WithError(err).Infoln("invalid borrow")
+		return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeRepay, core.ErrBorrowNotFound)
 	}
 
-	borrow, e := w.borrowStore.Find(ctx, userID, market.AssetID)
-	if e != nil {
-		return e
-	}
-
-	if borrow.ID == 0 {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRepay, core.ErrBorrowNotFound)
-	}
-
-	transaction, e := w.transactionStore.FindByTraceID(ctx, output.TraceID)
-	if e != nil {
-		return e
+	transaction, err := w.transactionStore.FindByTraceID(ctx, output.TraceID)
+	if err != nil {
+		log.WithError(err).Errorln("transactions.Find")
+		return err
 	}
 
 	if transaction.ID == 0 {
-		if market.IsMarketClosed() {
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeRepay, core.ErrMarketClosed)
+		if err := compound.Require(!market.IsMarketClosed(), "payee/refund/market-closed", compound.FlagRefund); err != nil {
+			log.WithError(err).Infoln("market closed")
+			return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeRepay, core.ErrMarketClosed)
 		}
 
-		//update borrow info
-		borrowBalance, e := compound.BorrowBalance(ctx, borrow, market)
-		if e != nil {
-			log.Errorln(e)
-			return e
+		borrowBalance, err := compound.BorrowBalance(ctx, borrow, market)
+		if err != nil {
+			log.WithError(err).Errorln("BorrowBalance")
+			return err
 		}
 
-		newBalance := borrowBalance.Sub(repayAmount)
-		newIndex := market.BorrowIndex
-		if !newBalance.IsPositive() {
-			newBalance = decimal.Zero
-			newIndex = decimal.Zero
+		repayAmount := output.Amount
+		if repayAmount.GreaterThan(borrowBalance) {
 			repayAmount = borrowBalance
 		}
 
 		extra := core.NewTransactionExtra()
-		extra.Put("repay_amount", repayAmount.Truncate(compound.MaxPricision))
-		extra.Put("new_balance", newBalance.Truncate(compound.MaxPricision))
-		extra.Put("new_index", newIndex.Truncate(compound.MaxPricision))
-		extra.Put(core.TransactionKeyBorrow, core.ExtraBorrow{
-			UserID:        borrow.UserID,
-			AssetID:       borrow.AssetID,
-			Principal:     newBalance,
-			InterestIndex: newIndex,
-		})
+		extra.Put("repay_amount", repayAmount)
 
 		transaction = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeRepay, output, extra)
-		if e := w.transactionStore.Create(ctx, transaction); e != nil {
-			return e
+		if err := w.transactionStore.Create(ctx, transaction); err != nil {
+			log.WithError(err).Errorln("transactions.Create")
+			return err
 		}
 	}
 
 	var extra struct {
 		RepayAmount decimal.Decimal `json:"repay_amount"`
-		NewBalance  decimal.Decimal `json:"new_balance"`
-		NewIndex    decimal.Decimal `json:"new_index"`
 	}
-
-	if e := transaction.UnmarshalExtraData(&extra); e != nil {
-		return e
+	if err := json.Unmarshal(transaction.Data, &extra); err != nil {
+		log.WithError(err).Errorln("Unmarshal extra")
+		return err
 	}
 
 	if output.ID > borrow.Version {
-		borrow.Principal = extra.NewBalance
-		borrow.InterestIndex = extra.NewIndex
-		if e = w.borrowStore.Update(ctx, borrow, output.ID); e != nil {
-			log.Errorln(e)
-			return e
-		}
-	}
-
-	if refundAmount := output.Amount.Sub(extra.RepayAmount).Truncate(8); refundAmount.GreaterThan(decimal.Zero) {
-		transferAction := core.TransferAction{
-			Source:   core.ActionTypeRepayRefundTransfer,
-			FollowID: followID,
+		borrowBalance, err := compound.BorrowBalance(ctx, borrow, market)
+		if err != nil {
+			log.WithError(err).Errorln("BorrowBalance")
+			return err
 		}
 
-		if e := w.transferOut(ctx, userID, followID, output.TraceID, assetID, refundAmount, &transferAction); e != nil {
-			return e
+		borrow.Principal = borrowBalance.Sub(extra.RepayAmount)
+		borrow.InterestIndex = market.BorrowIndex
+
+		if refundAmount := output.Amount.Sub(extra.RepayAmount).Truncate(8); refundAmount.IsPositive() {
+			transferAction := core.TransferAction{
+				Source:   core.ActionTypeRepayRefundTransfer,
+				FollowID: followID,
+			}
+
+			if err := w.transferOut(ctx, userID, followID, output.TraceID, output.AssetID, refundAmount, &transferAction); err != nil {
+				log.WithError(err).Errorln("transferOut")
+				return err
+			}
+		}
+
+		if err := w.borrowStore.Update(ctx, borrow, output.ID); err != nil {
+			log.WithError(err).Errorln("borrows.Update")
+			return err
 		}
 	}
 
 	if output.ID > market.Version {
 		market.TotalBorrows = market.TotalBorrows.Sub(extra.RepayAmount).Truncate(compound.MaxPricision)
 		market.TotalCash = market.TotalCash.Add(extra.RepayAmount).Truncate(compound.MaxPricision)
-		switch w.sysversion {
-		case 0:
-		default:
-			if market.TotalBorrows.IsNegative() {
-				market.TotalBorrows = decimal.Zero
-			}
+		if w.sysversion > 0 && market.TotalBorrows.IsNegative() {
+			market.TotalBorrows = decimal.Zero
 		}
-		if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
-			log.Errorln(e)
-			return e
+
+		//update interest
+		AccrueInterest(ctx, market, output.CreatedAt)
+		if err := w.marketStore.Update(ctx, market, output.ID); err != nil {
+			log.WithError(err).Errorln("markets.Update")
+			return err
 		}
 	}
 

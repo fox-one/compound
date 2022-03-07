@@ -22,9 +22,7 @@ func (w *Payee) handlePriceEvent(ctx context.Context, output *core.Output, price
 	}
 
 	// accrue interest
-	if e = AccrueInterest(ctx, market, output.CreatedAt); e != nil {
-		return e
-	}
+	AccrueInterest(ctx, market, output.CreatedAt)
 
 	if output.ID > market.Version {
 		log.Infoln("dirt_price: asset:", priceData.AssetID, ", price:", priceData.Price, ",time:", output.CreatedAt)

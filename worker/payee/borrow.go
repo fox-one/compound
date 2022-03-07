@@ -9,100 +9,45 @@ import (
 	"github.com/fox-one/pkg/logger"
 	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
+	"github.com/sirupsen/logrus"
 )
 
 // handle borrow event
 func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
 	log := logger.FromContext(ctx).WithField("event", "borrow")
+	ctx = logger.WithContext(ctx, log)
 
 	var asset uuid.UUID
 	var borrowAmount decimal.Decimal
 	if _, err := mtg.Scan(body, &asset, &borrowAmount); err != nil {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeBorrow, core.ErrInvalidArgument)
+		if w.sysversion < 3 {
+			log.Infoln("refund: scan memo failed")
+			return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeBorrow, core.ErrInvalidArgument)
+		}
+		log.Infoln("skip: scan memo failed")
+		return nil
 	}
 
 	borrowAmount = borrowAmount.Truncate(8)
-	assetID := asset.String()
-	log.Infoln("borrow, asset:", assetID, ":amount:", borrowAmount)
 
-	market, e := w.marketStore.Find(ctx, assetID)
-	if e != nil {
-		log.WithError(e).Errorln("find market error")
-		return e
-	}
+	log = logger.FromContext(ctx).WithFields(logrus.Fields{
+		"asset_id": asset,
+		"amount":   borrowAmount,
+	})
+	ctx = logger.WithContext(ctx, log)
 
-	if market.ID == 0 {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeBorrow, core.ErrMarketNotFound)
+	market, err := w.requireMarket(ctx, asset.String())
+	if err != nil {
+		log.WithError(err).Infoln("invalid market")
+		return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeBorrow, core.ErrMarketNotFound)
 	}
 
 	// accrue interest
-	if e = AccrueInterest(ctx, market, output.CreatedAt); e != nil {
-		return e
-	}
+	AccrueInterest(ctx, market, output.CreatedAt)
 
-	borrow, e := w.borrowStore.Find(ctx, userID, assetID)
-	if e != nil {
-		return e
-	}
-
-	tx, e := w.transactionStore.FindByTraceID(ctx, output.TraceID)
-	if e != nil {
-		return e
-	}
-
-	if tx.ID == 0 {
-		if market.IsMarketClosed() {
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeBorrow, core.ErrMarketClosed)
-		}
-
-		liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, userID, market)
-		if e != nil {
-			log.Errorln(e)
-			return e
-		}
-
-		if !market.BorrowAllowed(borrowAmount) ||
-			borrowAmount.Mul(market.Price).GreaterThan(liquidity) {
-			log.Errorln("borrow not allowed")
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeBorrow, core.ErrBorrowNotAllowed)
-		}
-
-		newBorrowBalance := decimal.Zero
-		if borrow.ID == 0 {
-			newBorrowBalance = borrowAmount.Truncate(compound.MaxPricision)
-		} else {
-			borrowBalance, e := compound.BorrowBalance(ctx, borrow, market)
-			if e != nil {
-				log.Errorln(e)
-				return e
-			}
-			newBorrowBalance = borrowBalance.Add(borrowAmount).Truncate(compound.MaxPricision)
-		}
-
-		extra := core.NewTransactionExtra()
-		extra.Put(core.TransactionKeyAssetID, assetID)
-		extra.Put(core.TransactionKeyAmount, borrowAmount)
-		extra.Put("new_borrow_balance", newBorrowBalance)
-		extra.Put("new_borrow_index", market.BorrowIndex)
-		extra.Put(core.TransactionKeyBorrow, core.ExtraBorrow{
-			UserID:        userID,
-			AssetID:       assetID,
-			Principal:     newBorrowBalance,
-			InterestIndex: market.BorrowIndex,
-		})
-
-		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeBorrow, output, extra)
-		if err := w.transactionStore.Create(ctx, tx); err != nil {
-			return err
-		}
-	}
-
-	var extra struct {
-		NewBorrowBalance decimal.Decimal `json:"new_borrow_balance"`
-		NewBorrowIndex   decimal.Decimal `json:"new_borrow_index"`
-	}
-
-	if err := tx.UnmarshalExtraData(&extra); err != nil {
+	borrow, err := w.borrowStore.Find(ctx, userID, asset.String())
+	if err != nil {
+		log.WithError(err).Errorln("borrows.Find")
 		return err
 	}
 
@@ -111,43 +56,105 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 		borrow = &core.Borrow{
 			UserID:        userID,
 			AssetID:       market.AssetID,
-			Principal:     extra.NewBorrowBalance,
-			InterestIndex: extra.NewBorrowIndex,
-			Version:       output.ID}
-
-		if e = w.borrowStore.Create(ctx, borrow); e != nil {
-			log.Errorln(e)
-			return e
+			InterestIndex: market.BorrowIndex,
 		}
-	} else {
-		//update borrow account
-		if output.ID > borrow.Version {
-			borrow.Principal = extra.NewBorrowBalance
-			borrow.InterestIndex = extra.NewBorrowIndex
-			e = w.borrowStore.Update(ctx, borrow, output.ID)
-			if e != nil {
-				log.Errorln(e)
-				return e
-			}
+
+		if err := w.borrowStore.Create(ctx, borrow); err != nil {
+			log.WithError(err).Errorln("borrows.Create")
+			return err
+		}
+	}
+
+	tx, err := w.transactionStore.FindByTraceID(ctx, output.TraceID)
+	if err != nil {
+		log.WithError(err).Errorln("transactions.Find")
+		return err
+	}
+
+	if tx.ID == 0 {
+		if err := compound.Require(!market.IsMarketClosed(), "payee/refund/market-closed", compound.FlagRefund); err != nil {
+			log.WithError(err).Infoln("market closed")
+			return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeBorrow, core.ErrMarketClosed)
+		}
+
+		liquidity, err := w.accountService.CalculateAccountLiquidity(ctx, userID, market)
+		if err != nil {
+			log.WithError(err).Errorln("CalculateAccountLiquidity")
+			return err
+		}
+
+		if err := compound.Require(
+			!market.BorrowAllowed(borrowAmount) || borrowAmount.Mul(market.Price).GreaterThan(liquidity),
+			"payee/refund/borrow-denied",
+			compound.FlagRefund,
+		); err != nil {
+			log.WithError(err).Infoln("borrow not allowed")
+			return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeBorrow, core.ErrBorrowNotAllowed)
+		}
+
+		extra := core.NewTransactionExtra()
+		extra.Put("asset_id", asset.String())
+		extra.Put("amount", borrowAmount)
+
+		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeBorrow, output, extra)
+		if err := w.transactionStore.Create(ctx, tx); err != nil {
+			return err
+		}
+	}
+
+	var extra struct {
+		AssetID string          `json:"asset_id"`
+		Amount  decimal.Decimal `json:"amount"`
+	}
+
+	if err := tx.UnmarshalExtraData(&extra); err != nil {
+		log.WithError(err).Errorln("Unmarshal extra")
+		return err
+	}
+
+	//update borrow account
+	if output.ID > borrow.Version {
+		borrowBalance, err := compound.BorrowBalance(ctx, borrow, market)
+		if err != nil {
+			log.WithError(err).Errorln("BorrowBalance")
+			return err
+		}
+
+		borrow.Principal = borrowBalance.Add(extra.Amount)
+		borrow.InterestIndex = market.BorrowIndex
+
+		if err := w.borrowStore.Update(ctx, borrow, output.ID); err != nil {
+			log.WithError(err).Errorln("borrows.Update")
+			return err
 		}
 	}
 
 	//transfer borrowed asset
-	transferAction := core.TransferAction{
-		Source:   core.ActionTypeBorrowTransfer,
-		FollowID: followID,
-	}
-	if err := w.transferOut(ctx, userID, followID, output.TraceID, assetID, borrowAmount, &transferAction); err != nil {
+	if err := w.transferOut(
+		ctx,
+		userID,
+		followID,
+		output.TraceID,
+		asset.String(),
+		borrowAmount,
+		&core.TransferAction{
+			Source:   core.ActionTypeBorrowTransfer,
+			FollowID: followID,
+		},
+	); err != nil {
+		log.WithError(err).Errorln("transferOut")
 		return err
 	}
 
 	if output.ID > market.Version {
 		market.TotalCash = market.TotalCash.Sub(borrowAmount).Truncate(compound.MaxPricision)
 		market.TotalBorrows = market.TotalBorrows.Add(borrowAmount).Truncate(compound.MaxPricision)
+		//update interest
+		AccrueInterest(ctx, market, output.CreatedAt)
 		// update market
-		if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
-			log.Errorln(e)
-			return e
+		if err := w.marketStore.Update(ctx, market, output.ID); err != nil {
+			log.WithError(err).Errorln("markets.Update")
+			return err
 		}
 	}
 

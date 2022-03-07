@@ -21,18 +21,15 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 	}
 
 	if market.ID == 0 {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeSupply, core.ErrMarketNotFound)
+		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeSupply, core.ErrMarketNotFound)
 	}
 
 	if market.IsMarketClosed() {
-		return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeSupply, core.ErrMarketClosed)
+		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeSupply, core.ErrMarketClosed)
 	}
 
 	//accrue interest
-	if e = AccrueInterest(ctx, market, output.CreatedAt); e != nil {
-		log.Errorln(e)
-		return e
-	}
+	AccrueInterest(ctx, market, output.CreatedAt)
 
 	tx, e := w.transactionStore.FindByTraceID(ctx, output.TraceID)
 	if e != nil {
@@ -44,7 +41,7 @@ func (w *Payee) handleSupplyEvent(ctx context.Context, output *core.Output, user
 
 		ctokens := supplyAmount.Div(exchangeRate).Truncate(8)
 		if ctokens.IsZero() {
-			return w.handleRefundEvent(ctx, output, userID, followID, core.ActionTypeSupply, core.ErrInvalidAmount)
+			return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeSupply, core.ErrInvalidAmount)
 		}
 
 		extra := core.NewTransactionExtra()

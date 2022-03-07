@@ -13,25 +13,26 @@ import (
 
 // handle liquidation event
 func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
-	log := logger.FromContext(ctx).WithField("worker", "liquidation")
+	log := logger.FromContext(ctx).WithField("event", "liquidation")
+	ctx = logger.WithContext(ctx, log)
 
 	liquidator := userID
 	var seizedAddress uuid.UUID
 	var seizedCTokenAsset uuid.UUID
 	if _, err := mtg.Scan(body, &seizedAddress, &seizedCTokenAsset); err != nil {
-		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrInvalidArgument)
+		return w.handleRefundEventV0(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrInvalidArgument)
 	}
 
 	// check market close status
 	if w.HasClosedMarkets(ctx) {
-		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrMarketClosed)
+		return w.handleRefundEventV0(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrMarketClosed)
 	}
 
 	seizedUser, e := w.userStore.FindByAddress(ctx, seizedAddress.String())
 	if e != nil {
 		return e
 	} else if seizedUser.ID == 0 {
-		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrInvalidArgument)
+		return w.handleRefundEventV0(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrInvalidArgument)
 	}
 
 	seizedUserID := seizedUser.UserID
@@ -47,7 +48,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 		return e
 	}
 	if supplyMarket.ID == 0 {
-		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrMarketNotFound)
+		return w.handleRefundEventV0(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrMarketNotFound)
 	}
 
 	borrowMarket, e := w.marketStore.Find(ctx, userPayAssetID)
@@ -55,7 +56,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 		return e
 	}
 	if borrowMarket.ID == 0 {
-		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrMarketNotFound)
+		return w.handleRefundEventV0(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrMarketNotFound)
 	}
 
 	supply, e := w.supplyStore.Find(ctx, seizedUserID, supplyMarket.CTokenAssetID)
@@ -63,7 +64,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 		return e
 	}
 	if supply.ID == 0 {
-		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrSupplyNotFound)
+		return w.handleRefundEventV0(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrSupplyNotFound)
 	}
 
 	borrow, e := w.borrowStore.Find(ctx, seizedUserID, borrowMarket.AssetID)
@@ -71,20 +72,13 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 		return e
 	}
 	if borrow.ID == 0 {
-		return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrBorrowNotFound)
+		return w.handleRefundEventV0(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrBorrowNotFound)
 	}
 
 	//supply market accrue interest
-	if e = AccrueInterest(ctx, supplyMarket, output.CreatedAt); e != nil {
-		log.Errorln(e)
-		return e
-	}
-
+	AccrueInterest(ctx, supplyMarket, output.CreatedAt)
 	//borrow market accrue interest
-	if e = AccrueInterest(ctx, borrowMarket, output.CreatedAt); e != nil {
-		log.Errorln(e)
-		return e
-	}
+	AccrueInterest(ctx, borrowMarket, output.CreatedAt)
 
 	tx, e := w.transactionStore.FindByTraceID(ctx, output.TraceID)
 	if e != nil {
@@ -114,7 +108,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 
 		// refund to liquidator if seize not allowed
 		if !w.accountService.SeizeTokenAllowed(ctx, supply, borrow, liquidity) {
-			return w.handleRefundEvent(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrSeizeNotAllowed)
+			return w.handleRefundEventV0(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrSeizeNotAllowed)
 		}
 
 		borrowBalance, e := compound.BorrowBalance(ctx, borrow, borrowMarket)
