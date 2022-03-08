@@ -9,7 +9,7 @@ import (
 
 // Balance caculate borrow balance
 // balance = borrow.principal * market.borrow_index / borrow.interest_index
-func BorrowBalance(ctx context.Context, b *core.Borrow, market *core.Market) (decimal.Decimal, error) {
+func BorrowBalance(ctx context.Context, b *core.Borrow, market *core.Market) decimal.Decimal {
 	if !market.BorrowIndex.IsPositive() {
 		market.BorrowIndex = decimal.New(1, 0)
 	}
@@ -22,5 +22,5 @@ func BorrowBalance(ctx context.Context, b *core.Borrow, market *core.Market) (de
 	result := principalTimesIndex.Div(b.InterestIndex).
 		Shift(MaxPricision).Ceil().Shift(-MaxPricision)
 
-	return result, nil
+	return result
 }

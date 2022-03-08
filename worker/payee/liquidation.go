@@ -16,63 +16,43 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 	log := logger.FromContext(ctx).WithField("event", "liquidation")
 	ctx = logger.WithContext(ctx, log)
 
-	liquidator := userID
-	var seizedAddress uuid.UUID
-	var seizedCTokenAsset uuid.UUID
-	if _, err := mtg.Scan(body, &seizedAddress, &seizedCTokenAsset); err != nil {
-		return w.handleRefundEventV0(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrInvalidArgument)
+	var (
+		seizedAddress     uuid.UUID
+		seizedCTokenAsset uuid.UUID
+	)
+
+	{
+		_, err := mtg.Scan(body, &seizedAddress, &seizedCTokenAsset)
+		if err := compound.Require(err == nil, "payee/skip/mtgscan", compound.FlagNoisy); err != nil {
+			log.Infoln("skip: scan memo failed")
+			return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeLiquidate, core.ErrInvalidArgument)
+		}
 	}
 
-	// check market close status
-	if w.HasClosedMarkets(ctx) {
-		return w.handleRefundEventV0(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrMarketClosed)
+	seizedUser, err := w.userStore.FindByAddress(ctx, seizedAddress.String())
+	if err != nil {
+		log.WithError(err).Errorln("users.FindByAddress")
+		return err
+	} else if err := compound.Require(seizedUser.ID > 0, "payee/skip/invalid-seized-address", compound.FlagNoisy); err != nil {
+		log.Infoln("skip: invalid seized address")
+		return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeLiquidate, core.ErrInvalidArgument)
 	}
 
-	seizedUser, e := w.userStore.FindByAddress(ctx, seizedAddress.String())
-	if e != nil {
-		return e
-	} else if seizedUser.ID == 0 {
-		return w.handleRefundEventV0(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrInvalidArgument)
+	supplyMarket, err := w.requireMarket(ctx, seizedCTokenAsset.String())
+	if err != nil {
+		log.WithError(err).Infoln("invalid supply market")
+		return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeLiquidate, core.ErrMarketNotFound)
 	}
 
-	seizedUserID := seizedUser.UserID
-	seizedCTokenAssetID := seizedCTokenAsset.String()
-
-	userPayAmount := output.Amount
-	userPayAssetID := output.AssetID
-
-	log.Infof("seizedUser:%s, seizedAsset:%s, payAsset:%s, payAmount:%s", seizedUserID, seizedCTokenAssetID, userPayAssetID, userPayAmount)
-
-	supplyMarket, e := w.marketStore.FindByCToken(ctx, seizedCTokenAssetID)
-	if e != nil {
-		return e
-	}
-	if supplyMarket.ID == 0 {
-		return w.handleRefundEventV0(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrMarketNotFound)
+	borrowMarket, err := w.requireMarket(ctx, output.AssetID)
+	if err != nil {
+		log.WithError(err).Infoln("invalid borrow market")
+		return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeLiquidate, core.ErrMarketNotFound)
 	}
 
-	borrowMarket, e := w.marketStore.Find(ctx, userPayAssetID)
-	if e != nil {
-		return e
-	}
-	if borrowMarket.ID == 0 {
-		return w.handleRefundEventV0(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrMarketNotFound)
-	}
-
-	supply, e := w.supplyStore.Find(ctx, seizedUserID, supplyMarket.CTokenAssetID)
-	if e != nil {
-		return e
-	}
-	if supply.ID == 0 {
-		return w.handleRefundEventV0(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrSupplyNotFound)
-	}
-
-	borrow, e := w.borrowStore.Find(ctx, seizedUserID, borrowMarket.AssetID)
-	if e != nil {
-		return e
-	}
-	if borrow.ID == 0 {
-		return w.handleRefundEventV0(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrBorrowNotFound)
+	if borrowMarket.Version >= output.ID {
+		log.Infoln("skip: output.ID outdated")
+		return nil
 	}
 
 	//supply market accrue interest
@@ -80,113 +60,89 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 	//borrow market accrue interest
 	AccrueInterest(ctx, borrowMarket, output.CreatedAt)
 
-	tx, e := w.transactionStore.FindByTraceID(ctx, output.TraceID)
-	if e != nil {
-		return e
+	supply, err := w.requireSupply(ctx, seizedUser.UserID, supplyMarket.CTokenAssetID)
+	if err != nil {
+		log.WithError(err).Infoln("invalid supply")
+		return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeLiquidate, core.ErrSupplyNotFound)
+	}
+
+	borrow, err := w.requireBorrow(ctx, seizedUser.UserID, borrowMarket.AssetID)
+	if err != nil {
+		log.WithError(err).Infoln("invalid borrow")
+		return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeLiquidate, core.ErrBorrowNotFound)
+	}
+
+	tx, err := w.transactionStore.FindByTraceID(ctx, output.TraceID)
+	if err != nil {
+		log.WithError(err).Errorln("transactions.Find")
+		return err
 	}
 
 	if tx.ID == 0 {
-		supplyExchangeRate := supplyMarket.CurExchangeRate()
-
-		borrowPrice := borrowMarket.Price
-		if !borrowPrice.IsPositive() {
-			log.Errorln(e)
-			return e
+		if marketClosed, err := w.HasClosedMarkets(ctx, seizedUser.UserID); err != nil {
+			log.WithError(err).Errorln("HasClosedMarkets")
+			return err
+		} else if err := compound.Require(marketClosed, "payee/refund/market-closed", compound.FlagRefund); err != nil {
+			log.WithError(err).Infoln("market closed")
+			return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeLiquidate, core.ErrMarketClosed)
 		}
 
-		supplyPrice := supplyMarket.Price
-		if !supplyPrice.IsPositive() {
-			log.Errorln(e)
-			return e
-		}
-
-		liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, seizedUserID, borrowMarket, supplyMarket)
-		if e != nil {
-			log.Errorln(e)
-			return e
+		liquidity, err := w.accountService.CalculateAccountLiquidity(ctx, seizedUser.UserID, borrowMarket, supplyMarket)
+		if err != nil {
+			log.WithError(err).Errorln("accountz.CalculateAccountLiquidity")
+			return err
 		}
 
 		// refund to liquidator if seize not allowed
-		if !w.accountService.SeizeTokenAllowed(ctx, supply, borrow, liquidity) {
-			return w.handleRefundEventV0(ctx, output, liquidator, followID, core.ActionTypeLiquidate, core.ErrSeizeNotAllowed)
+		if err := compound.Require(
+			!w.accountService.SeizeTokenAllowed(ctx, supply, borrow, liquidity),
+			"payee/refund/seize-denied",
+			compound.FlagRefund,
+		); err != nil {
+			log.WithError(err).Infoln("market closed")
+			return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeLiquidate, core.ErrSeizeNotAllowed)
 		}
 
-		borrowBalance, e := compound.BorrowBalance(ctx, borrow, borrowMarket)
-		if e != nil {
-			log.Errorln(e)
-			return e
-		}
+		supplyExchangeRate := supplyMarket.CurExchangeRate()
+		seizedPrice := supplyMarket.Price.Sub(supplyMarket.Price.Mul(supplyMarket.LiquidationIncentive)).Truncate(compound.MaxPricision)
+		repayValue := output.Amount.Mul(borrowMarket.Price).Truncate(compound.MaxPricision)
+		borrowBalance := compound.BorrowBalance(ctx, borrow, borrowMarket)
+		seizedAmount := repayValue.Div(seizedPrice).Truncate(compound.MaxPricision)
+		if maxSeizeValue := supply.Collaterals.
+			Mul(supplyExchangeRate).
+			Mul(supplyMarket.CloseFactor).
+			Mul(seizedPrice).
+			Truncate(compound.MaxPricision); repayValue.GreaterThan(maxSeizeValue) {
 
-		// calculate values
-		//ctokenValue = ctokenAmount / exchange_rate * price
-		maxSeize := supply.Collaterals.Mul(supplyExchangeRate).Mul(supplyMarket.CloseFactor).Truncate(16)
-		seizedPrice := supplyPrice.Sub(supplyPrice.Mul(supplyMarket.LiquidationIncentive)).Truncate(16)
-		maxSeizeValue := maxSeize.Mul(seizedPrice).Truncate(16)
-		repayValue := userPayAmount.Mul(borrowPrice).Truncate(16)
-		borrowBalanceValue := borrowBalance.Mul(borrowPrice).Truncate(16)
-		seizedAmount := repayValue.Div(seizedPrice).Truncate(16)
-		if repayValue.GreaterThan(maxSeizeValue) {
 			repayValue = maxSeizeValue
 			seizedAmount = repayValue.Div(seizedPrice)
 		}
 
-		if repayValue.GreaterThan(borrowBalanceValue) {
+		if borrowBalanceValue := borrowBalance.Mul(borrowMarket.Price).Truncate(compound.MaxPricision); repayValue.GreaterThan(borrowBalanceValue) {
 			repayValue = borrowBalanceValue
 			seizedAmount = repayValue.Div(seizedPrice)
 		}
 
 		seizedCTokens := seizedAmount.Div(supplyExchangeRate).Truncate(8)
-
-		repayAmount := repayValue.Div(borrowPrice).Truncate(compound.MaxPricision)
-		newBorrowBalance := borrowBalance.Sub(repayAmount).Truncate(compound.MaxPricision)
-		newIndex := borrowMarket.BorrowIndex
-		if !newBorrowBalance.IsPositive() {
-			newBorrowBalance = decimal.Zero
-			newIndex = decimal.Zero
+		repayAmount := repayValue.Div(borrowMarket.Price).Truncate(compound.MaxPricision)
+		if repayAmount.GreaterThan(borrowBalance) {
 			repayAmount = borrowBalance
 		}
-		refundAmount := userPayAmount.Sub(repayAmount).Truncate(8)
 
 		extra := core.NewTransactionExtra()
-		extra.Put(core.TransactionKeyCTokenAssetID, seizedCTokenAssetID)
-		extra.Put(core.TransactionKeyAmount, seizedCTokens)
-		extra.Put(core.TransactionKeyPrice, seizedPrice)
-		if refundAmount.GreaterThan(decimal.Zero) {
-			extra.Put(core.TransactionKeyRefund, refundAmount)
-		} else {
-			extra.Put(core.TransactionKeyRefund, decimal.Zero)
-		}
-
-		newCollaterals := supply.Collaterals.Sub(seizedCTokens).Truncate(16)
-		extra.Put("new_collaterals", newCollaterals)
-		extra.Put("new_borrow_balance", newBorrowBalance)
-		extra.Put("new_borrow_index", newIndex)
+		extra.Put("ctoken_asset_id", seizedCTokenAsset.String())
+		extra.Put("amount", seizedCTokens)
 		extra.Put("repay_amount", repayAmount)
 
-		extra.Put(core.TransactionKeySupply, core.ExtraSupply{
-			UserID:        seizedUserID,
-			CTokenAssetID: supply.CTokenAssetID,
-			Collaterals:   newCollaterals,
-		})
-		extra.Put(core.TransactionKeyBorrow, core.ExtraBorrow{
-			UserID:        seizedUserID,
-			AssetID:       borrow.AssetID,
-			Principal:     newBorrowBalance,
-			InterestIndex: newIndex,
-		})
-		tx = core.BuildTransactionFromOutput(ctx, liquidator, followID, core.ActionTypeLiquidate, output, extra)
+		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeLiquidate, output, extra)
 		if err := w.transactionStore.Create(ctx, tx); err != nil {
 			return err
 		}
 	}
 
 	var extra struct {
-		SeizedCToken     decimal.Decimal `json:"amount"`
-		RefundAmount     decimal.Decimal `json:"refund"`
-		NewCollaterals   decimal.Decimal `json:"new_collaterals"`
-		NewBorrowBalance decimal.Decimal `json:"new_borrow_balance"`
-		NewBorrowIndex   decimal.Decimal `json:"new_borrow_index"`
-		RepayAmount      decimal.Decimal `json:"repay_amount"`
+		SeizedCToken decimal.Decimal `json:"amount"`
+		RepayAmount  decimal.Decimal `json:"repay_amount"`
 	}
 
 	if err := tx.UnmarshalExtraData(&extra); err != nil {
@@ -195,48 +151,66 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 
 	//update supply
 	if output.ID > supply.Version {
-		supply.Collaterals = extra.NewCollaterals
-		if e = w.supplyStore.Update(ctx, supply, output.ID); e != nil {
-			log.Errorln(e)
-			return e
+		supply.Collaterals = supply.Collaterals.Sub(extra.SeizedCToken).Truncate(compound.MaxPricision)
+		if err := w.supplyStore.Update(ctx, supply, output.ID); err != nil {
+			log.WithError(err).Errorln("supplies.Update")
+			return err
 		}
 	}
 
 	// update borrow account
 	if output.ID > borrow.Version {
-		borrow.Principal = extra.NewBorrowBalance
-		borrow.InterestIndex = extra.NewBorrowIndex
-		if e = w.borrowStore.Update(ctx, borrow, output.ID); e != nil {
-			log.Errorln(e)
-			return e
+		borrow.Principal = compound.BorrowBalance(ctx, borrow, borrowMarket).Sub(extra.RepayAmount).Truncate(compound.MaxPricision)
+		borrow.InterestIndex = borrowMarket.BorrowIndex
+		if err := w.borrowStore.Update(ctx, borrow, output.ID); err != nil {
+			log.WithError(err).Errorln("borrows.Update")
+			return err
 		}
 	}
 
 	// transfer seized ctoken to liquidator
-	transferAction := core.TransferAction{
-		Source:   core.ActionTypeLiquidateTransfer,
-		FollowID: followID,
-	}
-	if e = w.transferOut(ctx, liquidator, followID, output.TraceID, supplyMarket.CTokenAssetID, extra.SeizedCToken, &transferAction); e != nil {
-		return e
+	if err := w.transferOut(
+		ctx,
+		userID,
+		followID,
+		output.TraceID,
+		supplyMarket.CTokenAssetID,
+		extra.SeizedCToken,
+		&core.TransferAction{
+			Source:   core.ActionTypeLiquidateTransfer,
+			FollowID: followID,
+		},
+	); err != nil {
+		log.WithError(err).Errorln("transferOut")
+		return err
 	}
 
 	//refund redundant assets to liquidator
-	if extra.RefundAmount.GreaterThan(decimal.Zero) {
-		refundTransferAction := core.TransferAction{
-			Source:   core.ActionTypeLiquidateRefundTransfer,
-			FollowID: followID,
-		}
-		if e = w.transferOut(ctx, liquidator, followID, output.TraceID, output.AssetID, extra.RefundAmount, &refundTransferAction); e != nil {
-			return e
+	if refundAmount := output.Amount.Sub(extra.RepayAmount); refundAmount.IsPositive() {
+		if err := w.transferOut(
+			ctx,
+			userID,
+			followID,
+			output.TraceID,
+			output.AssetID,
+			refundAmount,
+			&core.TransferAction{
+				Source:   core.ActionTypeLiquidateRefundTransfer,
+				FollowID: followID,
+			},
+		); err != nil {
+			log.WithError(err).Errorln("transferOut refund")
+			return err
 		}
 	}
 
 	//update supply market ctokens
 	if output.ID > supplyMarket.Version {
-		if e = w.marketStore.Update(ctx, supplyMarket, output.ID); e != nil {
-			log.Errorln(e)
-			return e
+		//supply market accrue interest
+		AccrueInterest(ctx, supplyMarket, output.CreatedAt)
+		if err := w.marketStore.Update(ctx, supplyMarket, output.ID); err != nil {
+			log.WithError(err).Errorln("markets.Update")
+			return err
 		}
 	}
 
@@ -244,35 +218,59 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 	if output.ID > borrowMarket.Version {
 		borrowMarket.TotalBorrows = borrowMarket.TotalBorrows.Sub(extra.RepayAmount).Truncate(compound.MaxPricision)
 		borrowMarket.TotalCash = borrowMarket.TotalCash.Add(extra.RepayAmount).Truncate(compound.MaxPricision)
-		switch w.sysversion {
-		case 0:
-		default:
+		if w.sysversion > 0 {
 			if borrowMarket.TotalBorrows.IsNegative() {
 				borrowMarket.TotalBorrows = decimal.Zero
 			}
 		}
-		if e = w.marketStore.Update(ctx, borrowMarket, output.ID); e != nil {
-			log.Errorln(e)
-			return e
+		//borrow market accrue interest
+		AccrueInterest(ctx, borrowMarket, output.CreatedAt)
+		if err := w.marketStore.Update(ctx, borrowMarket, output.ID); err != nil {
+			log.WithError(err).Errorln("markets.Update")
+			return err
 		}
 	}
 
 	return nil
 }
 
-func (w *Payee) HasClosedMarkets(ctx context.Context) bool {
-	markets, e := w.marketStore.All(ctx)
-	if e != nil {
-		return false
-	}
+func (w *Payee) HasClosedMarkets(ctx context.Context, user string) (bool, error) {
+	var closedMarkets = map[string]bool{}
+	{
+		items, err := w.marketStore.All(ctx)
+		if err != nil {
+			return false, err
+		}
 
-	has := false
-	for _, m := range markets {
-		if m.Status == core.MarketStatusClose {
-			has = true
-			break
+		for _, item := range items {
+			if item.Status == core.MarketStatusClose {
+				closedMarkets[item.CTokenAssetID] = true
+				closedMarkets[item.AssetID] = true
+			}
 		}
 	}
 
-	return has
+	borrows, err := w.borrowStore.FindByUser(ctx, user)
+	if err != nil {
+		return false, err
+	}
+
+	for _, borrow := range borrows {
+		if _, ok := closedMarkets[borrow.AssetID]; ok {
+			return true, nil
+		}
+	}
+
+	supplies, err := w.supplyStore.FindByUser(ctx, user)
+	if err != nil {
+		return false, err
+	}
+
+	for _, supply := range supplies {
+		if _, ok := closedMarkets[supply.CTokenAssetID]; ok {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

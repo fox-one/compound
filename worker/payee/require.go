@@ -25,6 +25,23 @@ func (w *Payee) requireMarket(ctx context.Context, asset string) (*core.Market, 
 	return market, nil
 }
 
+func (w *Payee) requireSupply(ctx context.Context, user, asset string) (*core.Supply, error) {
+	log := logger.FromContext(ctx)
+
+	supply, err := w.supplyStore.Find(ctx, user, asset)
+	if err != nil {
+		log.WithError(err).Errorln("supplies.Find")
+		return nil, err
+	}
+
+	if err := compound.Require(supply.ID > 0, "payee/skip/supply-not-found", compound.FlagNoisy); err != nil {
+		log.WithError(err).Infoln("skip")
+		return nil, err
+	}
+
+	return supply, nil
+}
+
 func (w *Payee) requireBorrow(ctx context.Context, user, asset string) (*core.Borrow, error) {
 	log := logger.FromContext(ctx)
 

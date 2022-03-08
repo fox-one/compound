@@ -156,11 +156,7 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 		if borrow.ID == 0 {
 			newBorrowBalance = borrowAmount
 		} else {
-			borrowBalance, e := compound.BorrowBalance(ctx, borrow, borrowMarket)
-			if e != nil {
-				log.Errorln(e)
-				return e
-			}
+			borrowBalance := compound.BorrowBalance(ctx, borrow, borrowMarket)
 			newBorrowBalance = borrowBalance.Add(borrowAmount)
 		}
 		newBorrowIndex := borrowMarket.BorrowIndex.Truncate(16)

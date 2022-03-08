@@ -80,10 +80,7 @@ func (s *accountService) CalculateAccountLiquidity(ctx context.Context, userID s
 
 		price := market.Price
 
-		borrowBalance, e := compound.BorrowBalance(ctx, borrow, market)
-		if e != nil {
-			return decimal.Zero, e
-		}
+		borrowBalance := compound.BorrowBalance(ctx, borrow, market)
 		value := borrowBalance.Mul(price)
 		borrowValue = borrowValue.Add(value)
 	}

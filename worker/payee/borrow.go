@@ -21,7 +21,7 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 	var borrowAmount decimal.Decimal
 	{
 		_, err := mtg.Scan(body, &asset, &borrowAmount)
-		if compound.Require(err == nil, "payee/skip/mtgscan", compound.FlagNoisy); err != nil {
+		if err := compound.Require(err == nil, "payee/skip/mtgscan", compound.FlagNoisy); err != nil {
 			log.Infoln("skip: scan memo failed")
 			return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeBorrow, core.ErrInvalidArgument)
 		}
@@ -39,6 +39,11 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 	if err != nil {
 		log.WithError(err).Infoln("invalid market")
 		return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeBorrow, core.ErrMarketNotFound)
+	}
+
+	if market.Version >= output.ID {
+		log.Infoln("skip: output.ID outdated")
+		return nil
 	}
 
 	// accrue interest
@@ -113,12 +118,7 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 
 	//update borrow account
 	if output.ID > borrow.Version {
-		borrowBalance, err := compound.BorrowBalance(ctx, borrow, market)
-		if err != nil {
-			log.WithError(err).Errorln("BorrowBalance")
-			return err
-		}
-
+		borrowBalance := compound.BorrowBalance(ctx, borrow, market)
 		borrow.Principal = borrowBalance.Add(extra.Amount)
 		borrow.InterestIndex = market.BorrowIndex
 

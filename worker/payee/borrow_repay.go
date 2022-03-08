@@ -21,6 +21,11 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 		return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeRepay, core.ErrMarketNotFound)
 	}
 
+	if market.Version >= output.ID {
+		log.Infoln("skip: output.ID outdated")
+		return nil
+	}
+
 	//update interest
 	AccrueInterest(ctx, market, output.CreatedAt)
 
@@ -37,17 +42,7 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 	}
 
 	if transaction.ID == 0 {
-		if err := compound.Require(!market.IsMarketClosed(), "payee/refund/market-closed", compound.FlagRefund); err != nil {
-			log.WithError(err).Infoln("market closed")
-			return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeRepay, core.ErrMarketClosed)
-		}
-
-		borrowBalance, err := compound.BorrowBalance(ctx, borrow, market)
-		if err != nil {
-			log.WithError(err).Errorln("BorrowBalance")
-			return err
-		}
-
+		borrowBalance := compound.BorrowBalance(ctx, borrow, market)
 		repayAmount := output.Amount
 		if repayAmount.GreaterThan(borrowBalance) {
 			repayAmount = borrowBalance
@@ -72,12 +67,7 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 	}
 
 	if output.ID > borrow.Version {
-		borrowBalance, err := compound.BorrowBalance(ctx, borrow, market)
-		if err != nil {
-			log.WithError(err).Errorln("BorrowBalance")
-			return err
-		}
-
+		borrowBalance := compound.BorrowBalance(ctx, borrow, market)
 		borrow.Principal = borrowBalance.Sub(extra.RepayAmount)
 		borrow.InterestIndex = market.BorrowIndex
 
