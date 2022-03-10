@@ -2,69 +2,64 @@ package payee
 
 import (
 	"compound/core"
+	"compound/pkg/compound"
 	"context"
 	"encoding/base64"
+	"time"
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/pandodao/blst"
+	"github.com/sirupsen/logrus"
 )
 
-func (w *Payee) handlePriceEvent(ctx context.Context, output *core.Output, priceData *core.PriceData) error {
-	log := logger.FromContext(ctx).WithField("worker", "handle_dirt_price_event")
-
-	market, e := w.marketStore.Find(ctx, priceData.AssetID)
-	if e != nil {
-		return e
+func (w *Payee) handlePriceEvent(ctx context.Context, output *core.Output) error {
+	var priceData core.PriceData
+	if err := compound.Require(
+		priceData.UnmarshalBinary(w.decodeMemo(output.Memo)) == nil,
+		"payee/invalid-price-data",
+	); err != nil {
+		return err
 	}
 
-	if market.ID == 0 {
+	log := logger.FromContext(ctx).WithFields(logrus.Fields{
+		"event":     "price-oracle",
+		"asset":     priceData.AssetID,
+		"price":     priceData.Price,
+		"timestamp": time.Unix(priceData.Timestamp, 0),
+	})
+	ctx = logger.WithContext(ctx, log)
+
+	market, err := w.mustGetMarket(ctx, priceData.AssetID)
+	if err != nil {
+		return err
+	}
+
+	if market.Version >= output.ID {
 		return nil
-	}
-
-	// accrue interest
-	AccrueInterest(ctx, market, output.CreatedAt)
-
-	if output.ID > market.Version {
-		log.Infoln("dirt_price: asset:", priceData.AssetID, ", price:", priceData.Price, ",time:", output.CreatedAt)
-		market.Price = priceData.Price
-		market.PriceUpdatedAt = output.CreatedAt
-		if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
-			log.WithError(e).Errorln("update market price err")
-			return e
-		}
-	}
-
-	return nil
-}
-
-func (w *Payee) decodePriceTransaction(ctx context.Context, businessData []byte) (*core.PriceData, error) {
-	var p core.PriceData
-	if err := p.UnmarshalBinary(businessData); err != nil {
-		return nil, nil
 	}
 
 	ss, err := w.oracleSignerStore.FindAll(ctx)
 	if err != nil {
-		return nil, err
-	}
-
-	market, err := w.marketStore.Find(ctx, p.AssetID)
-	if err != nil {
-		return nil, err
-	} else if market.ID == 0 {
-		return nil, nil
+		log.WithError(err).Errorln("oracles.FindAll")
+		return err
 	}
 
 	signers := make([]*core.Signer, len(ss))
 	for idx, s := range ss {
 		bts, err := base64.StdEncoding.DecodeString(s.PublicKey)
-		if err != nil {
-			return nil, nil
+		if e := compound.Require(
+			err == nil,
+			"payee/invalid-oracle-signer",
+		); e != nil {
+			return e
 		}
 
 		pub := blst.PublicKey{}
-		if err := pub.FromBytes(bts); err != nil {
-			return nil, nil
+		if e := compound.Require(
+			pub.FromBytes(bts) == nil,
+			"payee/invalid-oracle-signer",
+		); e != nil {
+			return e
 		}
 
 		signers[idx] = &core.Signer{
@@ -73,11 +68,24 @@ func (w *Payee) decodePriceTransaction(ctx context.Context, businessData []byte)
 		}
 	}
 
-	if verifyPriceData(&p, signers, market.PriceThreshold) {
-		return &p, nil
+	if err := compound.Require(
+		verifyPriceData(&priceData, signers, market.PriceThreshold),
+		"payee/oracle-verify-failed",
+	); err != nil {
+		log.WithError(err).Errorln("price data verify failed")
+		return err
 	}
 
-	return nil, nil
+	market.Price = priceData.Price
+	market.PriceUpdatedAt = output.CreatedAt
+	AccrueInterest(ctx, market, output.CreatedAt)
+	if err := w.marketStore.Update(ctx, market, output.ID); err != nil {
+		log.WithError(err).Errorln("update market price err")
+		return err
+	}
+
+	log.Infoln("price updated")
+	return nil
 }
 
 func verifyPriceData(p *core.PriceData, signers []*core.Signer, threshold int) bool {

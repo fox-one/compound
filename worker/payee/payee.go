@@ -149,11 +149,13 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 	ctx = logger.WithContext(ctx, log)
 
 	// handle price provided by dirtoracle
-	if priceData, err := w.decodePriceTransaction(ctx, w.decodeMemo(output.Memo)); err != nil {
-		log.WithError(err).Errorln("decodePriceTransaction error")
-		return err
-	} else if priceData != nil {
-		return w.handlePriceEvent(ctx, output, priceData)
+	{
+		var e compound.Error
+		if err := w.handlePriceEvent(ctx, output); err == nil {
+			return nil
+		} else if !errors.As(err, &e) {
+			return err
+		}
 	}
 
 	if output.Sender == "" {
