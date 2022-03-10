@@ -45,12 +45,17 @@ func (w *Payee) handleMarketEvent(ctx context.Context, p *core.Proposal, req pro
 			PriceThreshold:       req.PriceThreshold,
 			PriceUpdatedAt:       output.CreatedAt,
 			Status:               core.MarketStatusClose,
+			Version:              output.ID,
 		}
 
 		if err := w.marketStore.Create(ctx, market); err != nil {
 			log.WithError(err).Errorln("markets.Create")
 			return err
 		}
+		return nil
+	}
+
+	if market.Version >= output.ID {
 		return nil
 	}
 
