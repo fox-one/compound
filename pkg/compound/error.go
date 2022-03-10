@@ -45,7 +45,3 @@ func WithFlag(err error, flag int) error {
 func ShouldRefund(flag int) bool {
 	return flag&FlagRefund > 0 && flag&FlagNoisy == 0
 }
-
-func ShouldIgnore(flag int) bool {
-	return flag&FlagNoisy > 0
-}

@@ -3,18 +3,14 @@ package payee
 import (
 	"compound/core"
 	"compound/core/proposal"
+	"compound/pkg/compound"
 	"compound/pkg/sysversion"
 	"context"
-	"fmt"
 	"strconv"
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/uuid"
 	"github.com/sirupsen/logrus"
-)
-
-var (
-	errProposalSkip = fmt.Errorf("skip: invalid proposal")
 )
 
 func (w *Payee) setProperty(ctx context.Context, output *core.Output, _ *core.Proposal, action proposal.SetProperty) error {
@@ -24,24 +20,19 @@ func (w *Payee) setProperty(ctx context.Context, output *core.Output, _ *core.Pr
 	})
 	ctx = logger.WithContext(ctx, log)
 
-	if action.Key == "" {
-		log.Errorln("skip: empty key")
-		return errProposalSkip
+	if err := compound.Require(action.Key != "", "payee/empty-key"); err != nil {
+		log.WithError(err).Errorln("skip: empty key")
+		return err
 	}
 
 	if action.Key == sysversion.SysVersionKey {
 		ver, err := strconv.ParseInt(action.Value, 10, 64)
-		if err != nil {
-			log.WithError(err).Errorln("skip: parse sysversion failled", action.Value)
-			return errProposalSkip
+		if err := compound.Require(err == nil, "payee/invalid-sysversion"); err != nil {
+			log.WithError(err).Errorln("validate sys version failed", ver)
+			return err
 		}
 
 		if err := w.validateNewSysVersion(ctx, ver); err != nil {
-			if err == errProposalSkip {
-				log.Errorln("skip: invalid value", action.Value)
-				return errProposalSkip
-			}
-			log.WithError(err).Errorln("validate sys version failed", ver)
 			return err
 		}
 

@@ -9,10 +9,7 @@ import (
 
 func (w *Payee) handlePassedProposal(ctx context.Context, p *core.Proposal, output *core.Output) error {
 	if err := w.handlePassedProposalInternal(ctx, p, output); err != nil {
-		if err != errProposalSkip {
-			return err
-		}
-		return nil
+		return err
 	}
 
 	// TODO insert tx

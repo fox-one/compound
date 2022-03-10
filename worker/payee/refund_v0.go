@@ -4,13 +4,15 @@ import (
 	"compound/core"
 	"compound/pkg/compound"
 	"context"
+	"errors"
 
 	"github.com/fox-one/pkg/logger"
 )
 
 // handle refund event
-func (w *Payee) handleRefundError(ctx context.Context, err error, output *core.Output, userID, followID string, origin core.ActionType, errCode core.ErrorCode) error {
-	if _, ok := err.(compound.Error); ok && w.sysversion < 3 {
+func (w *Payee) returnOrRefundError(ctx context.Context, err error, output *core.Output, userID, followID string, origin core.ActionType, errCode core.ErrorCode) error {
+	var e compound.Error
+	if errors.As(err, &e) && w.sysversion < 3 {
 		return w.handleRefundEventV0(ctx, output, userID, followID, origin, errCode)
 	}
 
@@ -20,10 +22,6 @@ func (w *Payee) handleRefundError(ctx context.Context, err error, output *core.O
 // handle refund event
 func (w *Payee) handleRefundEventV0(ctx context.Context, output *core.Output, userID, followID string, origin core.ActionType, errCode core.ErrorCode) error {
 	log := logger.FromContext(ctx).WithField("worker", "refund")
-
-	if w.sysversion < 3 {
-		return nil
-	}
 
 	transfer, e := core.NewRefundTransfer(output, userID, followID, origin, errCode)
 	if e != nil {

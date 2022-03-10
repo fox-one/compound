@@ -2,6 +2,7 @@ package payee
 
 import (
 	"compound/core"
+	"compound/pkg/compound"
 	"compound/pkg/sysversion"
 	"context"
 	"fmt"
@@ -22,11 +23,11 @@ func (w *Payee) loadSysVersion(ctx context.Context) error {
 }
 
 func (w *Payee) validateNewSysVersion(ctx context.Context, ver int64) error {
-	log := logger.FromContext(ctx)
+	log := logger.FromContext(ctx).WithField("sysversion:new", ver)
 
-	if ver <= w.sysversion {
-		log.WithField("sysversion:new", ver).Infoln("skip")
-		return errProposalSkip
+	if err := compound.Require(ver > w.sysversion, "payee/sysversion-too-low"); err != nil {
+		log.WithError(err).Infoln("skip: sysversion too low")
+		return err
 	}
 
 	if ver > core.SysVersion {

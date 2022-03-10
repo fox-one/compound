@@ -8,7 +8,7 @@ import (
 	"github.com/fox-one/pkg/logger"
 )
 
-func (w *Payee) requireMarket(ctx context.Context, asset string) (*core.Market, error) {
+func (w *Payee) mustGetMarket(ctx context.Context, asset string) (*core.Market, error) {
 	log := logger.FromContext(ctx)
 
 	market, err := w.marketStore.Find(ctx, asset)
@@ -17,7 +17,7 @@ func (w *Payee) requireMarket(ctx context.Context, asset string) (*core.Market, 
 		return nil, err
 	}
 
-	if err := compound.Require(market.ID > 0, "payee/skip/market-not-found", compound.FlagNoisy); err != nil {
+	if err := compound.Require(market.ID > 0, "payee/market-not-found"); err != nil {
 		log.WithError(err).Infoln("skip")
 		return nil, err
 	}
@@ -25,7 +25,7 @@ func (w *Payee) requireMarket(ctx context.Context, asset string) (*core.Market, 
 	return market, nil
 }
 
-func (w *Payee) requireSupply(ctx context.Context, user, asset string) (*core.Supply, error) {
+func (w *Payee) mustGetSupply(ctx context.Context, user, asset string) (*core.Supply, error) {
 	log := logger.FromContext(ctx)
 
 	supply, err := w.supplyStore.Find(ctx, user, asset)
@@ -34,7 +34,7 @@ func (w *Payee) requireSupply(ctx context.Context, user, asset string) (*core.Su
 		return nil, err
 	}
 
-	if err := compound.Require(supply.ID > 0, "payee/skip/supply-not-found", compound.FlagNoisy); err != nil {
+	if err := compound.Require(supply.ID > 0, "payee/supply-not-found"); err != nil {
 		log.WithError(err).Infoln("skip")
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func (w *Payee) requireSupply(ctx context.Context, user, asset string) (*core.Su
 	return supply, nil
 }
 
-func (w *Payee) requireBorrow(ctx context.Context, user, asset string) (*core.Borrow, error) {
+func (w *Payee) mustGetBorrow(ctx context.Context, user, asset string) (*core.Borrow, error) {
 	log := logger.FromContext(ctx)
 
 	borrow, err := w.borrowStore.Find(ctx, user, asset)
@@ -51,7 +51,7 @@ func (w *Payee) requireBorrow(ctx context.Context, user, asset string) (*core.Bo
 		return nil, err
 	}
 
-	if err := compound.Require(borrow.ID > 0, "payee/skip/borrow-not-found", compound.FlagNoisy); err != nil {
+	if err := compound.Require(borrow.ID > 0, "payee/borrow-not-found"); err != nil {
 		log.WithError(err).Infoln("skip")
 		return nil, err
 	}

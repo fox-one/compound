@@ -83,9 +83,6 @@ func (w *Payee) handleVoteProposal(ctx context.Context, output *core.Output, mes
 		return nil
 	} else if w.system.IsMember(output.Sender) {
 		if err := w.validateProposal(ctx, proposal); err != nil {
-			if err == errProposalSkip {
-				return nil
-			}
 			return err
 		}
 
@@ -163,9 +160,6 @@ func (w *Payee) buildProposal(ctx context.Context, output *core.Output, action c
 
 	p.Content, _ = json.Marshal(content)
 	if err := w.validateProposal(ctx, p); err != nil {
-		if err == errProposalSkip {
-			return nil, nil
-		}
 		return nil, err
 	}
 

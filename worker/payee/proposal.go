@@ -3,6 +3,7 @@ package payee
 import (
 	"compound/core"
 	"compound/core/proposal"
+	"compound/pkg/compound"
 	"compound/pkg/mtg"
 	"compound/pkg/sysversion"
 	"context"
@@ -51,21 +52,23 @@ func (w *Payee) validateProposal(ctx context.Context, p *core.Proposal) error {
 	switch p.Action {
 	case core.ActionTypeProposalSetProperty:
 		var content proposal.SetProperty
-		if err := json.Unmarshal([]byte(p.Content), &content); err != nil {
-			log.WithError(err).Errorln("unmarshal SetProperty failed")
-			return errProposalSkip
+		{
+			if err := compound.Require(json.Unmarshal([]byte(p.Content), &content) == nil, "payee/invalid-action"); err != nil {
+				log.WithError(err).Errorln("unmarshal SetProperty failed")
+				return err
+			}
 		}
 
-		switch content.Key {
-		case "":
-			log.Infoln("skip: empty key")
-			return errProposalSkip
+		if err := compound.Require(content.Key != "", "payee/empty-key"); err != nil {
+			log.WithError(err).Errorln("skip: empty key")
+			return err
+		}
 
-		case sysversion.SysVersionKey:
-			ver, err := strconv.ParseInt(content.Value, 10, 64)
-			if err != nil {
-				log.WithError(err).Infoln("skip")
-				return errProposalSkip
+		if content.Key == sysversion.SysVersionKey {
+			ver, e := strconv.ParseInt(content.Value, 10, 64)
+			if err := compound.Require(e == nil, "payee/invalid-sysversion"); err != nil {
+				log.WithError(err).Errorln("validate sys version failed", ver)
+				return err
 			}
 
 			return w.validateNewSysVersion(ctx, ver)

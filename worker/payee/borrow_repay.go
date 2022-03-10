@@ -15,10 +15,9 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 	log := logger.FromContext(ctx).WithField("event", "borrow_repay")
 	ctx = logger.WithContext(ctx, log)
 
-	market, err := w.requireMarket(ctx, output.AssetID)
+	market, err := w.mustGetMarket(ctx, output.AssetID)
 	if err != nil {
-		log.WithError(err).Infoln("invalid market")
-		return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeRepay, core.ErrMarketNotFound)
+		return w.returnOrRefundError(ctx, err, output, userID, followID, core.ActionTypeRepay, core.ErrMarketNotFound)
 	}
 
 	if market.Version >= output.ID {
@@ -29,19 +28,18 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 	//update interest
 	AccrueInterest(ctx, market, output.CreatedAt)
 
-	borrow, err := w.requireBorrow(ctx, userID, output.AssetID)
+	borrow, err := w.mustGetBorrow(ctx, userID, output.AssetID)
 	if err != nil {
-		log.WithError(err).Infoln("invalid borrow")
-		return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeRepay, core.ErrBorrowNotFound)
+		return w.returnOrRefundError(ctx, err, output, userID, followID, core.ActionTypeRepay, core.ErrBorrowNotFound)
 	}
 
-	transaction, err := w.transactionStore.FindByTraceID(ctx, output.TraceID)
+	tx, err := w.transactionStore.FindByTraceID(ctx, output.TraceID)
 	if err != nil {
 		log.WithError(err).Errorln("transactions.Find")
 		return err
 	}
 
-	if transaction.ID == 0 {
+	if tx.ID == 0 {
 		borrowBalance := compound.BorrowBalance(ctx, borrow, market)
 		repayAmount := output.Amount
 		if repayAmount.GreaterThan(borrowBalance) {
@@ -51,8 +49,8 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 		extra := core.NewTransactionExtra()
 		extra.Put("repay_amount", repayAmount)
 
-		transaction = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeRepay, output, extra)
-		if err := w.transactionStore.Create(ctx, transaction); err != nil {
+		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeRepay, output, extra)
+		if err := w.transactionStore.Create(ctx, tx); err != nil {
 			log.WithError(err).Errorln("transactions.Create")
 			return err
 		}
@@ -61,28 +59,31 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 	var extra struct {
 		RepayAmount decimal.Decimal `json:"repay_amount"`
 	}
-	if err := json.Unmarshal(transaction.Data, &extra); err != nil {
+	if err := json.Unmarshal(tx.Data, &extra); err != nil {
 		log.WithError(err).Errorln("Unmarshal extra")
 		return err
 	}
 
-	if output.ID > borrow.Version {
-		borrowBalance := compound.BorrowBalance(ctx, borrow, market)
-		borrow.Principal = borrowBalance.Sub(extra.RepayAmount)
-		borrow.InterestIndex = market.BorrowIndex
-
-		if refundAmount := output.Amount.Sub(extra.RepayAmount).Truncate(8); refundAmount.IsPositive() {
-			transferAction := core.TransferAction{
+	if refundAmount := output.Amount.Sub(extra.RepayAmount).Truncate(8); refundAmount.IsPositive() {
+		if err := w.transferOut(
+			ctx,
+			userID,
+			followID,
+			output.TraceID,
+			output.AssetID,
+			refundAmount,
+			&core.TransferAction{
 				Source:   core.ActionTypeRepayRefundTransfer,
 				FollowID: followID,
-			}
-
-			if err := w.transferOut(ctx, userID, followID, output.TraceID, output.AssetID, refundAmount, &transferAction); err != nil {
-				log.WithError(err).Errorln("transferOut")
-				return err
-			}
+			},
+		); err != nil {
+			return err
 		}
+	}
 
+	if output.ID > borrow.Version {
+		borrow.Principal = compound.BorrowBalance(ctx, borrow, market).Sub(extra.RepayAmount)
+		borrow.InterestIndex = market.BorrowIndex
 		if err := w.borrowStore.Update(ctx, borrow, output.ID); err != nil {
 			log.WithError(err).Errorln("borrows.Update")
 			return err

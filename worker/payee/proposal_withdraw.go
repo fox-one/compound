@@ -3,6 +3,7 @@ package payee
 import (
 	"compound/core"
 	"compound/core/proposal"
+	"compound/pkg/compound"
 	"context"
 
 	"github.com/fox-one/pkg/logger"
@@ -20,22 +21,15 @@ func (w *Payee) handleWithdrawEvent(ctx context.Context, p *core.Proposal, req p
 	ctx = logger.WithContext(ctx, log)
 
 	amount := req.Amount.Truncate(8)
-
-	// check the market
-	market, err := w.marketStore.Find(ctx, req.Asset)
+	market, err := w.mustGetMarket(ctx, req.Asset)
 	if err != nil {
-		log.WithError(err).Errorln("markets.Find")
+		log.WithError(err).Errorln("requireMarket")
 		return err
 	}
-	if market.ID == 0 {
-		log.WithError(err).Errorln("skip: market not found")
-		return errProposalSkip
-	}
 
-	// check the amount
-	if amount.GreaterThan(market.Reserves) {
-		log.WithField("reserves", market.Reserves).Errorln("insufficient reserves")
-		return errProposalSkip
+	if err := compound.Require(amount.LessThanOrEqual(market.Reserves), "payee/skip/insufficient-reserves"); err != nil {
+		log.WithError(err).Errorln("insufficient reserves")
+		return err
 	}
 
 	if err := w.walletStore.CreateTransfers(ctx, []*core.Transfer{
@@ -55,6 +49,7 @@ func (w *Payee) handleWithdrawEvent(ctx context.Context, p *core.Proposal, req p
 		// update market total_cash and reserves
 		market.TotalCash = market.TotalCash.Sub(amount)
 		market.Reserves = market.Reserves.Sub(amount)
+		AccrueInterest(ctx, market, output.CreatedAt)
 
 		if err := w.marketStore.Update(ctx, market, output.ID); err != nil {
 			log.WithError(err).Errorln("update market error")

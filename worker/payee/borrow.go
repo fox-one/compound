@@ -17,28 +17,30 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 	log := logger.FromContext(ctx).WithField("event", "borrow")
 	ctx = logger.WithContext(ctx, log)
 
-	var asset uuid.UUID
-	var borrowAmount decimal.Decimal
+	var (
+		assetID      string
+		borrowAmount decimal.Decimal
+	)
 	{
-		_, err := mtg.Scan(body, &asset, &borrowAmount)
-		if err := compound.Require(err == nil, "payee/skip/mtgscan", compound.FlagNoisy); err != nil {
-			log.Infoln("skip: scan memo failed")
-			return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeBorrow, core.ErrInvalidArgument)
+		var asset uuid.UUID
+		_, e := mtg.Scan(body, &asset, &borrowAmount)
+		if err := compound.Require(e == nil, "payee/mtgscan"); err != nil {
+			log.WithError(err).Infoln("skip: scan memo failed")
+			return w.returnOrRefundError(ctx, err, output, userID, followID, core.ActionTypeBorrow, core.ErrInvalidArgument)
 		}
 
 		borrowAmount = borrowAmount.Truncate(8)
+		assetID = asset.String()
+		log = logger.FromContext(ctx).WithFields(logrus.Fields{
+			"asset_id": assetID,
+			"amount":   borrowAmount,
+		})
+		ctx = logger.WithContext(ctx, log)
 	}
 
-	log = logger.FromContext(ctx).WithFields(logrus.Fields{
-		"asset_id": asset,
-		"amount":   borrowAmount,
-	})
-	ctx = logger.WithContext(ctx, log)
-
-	market, err := w.requireMarket(ctx, asset.String())
+	market, err := w.mustGetMarket(ctx, assetID)
 	if err != nil {
-		log.WithError(err).Infoln("invalid market")
-		return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeBorrow, core.ErrMarketNotFound)
+		return w.returnOrRefundError(ctx, err, output, userID, followID, core.ActionTypeBorrow, core.ErrMarketNotFound)
 	}
 
 	if market.Version >= output.ID {
@@ -49,7 +51,7 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 	// accrue interest
 	AccrueInterest(ctx, market, output.CreatedAt)
 
-	borrow, err := w.borrowStore.Find(ctx, userID, asset.String())
+	borrow, err := w.borrowStore.Find(ctx, userID, assetID)
 	if err != nil {
 		log.WithError(err).Errorln("borrows.Find")
 		return err
@@ -76,9 +78,9 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 	}
 
 	if tx.ID == 0 {
-		if err := compound.Require(!market.IsMarketClosed(), "payee/refund/market-closed", compound.FlagRefund); err != nil {
+		if err := compound.Require(!market.IsMarketClosed(), "payee/market-closed", compound.FlagRefund); err != nil {
 			log.WithError(err).Infoln("market closed")
-			return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeBorrow, core.ErrMarketClosed)
+			return w.returnOrRefundError(ctx, err, output, userID, followID, core.ActionTypeBorrow, core.ErrMarketClosed)
 		}
 
 		liquidity, err := w.accountService.CalculateAccountLiquidity(ctx, userID, market)
@@ -89,15 +91,15 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 
 		if err := compound.Require(
 			!market.BorrowAllowed(borrowAmount) || borrowAmount.Mul(market.Price).GreaterThan(liquidity),
-			"payee/refund/borrow-denied",
+			"payee/borrow-denied",
 			compound.FlagRefund,
 		); err != nil {
 			log.WithError(err).Infoln("borrow not allowed")
-			return w.handleRefundError(ctx, err, output, userID, followID, core.ActionTypeBorrow, core.ErrBorrowNotAllowed)
+			return w.returnOrRefundError(ctx, err, output, userID, followID, core.ActionTypeBorrow, core.ErrBorrowNotAllowed)
 		}
 
 		extra := core.NewTransactionExtra()
-		extra.Put("asset_id", asset.String())
+		extra.Put("asset_id", assetID)
 		extra.Put("amount", borrowAmount)
 
 		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeBorrow, output, extra)
@@ -106,22 +108,10 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 		}
 	}
 
-	var extra struct {
-		AssetID string          `json:"asset_id"`
-		Amount  decimal.Decimal `json:"amount"`
-	}
-
-	if err := tx.UnmarshalExtraData(&extra); err != nil {
-		log.WithError(err).Errorln("Unmarshal extra")
-		return err
-	}
-
 	//update borrow account
 	if output.ID > borrow.Version {
-		borrowBalance := compound.BorrowBalance(ctx, borrow, market)
-		borrow.Principal = borrowBalance.Add(extra.Amount)
+		borrow.Principal = compound.BorrowBalance(ctx, borrow, market).Add(borrowAmount)
 		borrow.InterestIndex = market.BorrowIndex
-
 		if err := w.borrowStore.Update(ctx, borrow, output.ID); err != nil {
 			log.WithError(err).Errorln("borrows.Update")
 			return err
@@ -134,7 +124,7 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 		userID,
 		followID,
 		output.TraceID,
-		asset.String(),
+		assetID,
 		borrowAmount,
 		&core.TransferAction{
 			Source:   core.ActionTypeBorrowTransfer,

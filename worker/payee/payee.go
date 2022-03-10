@@ -2,18 +2,16 @@ package payee
 
 import (
 	"compound/core"
-	"compound/pkg/mtg"
+	"compound/pkg/compound"
 	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/fox-one/pkg/property"
-	uuidutil "github.com/fox-one/pkg/uuid"
-	"github.com/gofrs/uuid"
+	"github.com/fox-one/pkg/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 )
@@ -126,25 +124,13 @@ func (w *Payee) run(ctx context.Context) error {
 		return errors.New("no more outputs")
 	}
 
-	for _, u := range outputs {
-		if w.sysversion < 2 {
-			if err := w.handleOutputV1(ctx, u); err != nil {
-				return err
-			}
-		} else {
-			if w.sysversion > 2 {
-				if strings.ToLower(u.Memo) == "deposit" {
-					continue
-				}
-			}
-
-			if err := w.handleOutput(ctx, u); err != nil {
-				return err
-			}
+	for _, output := range outputs {
+		if err := w.handleOutput(ctx, output); err != nil {
+			return err
 		}
 
-		if err := w.propertyStore.Save(ctx, checkpointKey, u.ID); err != nil {
-			log.WithError(err).Errorln("property.Save:", u.ID)
+		if err := w.propertyStore.Save(ctx, checkpointKey, output.ID); err != nil {
+			log.WithError(err).Errorln("property.Save", output.ID)
 			return err
 		}
 	}
@@ -162,10 +148,8 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 	})
 	ctx = logger.WithContext(ctx, log)
 
-	message := w.decodeMemo(output.Memo)
-
 	// handle price provided by dirtoracle
-	if priceData, err := w.decodePriceTransaction(ctx, message); err != nil {
+	if priceData, err := w.decodePriceTransaction(ctx, w.decodeMemo(output.Memo)); err != nil {
 		log.WithError(err).Errorln("decodePriceTransaction error")
 		return err
 	} else if priceData != nil {
@@ -177,79 +161,42 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 	}
 
 	var (
-		action   core.ActionType
 		followID string
+		err      error
 	)
-	if payload, err := core.DecodeTransactionAction(message); err == nil {
-		if message, err = mtg.Scan(payload.Body, &action); err == nil {
-			if follow, err := uuid.FromBytes(payload.FollowID); err == nil && follow != uuid.Nil {
-				followID = follow.String()
-			}
-		}
+	switch w.sysversion {
+	case 0, 1:
+		err = w.handleOutputV1(ctx, output)
+
+	case 2:
+		err = w.handleOutputV2(ctx, output)
+
+	default:
+		followID, err = w.handleOutputV3(ctx, output)
 	}
 
-	log = log.WithFields(logrus.Fields{
-		"action": action.String(),
-		"follow": followID,
-	})
-	ctx = logger.WithContext(ctx, log)
+	var e compound.Error
+	if !errors.As(err, &e) {
+		return err
+	}
 
-	switch action {
-	case core.ActionTypeProposalMake:
-		return w.handleMakeProposal(ctx, output, message)
-	case core.ActionTypeProposalShout:
-		return w.handleShoutProposal(ctx, output, message)
-	case core.ActionTypeProposalVote:
-		return w.handleVoteProposal(ctx, output, message)
-	default:
-		user, err := w.userStore.Find(ctx, output.Sender)
-		if err != nil {
-			log.WithError(err).Errorln("users.Find")
+	if compound.ShouldRefund(e.Flag) {
+		memo := fmt.Sprintf(`{"id":"%s","s":"%s"}`, followID, e.Error())
+		transfer := &core.Transfer{
+			TraceID:   uuid.Modify(output.TraceID, memo),
+			AssetID:   output.AssetID,
+			Amount:    output.Amount,
+			Memo:      base64.RawStdEncoding.EncodeToString([]byte(memo)),
+			Threshold: 1,
+			Opponents: []string{output.Sender},
+		}
+
+		if err := w.walletStore.CreateTransfers(ctx, []*core.Transfer{transfer}); err != nil {
+			log.WithError(err).Errorln("wallets.CreateTransfers")
 			return err
 		}
-
-		if user.ID == 0 {
-			//upsert user
-			user = &core.User{
-				UserID:    output.Sender,
-				Address:   uuidutil.New(),
-				AddressV0: core.BuildUserAddressV0(output.Sender),
-			}
-			if err = w.userStore.Create(ctx, user); err != nil {
-				return err
-			}
-		}
-
-		// handle user action
-		return w.handleUserAction(ctx, output, action, output.Sender, followID, message)
 	}
-}
-
-func (w *Payee) handleUserAction(ctx context.Context, output *core.Output, actionType core.ActionType, userID, followID string, body []byte) error {
-	switch actionType {
-	case core.ActionTypeSupply:
-		return w.handleSupplyEvent(ctx, output, userID, followID, body)
-	case core.ActionTypeBorrow:
-		return w.handleBorrowEvent(ctx, output, userID, followID, body)
-	case core.ActionTypeRedeem:
-		return w.handleRedeemEvent(ctx, output, userID, followID, body)
-	case core.ActionTypeRepay:
-		return w.handleRepayEvent(ctx, output, userID, followID, body)
-	case core.ActionTypePledge:
-		return w.handlePledgeEvent(ctx, output, userID, followID, body)
-	case core.ActionTypeUnpledge:
-		return w.handleUnpledgeEvent(ctx, output, userID, followID, body)
-	case core.ActionTypeQuickPledge:
-		return w.handleQuickPledgeEvent(ctx, output, userID, followID, body)
-	case core.ActionTypeQuickBorrow:
-		return w.handleQuickBorrowEvent(ctx, output, userID, followID, body)
-	case core.ActionTypeQuickRedeem:
-		return w.handleQuickRedeemEvent(ctx, output, userID, followID, body)
-	case core.ActionTypeLiquidate:
-		return w.handleLiquidationEvent(ctx, output, userID, followID, body)
-	default:
-		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeRefundTransfer, core.ErrUnknown)
-	}
+	return nil
 }
 
 func (w *Payee) transferOut(ctx context.Context, userID, followID, outputTraceID, assetID string, amount decimal.Decimal, transferAction *core.TransferAction) error {
@@ -260,7 +207,7 @@ func (w *Payee) transferOut(ctx context.Context, userID, followID, outputTraceID
 
 	modifier := fmt.Sprintf("%s.%d", followID, transferAction.Source)
 	transfer := core.Transfer{
-		TraceID:   uuidutil.Modify(outputTraceID, modifier),
+		TraceID:   uuid.Modify(outputTraceID, modifier),
 		Opponents: []string{userID},
 		Threshold: 1,
 		AssetID:   assetID,

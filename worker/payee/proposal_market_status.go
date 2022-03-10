@@ -15,19 +15,13 @@ func (w *Payee) handleOpenMarketEvent(ctx context.Context, p *core.Proposal, req
 		"asset":    req.AssetID,
 	})
 
-	market, err := w.marketStore.Find(ctx, req.AssetID)
+	market, err := w.mustGetMarket(ctx, req.AssetID)
 	if err != nil {
-		log.WithError(err).Errorln("markets.Find")
+		log.WithError(err).Errorln("requireMarket")
 		return err
 	}
 
-	if market.ID == 0 {
-		log.WithError(err).Errorln("skip: market not found")
-		return errProposalSkip
-	}
-
 	AccrueInterest(ctx, market, output.CreatedAt)
-
 	market.Status = core.MarketStatusOpen
 	if err := w.marketStore.Update(ctx, market, output.ID); err != nil {
 		log.WithError(err).Errorln("markets.Update")
@@ -43,19 +37,12 @@ func (w *Payee) handleCloseMarketEvent(ctx context.Context, p *core.Proposal, re
 		"asset":    req.AssetID,
 	})
 
-	market, err := w.marketStore.Find(ctx, req.AssetID)
+	market, err := w.mustGetMarket(ctx, req.AssetID)
 	if err != nil {
-		log.WithError(err).Errorln("markets.Find")
 		return err
 	}
 
-	if market.ID == 0 {
-		log.WithError(err).Errorln("skip: market not found")
-		return errProposalSkip
-	}
-
 	AccrueInterest(ctx, market, output.CreatedAt)
-
 	market.Status = core.MarketStatusClose
 	if err := w.marketStore.Update(ctx, market, output.ID); err != nil {
 		log.WithError(err).Errorln("markets.Update")

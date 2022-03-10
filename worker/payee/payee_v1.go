@@ -11,30 +11,14 @@ import (
 )
 
 func (w *Payee) handleOutputV1(ctx context.Context, output *core.Output) error {
-	log := logger.FromContext(ctx).
-		WithField("output", output.TraceID).
-		WithField("sysversion", w.sysversion)
-	ctx = logger.WithContext(ctx, log)
-
+	log := logger.FromContext(ctx)
 	message := w.decodeMemo(output.Memo)
-
-	// handle price provided by dirtoracle
-	if priceData, err := w.decodePriceTransaction(ctx, message); err != nil {
-		log.WithError(err).Errorln("decodePriceTransaction error")
-		return err
-	} else if priceData != nil {
-		return w.handlePriceEvent(ctx, output, priceData)
-	}
 
 	if w.sysversion < 1 {
 		// handle v0 member proposal action
 		if member, action, body, err := core.DecodeMemberActionV0(message, w.system.Members); err == nil {
 			return w.handleProposalActionV0(ctx, output, member, action, body)
 		}
-	}
-
-	if output.Sender == "" {
-		return nil
 	}
 
 	// 2. decode tx message
@@ -92,6 +76,6 @@ func (w *Payee) handleOutputV1(ctx context.Context, output *core.Output) error {
 		}
 
 		// handle user action
-		return w.handleUserAction(ctx, output, action, output.Sender, followID.String(), message)
+		return w.handleUserAction(ctx, output, action, followID.String(), message)
 	}
 }
