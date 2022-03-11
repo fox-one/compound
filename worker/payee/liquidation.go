@@ -279,5 +279,6 @@ func (w *Payee) HasClosedMarkets(ctx context.Context, user string) error {
 		}
 	}
 
+	log.Infoln("liquidation completed")
 	return nil
 }

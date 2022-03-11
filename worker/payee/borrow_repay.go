@@ -105,5 +105,6 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 		}
 	}
 
+	log.Infoln("repay completed")
 	return nil
 }

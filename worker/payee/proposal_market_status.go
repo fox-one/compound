@@ -28,6 +28,7 @@ func (w *Payee) handleOpenMarketEvent(ctx context.Context, p *core.Proposal, req
 		return err
 	}
 
+	log.Infoln("market opened")
 	return nil
 }
 
@@ -49,5 +50,6 @@ func (w *Payee) handleCloseMarketEvent(ctx context.Context, p *core.Proposal, re
 		return err
 	}
 
+	log.Infoln("market closed")
 	return nil
 }

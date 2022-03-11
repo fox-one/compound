@@ -147,5 +147,6 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 		}
 	}
 
+	log.Infoln("borrow completed")
 	return nil
 }

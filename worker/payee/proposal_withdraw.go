@@ -57,5 +57,6 @@ func (w *Payee) handleWithdrawEvent(ctx context.Context, p *core.Proposal, req p
 		}
 	}
 
+	log.Infoln("withdraw completed")
 	return nil
 }

@@ -14,7 +14,7 @@ import (
 
 func (w *Payee) handleMarketEvent(ctx context.Context, p *core.Proposal, req proposal.MarketReq, output *core.Output) error {
 	log := logger.FromContext(ctx).WithFields(logrus.Fields{
-		"proposal": "add-market",
+		"proposal": "upsert-market",
 		"asset":    req.AssetID,
 	})
 
@@ -52,6 +52,7 @@ func (w *Payee) handleMarketEvent(ctx context.Context, p *core.Proposal, req pro
 			log.WithError(err).Errorln("markets.Create")
 			return err
 		}
+		log.Infoln("market created")
 		return nil
 	}
 
@@ -120,5 +121,6 @@ func (w *Payee) handleMarketEvent(ctx context.Context, p *core.Proposal, req pro
 		log.WithError(err).Errorln("markets.Update")
 		return err
 	}
+	log.Infoln("market updated")
 	return nil
 }

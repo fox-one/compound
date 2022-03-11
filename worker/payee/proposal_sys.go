@@ -17,6 +17,7 @@ func (w *Payee) setProperty(ctx context.Context, output *core.Output, _ *core.Pr
 	log := logger.FromContext(ctx).WithFields(logrus.Fields{
 		"proposal": "set-property",
 		"key":      action.Key,
+		"value":    action.Value,
 	})
 	ctx = logger.WithContext(ctx, log)
 
@@ -46,6 +47,7 @@ func (w *Payee) setProperty(ctx context.Context, output *core.Output, _ *core.Pr
 		log.WithError(err).Errorln("update properties", action.Key, action.Value)
 		return err
 	}
+	log.Infoln("property updated")
 	return nil
 }
 

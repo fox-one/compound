@@ -7,11 +7,13 @@ import (
 	"compound/pkg/mtg"
 	"compound/pkg/sysversion"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"strconv"
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/gofrs/uuid"
+	"github.com/pandodao/blst"
 )
 
 func (w *Payee) handleShoutProposal(ctx context.Context, output *core.Output, message []byte) error {
@@ -72,6 +74,31 @@ func (w *Payee) validateProposal(ctx context.Context, p *core.Proposal) error {
 			}
 
 			return w.validateNewSysVersion(ctx, ver)
+		}
+
+	case core.ActionTypeProposalAddOracleSigner:
+		var content proposal.AddOracleSignerReq
+		{
+			if err := compound.Require(json.Unmarshal([]byte(p.Content), &content) == nil, "payee/invalid-action"); err != nil {
+				log.WithError(err).Errorln("unmarshal AddOracleSignerReq failed")
+				return err
+			}
+		}
+
+		bts, err := base64.StdEncoding.DecodeString(content.PublicKey)
+		if e := compound.Require(
+			err == nil,
+			"payee/invalid-oracle-signer",
+		); e != nil {
+			return e
+		}
+
+		pub := blst.PublicKey{}
+		if err := compound.Require(
+			pub.FromBytes(bts) == nil,
+			"payee/invalid-oracle-signer",
+		); err != nil {
+			return err
 		}
 	}
 	return nil
