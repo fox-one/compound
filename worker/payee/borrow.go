@@ -90,7 +90,7 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 		}
 
 		if err := compound.Require(
-			!market.BorrowAllowed(borrowAmount) || borrowAmount.Mul(market.Price).GreaterThan(liquidity),
+			market.BorrowAllowed(borrowAmount) && borrowAmount.Mul(market.Price).LessThanOrEqual(liquidity),
 			"payee/borrow-denied",
 			compound.FlagRefund,
 		); err != nil {
