@@ -41,7 +41,7 @@ type (
 	// ProposalStore proposal store interface
 	ProposalStore interface {
 		Create(ctx context.Context, proposal *Proposal) error
-		Find(ctx context.Context, trace string) (*Proposal, bool, error)
+		Find(ctx context.Context, trace string) (*Proposal, error)
 		Update(ctx context.Context, proposal *Proposal, version int64) error
 		List(ctx context.Context, fromID int64, limit int) ([]*Proposal, error)
 	}

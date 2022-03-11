@@ -58,3 +58,20 @@ func (w *Payee) mustGetBorrow(ctx context.Context, user, asset string) (*core.Bo
 
 	return borrow, nil
 }
+
+func (w *Payee) mustGetProposal(ctx context.Context, trace string) (*core.Proposal, error) {
+	log := logger.FromContext(ctx)
+
+	proposal, err := w.proposalStore.Find(ctx, trace)
+	if err != nil {
+		log.WithError(err).Errorln("proposals.Find")
+		return nil, err
+	}
+
+	if err := compound.Require(proposal.ID > 0, "payee/proposal-not-found"); err != nil {
+		log.WithError(err).Infoln("skip")
+		return nil, err
+	}
+
+	return proposal, nil
+}

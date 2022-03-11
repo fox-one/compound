@@ -6,7 +6,6 @@ import (
 	"compound/core"
 
 	"github.com/fox-one/pkg/store/db"
-	"github.com/jinzhu/gorm"
 )
 
 func init() {
@@ -38,13 +37,16 @@ func (s *proposalStore) Create(ctx context.Context, proposal *core.Proposal) err
 	return s.db.Update().Where("trace_id = ?", proposal.TraceID).FirstOrCreate(proposal).Error
 }
 
-func (s *proposalStore) Find(ctx context.Context, trace string) (*core.Proposal, bool, error) {
+func (s *proposalStore) Find(ctx context.Context, trace string) (*core.Proposal, error) {
 	var proposal core.Proposal
 	if err := s.db.View().Where("trace_id = ?", trace).First(&proposal).Error; err != nil {
-		return nil, gorm.IsRecordNotFoundError(err), err
+		if db.IsErrorNotFound(err) {
+			return &core.Proposal{}, nil
+		}
+		return nil, err
 	}
 
-	return &proposal, false, nil
+	return &proposal, nil
 }
 
 func toUpdateParams(proposal *core.Proposal) map[string]interface{} {

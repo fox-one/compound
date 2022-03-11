@@ -2,14 +2,11 @@ package payee
 
 import (
 	"compound/core"
-	"compound/core/proposal"
+	"compound/pkg/compound"
 	"compound/pkg/mtg"
 	"context"
 	"database/sql"
-	"encoding"
 	"encoding/base64"
-	"encoding/json"
-	"fmt"
 
 	"github.com/asaskevich/govalidator"
 	"github.com/fox-one/pkg/logger"
@@ -22,18 +19,20 @@ func (w *Payee) handleMakeProposal(ctx context.Context, output *core.Output, mes
 
 	var action core.ActionType
 	message, err := mtg.Scan(message, &action)
-	if err != nil {
+	if e := compound.Require(err == nil, "payee/mtgscan"); e != nil {
 		log.WithError(err).Errorln("scan action failed")
-		return nil
+		return e
 	}
 
-	if !action.IsProposalAction() {
-		return nil
-	}
-
-	proposal, err := w.buildProposal(ctx, output, action, message)
-	if proposal == nil || err != nil {
-		return err
+	proposal := &core.Proposal{
+		CreatedAt: output.CreatedAt,
+		TraceID:   output.TraceID,
+		Creator:   output.Sender,
+		AssetID:   output.AssetID,
+		Amount:    output.Amount,
+		Action:    action,
+		Content:   message,
+		Version:   output.ID,
 	}
 
 	if err := w.proposalStore.Create(ctx, proposal); err != nil {
@@ -64,15 +63,8 @@ func (w *Payee) handleVoteProposal(ctx context.Context, output *core.Output, mes
 		return nil
 	}
 
-	proposal, isNotFound, err := w.proposalStore.Find(ctx, trace.String())
+	proposal, err := w.mustGetProposal(ctx, trace.String())
 	if err != nil {
-		// 如果 proposal 不存在，直接跳过
-		if isNotFound {
-			log.WithError(err).Debugln("proposal not found")
-			return nil
-		}
-
-		log.WithError(err).Errorln("proposals.Find")
 		return err
 	}
 
@@ -117,53 +109,6 @@ func (w *Payee) handleVoteProposal(ctx context.Context, output *core.Output, mes
 		}
 	}
 	return nil
-}
-
-func (w *Payee) buildProposal(ctx context.Context, output *core.Output, action core.ActionType, message []byte) (*core.Proposal, error) {
-	log := logger.FromContext(ctx)
-
-	// new proposal
-	p := &core.Proposal{
-		CreatedAt: output.CreatedAt,
-		UpdatedAt: output.CreatedAt,
-		TraceID:   output.TraceID,
-		Creator:   output.Sender,
-		AssetID:   output.AssetID,
-		Amount:    output.Amount,
-		Action:    action,
-		Version:   output.ID,
-	}
-
-	var content encoding.BinaryUnmarshaler
-	switch p.Action {
-	case core.ActionTypeProposalUpsertMarket:
-		content = &proposal.MarketReq{}
-	case core.ActionTypeProposalWithdrawReserves:
-		content = &proposal.WithdrawReq{}
-	case core.ActionTypeProposalCloseMarket:
-		content = &proposal.MarketStatusReq{}
-	case core.ActionTypeProposalOpenMarket:
-		content = &proposal.MarketStatusReq{}
-	case core.ActionTypeProposalAddOracleSigner:
-		content = &proposal.AddOracleSignerReq{}
-	case core.ActionTypeProposalRemoveOracleSigner:
-		content = &proposal.RemoveOracleSignerReq{}
-	case core.ActionTypeProposalSetProperty:
-		content = &proposal.SetProperty{}
-	default:
-		return nil, fmt.Errorf("unknown proposal action %d", p.Action)
-	}
-
-	if err := content.UnmarshalBinary(message); err != nil {
-		log.WithError(err).Debugln("decode proposal content failed")
-	}
-
-	p.Content, _ = json.Marshal(content)
-	if err := w.validateProposal(ctx, p); err != nil {
-		return nil, err
-	}
-
-	return p, nil
 }
 
 func (w *Payee) forwardProposal(ctx context.Context, output *core.Output, p *core.Proposal, action core.ActionType) error {

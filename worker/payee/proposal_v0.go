@@ -30,15 +30,8 @@ func (w *Payee) handleVoteProposalEventV0(ctx context.Context, output *core.Outp
 		return nil
 	}
 
-	p, isRecordNotFound, err := w.proposalStore.Find(ctx, traceID.String())
+	p, err := w.mustGetProposal(ctx, traceID.String())
 	if err != nil {
-		// 如果 proposal 不存在，直接跳过
-		if isRecordNotFound {
-			log.WithError(err).Debugln("proposal not found")
-			return nil
-		}
-
-		log.WithError(err).Errorln("proposals.Find")
 		return err
 	}
 

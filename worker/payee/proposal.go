@@ -19,25 +19,22 @@ import (
 func (w *Payee) handleShoutProposal(ctx context.Context, output *core.Output, message []byte) error {
 	log := logger.FromContext(ctx).WithField("handler", "proposal_shout")
 
-	if !w.system.IsMember(output.Sender) {
-		return nil
+	if err := compound.Require(w.system.IsMember(output.Sender), "payee/not-member"); err != nil {
+		log.WithError(err).Infoln("skip: not member")
+		return err
 	}
 
 	var trace uuid.UUID
-	if _, err := mtg.Scan(message, &trace); err != nil {
-		log.WithError(err).Errorln("scan proposal trace failed")
-		return nil
+	{
+		_, err := mtg.Scan(message, &trace)
+		if e := compound.Require(err == nil, "payee/mtgscan"); e != nil {
+			log.WithError(err).Errorln("scan proposal trace failed")
+			return e
+		}
 	}
 
-	proposal, isNotFound, err := w.proposalStore.Find(ctx, trace.String())
+	proposal, err := w.mustGetProposal(ctx, trace.String())
 	if err != nil {
-		// 如果 proposal 不存在，直接跳过
-		if isNotFound {
-			log.WithError(err).Debugln("proposal not found")
-			return nil
-		}
-
-		log.WithError(err).Errorln("proposals.Find")
 		return err
 	}
 

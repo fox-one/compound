@@ -5,7 +5,6 @@ import (
 	"compound/handler/param"
 	"compound/handler/render"
 	"compound/handler/views"
-	"errors"
 	"fmt"
 	"net/http"
 )
@@ -57,13 +56,8 @@ func handleProposal(proposals core.ProposalStore, proposalz core.ProposalService
 		ctx := r.Context()
 
 		trace := param.String(r, "trace_id")
-		proposal, found, err := proposals.Find(ctx, trace)
+		proposal, err := proposals.Find(ctx, trace)
 		if err != nil {
-			if found {
-				render.BadRequest(w, errors.New("proposal not found"))
-				return
-			}
-
 			render.BadRequest(w, err)
 			return
 		}
