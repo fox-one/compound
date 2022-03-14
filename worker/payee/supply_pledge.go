@@ -2,84 +2,37 @@ package payee
 
 import (
 	"compound/core"
+	"compound/pkg/compound"
 	"context"
-	"errors"
 
 	"github.com/fox-one/pkg/logger"
-	"github.com/shopspring/decimal"
 )
 
 // handle pledge event
 func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
 	log := logger.FromContext(ctx).WithField("worker", "pledge")
-	ctokens := output.Amount
-	ctokenAssetID := output.AssetID
 
-	log.Infof("ctokenAssetID:%s, amount:%s", ctokenAssetID, ctokens)
-
-	market, err := w.marketStore.FindByCToken(ctx, ctokenAssetID)
+	market, err := w.mustGetMarketWithCToken(ctx, output.AssetID)
 	if err != nil {
 		return err
 	}
-	if market.ID == 0 {
-		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypePledge, core.ErrMarketNotFound)
+
+	if market.Version >= output.ID {
+		log.Infoln("skip: output.ID outdated")
+		return nil
 	}
 
-	if market.IsMarketClosed() {
-		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypePledge, core.ErrMarketClosed)
+	if err := compound.Require(!market.IsMarketClosed(), "payee/market-closed", compound.FlagRefund); err != nil {
+		log.WithError(err).Infoln("market closed")
+		return w.returnOrRefundError(ctx, err, output, userID, followID, core.ActionTypePledge, core.ErrMarketClosed)
 	}
 
 	//accrue interest
 	AccrueInterest(ctx, market, output.CreatedAt)
 
-	supply, e := w.supplyStore.Find(ctx, userID, ctokenAssetID)
-	if e != nil {
-		return e
-	}
-
-	tx, e := w.transactionStore.FindByTraceID(ctx, output.TraceID)
-	if e != nil {
-		return e
-	}
-
-	if tx.ID == 0 {
-		if ctokens.GreaterThan(market.CTokens) {
-			log.Errorln(errors.New("ctoken overflow"))
-			return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypePledge, core.ErrPledgeNotAllowed)
-		}
-
-		// check collateral
-		if !market.CollateralFactor.IsPositive() {
-			log.Errorln(errors.New("pledge disallowed"))
-			return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypePledge, core.ErrPledgeNotAllowed)
-		}
-
-		newCollaterals := decimal.Zero
-		if supply.ID == 0 {
-			newCollaterals = ctokens
-		} else {
-			newCollaterals = supply.Collaterals.Add(ctokens).Truncate(16)
-		}
-
-		extra := core.NewTransactionExtra()
-		extra.Put("new_collaterals", newCollaterals)
-		extra.Put(core.TransactionKeySupply, core.ExtraSupply{
-			UserID:        userID,
-			CTokenAssetID: ctokenAssetID,
-			Collaterals:   newCollaterals,
-		})
-
-		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypePledge, output, extra)
-		if err := w.transactionStore.Create(ctx, tx); err != nil {
-			return err
-		}
-	}
-
-	var extra struct {
-		NewCollaterals decimal.Decimal `json:"new_collaterals"`
-	}
-
-	if err := tx.UnmarshalExtraData(&extra); err != nil {
+	supply, err := w.supplyStore.Find(ctx, userID, output.AssetID)
+	if err != nil {
+		log.WithError(err).Errorln("supplies.Find")
 		return err
 	}
 
@@ -87,30 +40,56 @@ func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, user
 		//not exists, create
 		supply = &core.Supply{
 			UserID:        userID,
-			CTokenAssetID: ctokenAssetID,
-			Collaterals:   extra.NewCollaterals,
-			Version:       output.ID,
+			CTokenAssetID: output.AssetID,
 		}
-		if e = w.supplyStore.Create(ctx, supply); e != nil {
-			log.Errorln(e)
-			return e
+		if err := w.supplyStore.Create(ctx, supply); err != nil {
+			log.WithError(err).Errorln("supplies.Create")
+			return err
 		}
-	} else {
-		//exists, update supply
-		if output.ID > supply.Version {
-			supply.Collaterals = extra.NewCollaterals
-			if e := w.supplyStore.Update(ctx, supply, output.ID); e != nil {
-				return e
-			}
+	}
+
+	tx, err := w.transactionStore.FindByTraceID(ctx, output.TraceID)
+	if err != nil {
+		log.WithError(err).Errorln("transactions.FindByTraceID")
+		return err
+	}
+
+	if tx.ID == 0 {
+		if err := compound.Require(
+			output.Amount.LessThanOrEqual(market.CTokens) && market.CollateralFactor.IsPositive(),
+			"payee/pledge-denied",
+			compound.FlagRefund,
+		); err != nil {
+			log.WithError(err).Infoln("pledge denied")
+			return w.returnOrRefundError(ctx, err, output, userID, followID, core.ActionTypePledge, core.ErrPledgeNotAllowed)
+		}
+
+		extra := core.NewTransactionExtra()
+		extra.Put("ctoken_asset_id", output.AssetID)
+		extra.Put("amount", output.Amount)
+
+		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypePledge, output, extra)
+		if err := w.transactionStore.Create(ctx, tx); err != nil {
+			log.WithError(err).Errorln("transactions.Create")
+			return err
+		}
+	}
+
+	if output.ID > supply.Version {
+		supply.Collaterals = supply.Collaterals.Add(output.Amount)
+		if err := w.supplyStore.Update(ctx, supply, output.ID); err != nil {
+			log.WithError(err).Errorln("supplies.Update")
+			return err
 		}
 	}
 
 	if output.ID > market.Version {
-		if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
-			log.WithError(e).Errorln("update market error")
-			return e
+		if err := w.marketStore.Update(ctx, market, output.ID); err != nil {
+			log.WithError(err).Errorln("update market error")
+			return err
 		}
 	}
 
+	log.Infoln("pledge completed")
 	return nil
 }

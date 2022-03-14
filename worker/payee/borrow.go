@@ -48,6 +48,11 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 		return nil
 	}
 
+	if err := compound.Require(!market.IsMarketClosed(), "payee/market-closed", compound.FlagRefund); err != nil {
+		log.WithError(err).Infoln("market closed")
+		return w.returnOrRefundError(ctx, err, output, userID, followID, core.ActionTypeBorrow, core.ErrMarketClosed)
+	}
+
 	// accrue interest
 	AccrueInterest(ctx, market, output.CreatedAt)
 
@@ -78,11 +83,6 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 	}
 
 	if tx.ID == 0 {
-		if err := compound.Require(!market.IsMarketClosed(), "payee/market-closed", compound.FlagRefund); err != nil {
-			log.WithError(err).Infoln("market closed")
-			return w.returnOrRefundError(ctx, err, output, userID, followID, core.ActionTypeBorrow, core.ErrMarketClosed)
-		}
-
 		liquidity, err := w.accountService.CalculateAccountLiquidity(ctx, userID, market)
 		if err != nil {
 			log.WithError(err).Errorln("CalculateAccountLiquidity")

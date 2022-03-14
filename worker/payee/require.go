@@ -25,6 +25,23 @@ func (w *Payee) mustGetMarket(ctx context.Context, asset string) (*core.Market, 
 	return market, nil
 }
 
+func (w *Payee) mustGetMarketWithCToken(ctx context.Context, ctoken string) (*core.Market, error) {
+	log := logger.FromContext(ctx)
+
+	market, err := w.marketStore.FindByCToken(ctx, ctoken)
+	if err != nil {
+		log.WithError(err).Errorln("markets.FindByCToken")
+		return nil, err
+	}
+
+	if err := compound.Require(market.ID > 0, "payee/market-not-found"); err != nil {
+		log.WithError(err).Infoln("skip")
+		return nil, err
+	}
+
+	return market, nil
+}
+
 func (w *Payee) mustGetSupply(ctx context.Context, user, asset string) (*core.Supply, error) {
 	log := logger.FromContext(ctx)
 

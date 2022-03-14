@@ -2,128 +2,139 @@ package payee
 
 import (
 	"compound/core"
+	"compound/pkg/compound"
 	"compound/pkg/mtg"
 	"context"
-	"errors"
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
+	"github.com/sirupsen/logrus"
 )
 
 // handle unpledge event
 func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, userID, followID string, body []byte) error {
 	log := logger.FromContext(ctx).WithField("worker", "unpledge")
 
-	var ctokenAsset uuid.UUID
-	var unpledgedAmount decimal.Decimal
+	var (
+		ctokenAssetID   string
+		unpledgedAmount decimal.Decimal
+	)
+	{
+		var asset uuid.UUID
+		_, e := mtg.Scan(body, &asset, &unpledgedAmount)
+		if err := compound.Require(e == nil, "payee/mtgscan"); err != nil {
+			log.WithError(err).Infoln("skip: scan memo failed")
+			return w.returnOrRefundError(ctx, err, output, userID, followID, core.ActionTypeUnpledge, core.ErrInvalidArgument)
+		}
 
-	if _, err := mtg.Scan(body, &ctokenAsset, &unpledgedAmount); err != nil {
-		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeUnpledge, core.ErrInvalidArgument)
+		unpledgedAmount = unpledgedAmount.Truncate(8)
+		ctokenAssetID = asset.String()
+		log = logger.FromContext(ctx).WithFields(logrus.Fields{
+			"ctoken_asset_id": ctokenAssetID,
+			"unpledge_amount": unpledgedAmount,
+		})
+		ctx = logger.WithContext(ctx, log)
 	}
 
-	log.Infof("ctokenAssetID:%s, amount:%s", ctokenAsset.String(), unpledgedAmount)
-	unpledgedAmount = unpledgedAmount.Truncate(8)
-	ctokenAssetID := ctokenAsset.String()
-
-	market, e := w.marketStore.FindByCToken(ctx, ctokenAssetID)
-	if e != nil {
-		return e
+	market, err := w.mustGetMarketWithCToken(ctx, ctokenAssetID)
+	if err != nil {
+		return err
 	}
 
-	if market.ID == 0 {
-		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeUnpledge, core.ErrMarketNotFound)
+	if market.Version >= output.ID {
+		log.Infoln("skip: output.ID outdated")
+		return nil
 	}
 
-	if market.IsMarketClosed() {
-		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeUnpledge, core.ErrMarketClosed)
+	if err := compound.Require(!market.IsMarketClosed(), "payee/market-closed", compound.FlagRefund); err != nil {
+		log.WithError(err).Infoln("market closed")
+		return w.returnOrRefundError(ctx, err, output, userID, followID, core.ActionTypeUnpledge, core.ErrMarketClosed)
 	}
 
 	//accrue interest
 	AccrueInterest(ctx, market, output.CreatedAt)
 
-	supply, e := w.supplyStore.Find(ctx, userID, ctokenAssetID)
-	if e != nil {
-		return e
+	supply, err := w.mustGetSupply(ctx, userID, ctokenAssetID)
+	if err != nil {
+		log.WithError(err).Infoln("invalid supply")
+		return w.returnOrRefundError(ctx, err, output, userID, followID, core.ActionTypeUnpledge, core.ErrSupplyNotFound)
 	}
 
-	if supply.ID == 0 {
-		return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeUnpledge, core.ErrSupplyNotFound)
-	}
-
-	tx, e := w.transactionStore.FindByTraceID(ctx, output.TraceID)
-	if e != nil {
-		return e
+	tx, err := w.transactionStore.FindByTraceID(ctx, output.TraceID)
+	if err != nil {
+		log.WithError(err).Errorln("transactions.FindByTraceID")
+		return err
 	}
 
 	if tx.ID == 0 {
-		if unpledgedAmount.GreaterThan(supply.Collaterals) {
-			log.Errorln(errors.New("insufficient collaterals"))
-			return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeUnpledge, core.ErrInsufficientCollaterals)
+		if err := compound.Require(
+			unpledgedAmount.LessThan(supply.Collaterals),
+			"payee/insufficient-collaterals",
+			compound.FlagRefund,
+		); err != nil {
+			log.WithError(err).Infoln("refund")
+			return w.returnOrRefundError(ctx, err, output, userID, followID, core.ActionTypeUnpledge, core.ErrInsufficientCollaterals)
 		}
 
 		// check liqudity
-		liquidity, e := w.accountService.CalculateAccountLiquidity(ctx, userID, market)
-		if e != nil {
-			log.Errorln(e)
-			return e
+		liquidity, err := w.accountService.CalculateAccountLiquidity(ctx, userID, market)
+		if err != nil {
+			log.WithError(err).Errorln("accountz.CalculateAccountLiquidity")
+			return err
 		}
 
-		price := market.Price
-		exchangeRate := market.ExchangeRate
-		unpledgedTokenLiquidity := unpledgedAmount.Mul(exchangeRate).Mul(market.CollateralFactor).Mul(price)
-		if unpledgedTokenLiquidity.GreaterThan(liquidity) {
-			log.Errorf("insufficient liquidity, liquidity:%v, changed_liquidity:%v", liquidity, unpledgedTokenLiquidity)
-			return w.handleRefundEventV0(ctx, output, userID, followID, core.ActionTypeUnpledge, core.ErrInsufficientLiquidity)
+		if err := compound.Require(
+			unpledgedAmount.Mul(market.ExchangeRate).Mul(market.CollateralFactor).Mul(market.Price).LessThanOrEqual(liquidity),
+			"payee/insufficient-borrow-balance",
+			compound.FlagRefund,
+		); err != nil {
+			log.WithError(err).Infoln("refund")
+			return w.returnOrRefundError(ctx, err, output, userID, followID, core.ActionTypeUnpledge, core.ErrInsufficientLiquidity)
 		}
 
-		newCollaterals := supply.Collaterals.Sub(unpledgedAmount).Truncate(16)
 		extra := core.NewTransactionExtra()
-		extra.Put("new_collaterals", newCollaterals)
-		extra.Put(core.TransactionKeyCTokenAssetID, ctokenAssetID)
-		extra.Put(core.TransactionKeyAmount, unpledgedAmount)
-		extra.Put(core.TransactionKeySupply, core.ExtraSupply{
-			UserID:        userID,
-			CTokenAssetID: ctokenAssetID,
-			Collaterals:   newCollaterals,
-		})
+		extra.Put("ctoken_asset_id", ctokenAssetID)
+		extra.Put("amount", unpledgedAmount)
 
 		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeUnpledge, output, extra)
 		if err := w.transactionStore.Create(ctx, tx); err != nil {
+			log.WithError(err).Errorln("transactions.Create")
 			return err
 		}
 	}
 
-	var extra struct {
-		NewCollaterals decimal.Decimal `json:"new_collaterals"`
-	}
-	if err := tx.UnmarshalExtraData(&extra); err != nil {
-		return err
-	}
-
 	if output.ID > supply.Version {
-		supply.Collaterals = extra.NewCollaterals
-		if e = w.supplyStore.Update(ctx, supply, output.ID); e != nil {
-			log.Errorln(e)
-			return e
+		supply.Collaterals = supply.Collaterals.Sub(unpledgedAmount).Truncate(compound.MaxPricision)
+		if err := w.supplyStore.Update(ctx, supply, output.ID); err != nil {
+			log.WithError(err).Errorln("supplies.Update")
+			return err
 		}
 	}
 
 	// add transfer
-	transferAction := core.TransferAction{
-		Source:   core.ActionTypeUnpledgeTransfer,
-		FollowID: followID,
-	}
-	if err := w.transferOut(ctx, userID, followID, output.TraceID, market.CTokenAssetID, unpledgedAmount, &transferAction); err != nil {
+	if err := w.transferOut(
+		ctx,
+		userID,
+		followID,
+		output.TraceID,
+		market.CTokenAssetID,
+		unpledgedAmount,
+		&core.TransferAction{
+			Source:   core.ActionTypeUnpledgeTransfer,
+			FollowID: followID,
+		},
+	); err != nil {
 		return err
 	}
 
 	if output.ID > market.Version {
-		if e = w.marketStore.Update(ctx, market, output.ID); e != nil {
-			log.WithError(e).Errorln("update market error")
-			return e
+		if err = w.marketStore.Update(ctx, market, output.ID); err != nil {
+			log.WithError(err).Errorln("update market error")
+			return err
 		}
 	}
 
+	log.Infoln("unpledge completed")
 	return nil
 }
