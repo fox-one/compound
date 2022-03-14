@@ -54,7 +54,16 @@ func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, user
 		extra := core.NewTransactionExtra()
 		extra.Put("ctoken_asset_id", output.AssetID)
 		extra.Put("amount", output.Amount)
-
+		{
+			// useless...
+			newCollaterals := supply.Collaterals.Add(output.Amount)
+			extra.Put("new_collaterals", newCollaterals)
+			extra.Put(core.TransactionKeySupply, core.ExtraSupply{
+				UserID:        userID,
+				CTokenAssetID: output.AssetID,
+				Collaterals:   newCollaterals,
+			})
+		}
 		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypePledge, output, extra)
 		if err := w.transactionStore.Create(ctx, tx); err != nil {
 			log.WithError(err).Errorln("transactions.Create")

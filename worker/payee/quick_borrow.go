@@ -144,7 +144,25 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 		extra.Put("amount", borrowAmount)
 		extra.Put("ctokens", ctokens)
 		extra.Put("ctoken_asset_id", supplyMarket.CTokenAssetID)
-
+		{
+			// useless...
+			newCollaterals := supply.Collaterals.Add(ctokens)
+			newBorrowBalance := compound.BorrowBalance(ctx, borrow, borrowMarket).Add(borrowAmount)
+			extra.Put("new_collaterals", newCollaterals)
+			extra.Put("new_borrow_balance", newBorrowBalance)
+			extra.Put("new_borrow_index", borrowMarket.BorrowIndex)
+			extra.Put(core.TransactionKeySupply, core.ExtraSupply{
+				UserID:        userID,
+				CTokenAssetID: supplyMarket.CTokenAssetID,
+				Collaterals:   newCollaterals,
+			})
+			extra.Put(core.TransactionKeyBorrow, core.ExtraBorrow{
+				UserID:        userID,
+				AssetID:       borrowMarket.AssetID,
+				Principal:     newBorrowBalance,
+				InterestIndex: borrowMarket.BorrowIndex,
+			})
+		}
 		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeQuickBorrow, output, extra)
 		if err := w.transactionStore.Create(ctx, tx); err != nil {
 			log.WithError(err).Errorln("transactions.Create")

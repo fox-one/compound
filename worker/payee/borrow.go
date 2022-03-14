@@ -86,7 +86,18 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 		extra := core.NewTransactionExtra()
 		extra.Put("asset_id", assetID)
 		extra.Put("amount", borrowAmount)
-
+		{
+			// useless...
+			newBorrowBalance := compound.BorrowBalance(ctx, borrow, market).Add(borrowAmount)
+			extra.Put("new_borrow_balance", newBorrowBalance)
+			extra.Put("new_borrow_index", market.BorrowIndex)
+			extra.Put(core.TransactionKeyBorrow, core.ExtraBorrow{
+				UserID:        userID,
+				AssetID:       assetID,
+				Principal:     newBorrowBalance,
+				InterestIndex: market.BorrowIndex,
+			})
+		}
 		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeBorrow, output, extra)
 		if err := w.transactionStore.Create(ctx, tx); err != nil {
 			return err

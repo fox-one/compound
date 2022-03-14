@@ -96,7 +96,16 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 		extra := core.NewTransactionExtra()
 		extra.Put("ctoken_asset_id", ctokenAssetID)
 		extra.Put("amount", unpledgedAmount)
-
+		{
+			// useless...
+			newCollaterals := supply.Collaterals.Sub(unpledgedAmount)
+			extra.Put("new_collaterals", newCollaterals)
+			extra.Put(core.TransactionKeySupply, core.ExtraSupply{
+				UserID:        userID,
+				CTokenAssetID: ctokenAssetID,
+				Collaterals:   newCollaterals,
+			})
+		}
 		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeUnpledge, output, extra)
 		if err := w.transactionStore.Create(ctx, tx); err != nil {
 			log.WithError(err).Errorln("transactions.Create")

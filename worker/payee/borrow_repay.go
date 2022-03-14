@@ -48,7 +48,18 @@ func (w *Payee) handleRepayEvent(ctx context.Context, output *core.Output, userI
 
 		extra := core.NewTransactionExtra()
 		extra.Put("repay_amount", repayAmount)
-
+		{
+			// useless...
+			newBalance := compound.BorrowBalance(ctx, borrow, market).Sub(repayAmount).Truncate(compound.MaxPricision)
+			extra.Put("new_balance", newBalance)
+			extra.Put("new_index", market.BorrowIndex)
+			extra.Put(core.TransactionKeyBorrow, core.ExtraBorrow{
+				UserID:        borrow.UserID,
+				AssetID:       borrow.AssetID,
+				Principal:     newBalance,
+				InterestIndex: market.BorrowIndex,
+			})
+		}
 		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeRepay, output, extra)
 		if err := w.transactionStore.Create(ctx, tx); err != nil {
 			log.WithError(err).Errorln("transactions.Create")

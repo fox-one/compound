@@ -53,7 +53,14 @@ func (w *Payee) handleQuickPledgeEvent(ctx context.Context, output *core.Output,
 		extra := core.NewTransactionExtra()
 		extra.Put("ctoken_asset_id", market.CTokenAssetID)
 		extra.Put("amount", ctokens)
-
+		{
+			// useless...
+			extra.Put(core.TransactionKeySupply, core.ExtraSupply{
+				UserID:        userID,
+				CTokenAssetID: market.CTokenAssetID,
+				Collaterals:   supply.Collaterals.Add(ctokens),
+			})
+		}
 		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeQuickPledge, output, extra)
 		if err := w.transactionStore.Create(ctx, tx); err != nil {
 			log.WithError(err).Errorln("transactions.Create")

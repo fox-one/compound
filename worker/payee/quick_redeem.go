@@ -96,7 +96,14 @@ func (w *Payee) handleQuickRedeemEvent(ctx context.Context, output *core.Output,
 		extra.Put("amount", underlyingAmount)
 		extra.Put("ctoken_asset_id", ctokenAssetID)
 		extra.Put("ctokens", redeemTokens)
-
+		{
+			// useless...
+			extra.Put(core.TransactionKeySupply, core.ExtraSupply{
+				UserID:        supply.UserID,
+				CTokenAssetID: supply.CTokenAssetID,
+				Collaterals:   supply.Collaterals.Sub(redeemTokens),
+			})
+		}
 		tx = core.BuildTransactionFromOutput(ctx, userID, followID, core.ActionTypeQuickRedeem, output, extra)
 		if err := w.transactionStore.Create(ctx, tx); err != nil {
 			log.WithError(err).Errorln("transactions.Create")
