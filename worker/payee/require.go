@@ -59,6 +59,28 @@ func (w *Payee) mustGetSupply(ctx context.Context, user, asset string) (*core.Su
 	return supply, nil
 }
 
+func (w *Payee) getOrCreateSupply(ctx context.Context, user, asset string) (*core.Supply, error) {
+	log := logger.FromContext(ctx)
+
+	supply, err := w.supplyStore.Find(ctx, user, asset)
+	if err != nil {
+		log.WithError(err).Errorln("supplies.Find")
+		return nil, err
+	}
+
+	if supply.ID == 0 {
+		supply = &core.Supply{
+			UserID:        user,
+			CTokenAssetID: asset,
+		}
+		if err := w.supplyStore.Create(ctx, supply); err != nil {
+			log.WithError(err).Errorln("supplies.Create")
+			return nil, err
+		}
+	}
+	return supply, nil
+}
+
 func (w *Payee) mustGetBorrow(ctx context.Context, user, asset string) (*core.Borrow, error) {
 	log := logger.FromContext(ctx)
 
@@ -71,6 +93,29 @@ func (w *Payee) mustGetBorrow(ctx context.Context, user, asset string) (*core.Bo
 	if err := compound.Require(borrow.ID > 0, "payee/borrow-not-found"); err != nil {
 		log.WithError(err).Infoln("skip")
 		return nil, err
+	}
+
+	return borrow, nil
+}
+
+func (w *Payee) getOrCreateBorrow(ctx context.Context, user, asset string) (*core.Borrow, error) {
+	log := logger.FromContext(ctx)
+
+	borrow, err := w.borrowStore.Find(ctx, user, asset)
+	if err != nil {
+		log.WithError(err).Errorln("borrows.Find")
+		return nil, err
+	}
+
+	if borrow.ID == 0 {
+		borrow = &core.Borrow{
+			UserID:  user,
+			AssetID: asset,
+		}
+		if err := w.borrowStore.Create(ctx, borrow); err != nil {
+			log.WithError(err).Errorln("borrows.Create")
+			return nil, err
+		}
 	}
 
 	return borrow, nil

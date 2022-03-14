@@ -32,23 +32,9 @@ func (w *Payee) handleQuickPledgeEvent(ctx context.Context, output *core.Output,
 	//accrue interest
 	AccrueInterest(ctx, market, output.CreatedAt)
 
-	supply, err := w.supplyStore.Find(ctx, userID, market.CTokenAssetID)
+	supply, err := w.getOrCreateSupply(ctx, userID, market.CTokenAssetID)
 	if err != nil {
-		log.WithError(err).Errorln("supplies.Find")
 		return err
-	}
-
-	// pledge
-	if supply.ID == 0 {
-		//not exists, create
-		supply = &core.Supply{
-			UserID:        userID,
-			CTokenAssetID: market.CTokenAssetID,
-		}
-		if err := w.supplyStore.Create(ctx, supply); err != nil {
-			log.WithError(err).Errorln("supplies.Create")
-			return err
-		}
 	}
 
 	ctokens := output.Amount.Div(market.CurExchangeRate()).Truncate(8)

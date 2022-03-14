@@ -56,24 +56,9 @@ func (w *Payee) handleBorrowEvent(ctx context.Context, output *core.Output, user
 	// accrue interest
 	AccrueInterest(ctx, market, output.CreatedAt)
 
-	borrow, err := w.borrowStore.Find(ctx, userID, assetID)
+	borrow, err := w.getOrCreateBorrow(ctx, userID, assetID)
 	if err != nil {
-		log.WithError(err).Errorln("borrows.Find")
 		return err
-	}
-
-	if borrow.ID == 0 {
-		//new borrow record
-		borrow = &core.Borrow{
-			UserID:        userID,
-			AssetID:       market.AssetID,
-			InterestIndex: market.BorrowIndex,
-		}
-
-		if err := w.borrowStore.Create(ctx, borrow); err != nil {
-			log.WithError(err).Errorln("borrows.Create")
-			return err
-		}
 	}
 
 	tx, err := w.transactionStore.FindByTraceID(ctx, output.TraceID)

@@ -79,43 +79,14 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 		return w.returnOrRefundError(ctx, err, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrPledgeNotAllowed)
 	}
 
-	supply, err := w.supplyStore.Find(ctx, userID, supplyMarket.CTokenAssetID)
+	supply, err := w.getOrCreateSupply(ctx, userID, supplyMarket.CTokenAssetID)
 	if err != nil {
-		log.WithError(err).Errorln("supplies.Find")
 		return err
 	}
 
-	// update pledge data
-	if supply.ID == 0 {
-		//not exists, create
-		supply = &core.Supply{
-			UserID:        userID,
-			CTokenAssetID: supplyMarket.CTokenAssetID,
-		}
-		if err := w.supplyStore.Create(ctx, supply); err != nil {
-			log.WithError(err).Errorln("supplies.Create")
-			return err
-		}
-	}
-
-	borrow, err := w.borrowStore.Find(ctx, userID, borrowMarket.AssetID)
+	borrow, err := w.getOrCreateBorrow(ctx, userID, borrowMarket.AssetID)
 	if err != nil {
-		log.WithError(err).Errorln("borrows.Find")
 		return err
-	}
-
-	if borrow.ID == 0 {
-		//new borrow record
-		borrow = &core.Borrow{
-			UserID:        userID,
-			AssetID:       borrowMarket.AssetID,
-			InterestIndex: borrowMarket.BorrowIndex,
-		}
-
-		if err := w.borrowStore.Create(ctx, borrow); err != nil {
-			log.WithError(err).Errorln("borrows.Create")
-			return err
-		}
 	}
 
 	tx, err := w.transactionStore.FindByTraceID(ctx, output.TraceID)

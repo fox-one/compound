@@ -30,22 +30,9 @@ func (w *Payee) handlePledgeEvent(ctx context.Context, output *core.Output, user
 	//accrue interest
 	AccrueInterest(ctx, market, output.CreatedAt)
 
-	supply, err := w.supplyStore.Find(ctx, userID, output.AssetID)
+	supply, err := w.getOrCreateSupply(ctx, userID, output.AssetID)
 	if err != nil {
-		log.WithError(err).Errorln("supplies.Find")
 		return err
-	}
-
-	if supply.ID == 0 {
-		//not exists, create
-		supply = &core.Supply{
-			UserID:        userID,
-			CTokenAssetID: output.AssetID,
-		}
-		if err := w.supplyStore.Create(ctx, supply); err != nil {
-			log.WithError(err).Errorln("supplies.Create")
-			return err
-		}
 	}
 
 	tx, err := w.transactionStore.FindByTraceID(ctx, output.TraceID)
