@@ -69,7 +69,7 @@ func (w *Payee) handleUnpledgeEvent(ctx context.Context, output *core.Output, us
 
 	if tx.ID == 0 {
 		if err := compound.Require(
-			unpledgedAmount.LessThan(supply.Collaterals),
+			unpledgedAmount.LessThanOrEqual(supply.Collaterals),
 			"payee/insufficient-collaterals",
 			compound.FlagRefund,
 		); err != nil {
