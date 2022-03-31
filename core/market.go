@@ -28,6 +28,7 @@ type (
 		CTokenAssetID string          `sql:"size:36;unique_index:ctoken_asset_idx" json:"ctoken_asset_id"`
 		TotalCash     decimal.Decimal `sql:"type:decimal(32,16)" json:"total_cash"`
 		TotalBorrows  decimal.Decimal `sql:"type:decimal(32,16)" json:"total_borrows"`
+		MaxPledge     decimal.Decimal `sql:"type:decimal(32,16)" json:"max_pledge"`
 		// 保留金
 		Reserves decimal.Decimal `sql:"type:decimal(32,16)" json:"reserves"`
 		// CToken 累计铸造出来的币的数量

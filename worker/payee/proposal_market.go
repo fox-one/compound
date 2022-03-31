@@ -43,6 +43,7 @@ func (w *Payee) handleMarketEvent(ctx context.Context, p *core.Proposal, req pro
 			Kink:                 req.Kink,
 			Price:                req.Price,
 			PriceThreshold:       req.PriceThreshold,
+			MaxPledge:            req.MaxPledge,
 			PriceUpdatedAt:       output.CreatedAt,
 			Status:               core.MarketStatusClose,
 			Version:              output.ID,
@@ -115,6 +116,10 @@ func (w *Payee) handleMarketEvent(ctx context.Context, p *core.Proposal, req pro
 
 	if req.Price.IsPositive() {
 		market.Price = req.Price
+	}
+
+	if !req.MaxPledge.IsNegative() {
+		market.MaxPledge = req.MaxPledge
 	}
 
 	if err := w.marketStore.Update(ctx, market, output.ID); err != nil {

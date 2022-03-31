@@ -50,6 +50,21 @@ func (w *Payee) handleQuickPledgeEvent(ctx context.Context, output *core.Output,
 	}
 
 	if tx.ID == 0 {
+		totalPledge, err := w.supplyStore.SumOfSupplies(ctx, market.CTokenAssetID)
+		if err != nil {
+			log.WithError(err).Errorln("supplies.SumOfSupplies")
+			return err
+		}
+
+		if err := compound.Require(
+			!market.MaxPledge.IsPositive() || totalPledge.Add(ctokens).LessThanOrEqual(market.MaxPledge),
+			"payee/max-pledge-exceeded",
+			compound.FlagRefund,
+		); err != nil {
+			log.WithError(err).Errorln("refund: pledge exceed")
+			return err
+		}
+
 		extra := core.NewTransactionExtra()
 		extra.Put("ctoken_asset_id", market.CTokenAssetID)
 		extra.Put("amount", ctokens)

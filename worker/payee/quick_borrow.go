@@ -139,6 +139,21 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 			return w.returnOrRefundError(ctx, err, output, userID, followID, core.ActionTypeQuickBorrow, core.ErrInvalidAmount)
 		}
 
+		totalPledge, err := w.supplyStore.SumOfSupplies(ctx, supplyMarket.CTokenAssetID)
+		if err != nil {
+			log.WithError(err).Errorln("supplies.SumOfSupplies")
+			return err
+		}
+
+		if err := compound.Require(
+			!supplyMarket.MaxPledge.IsPositive() || totalPledge.Add(ctokens).LessThanOrEqual(supplyMarket.MaxPledge),
+			"payee/max-pledge-exceeded",
+			compound.FlagRefund,
+		); err != nil {
+			log.WithError(err).Errorln("refund: pledge exceed")
+			return err
+		}
+
 		extra := core.NewTransactionExtra()
 		extra.Put("asset_id", borrowAssetID)
 		extra.Put("amount", borrowAmount)

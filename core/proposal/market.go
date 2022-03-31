@@ -24,6 +24,7 @@ type MarketReq struct {
 	Multiplier           decimal.Decimal `json:"multiplier,omitempty"`
 	JumpMultiplier       decimal.Decimal `json:"jump_multiplier,omitempty"`
 	Kink                 decimal.Decimal `json:"kink,omitempty"`
+	MaxPledge            decimal.Decimal `json:"max_pledge,omitempty"`
 }
 
 // MarshalBinary marshal req to binary
@@ -54,6 +55,7 @@ func (w MarketReq) MarshalBinary() (data []byte, err error) {
 		w.Kink,
 		w.PriceThreshold,
 		w.Price,
+		w.MaxPledge,
 	)
 }
 
@@ -64,7 +66,8 @@ func (w *MarketReq) UnmarshalBinary(data []byte) error {
 		assetID       uuid.UUID
 		ctokenAssetID uuid.UUID
 	)
-	if _, err := mtg.Scan(data,
+
+	data, err := mtg.Scan(data,
 		&req.Symbol,
 		&assetID,
 		&ctokenAssetID,
@@ -80,11 +83,19 @@ func (w *MarketReq) UnmarshalBinary(data []byte) error {
 		&req.Kink,
 		&req.PriceThreshold,
 		&req.Price,
-	); err != nil {
+	)
+	if err != nil {
 		return err
 	}
+
 	req.AssetID = assetID.String()
 	req.CTokenAssetID = ctokenAssetID.String()
+	if len(data) > 0 {
+		var maxPledge decimal.Decimal
+		if _, err := mtg.Scan(data, &maxPledge); err == nil {
+			req.MaxPledge = maxPledge
+		}
+	}
 
 	*w = req
 	return nil

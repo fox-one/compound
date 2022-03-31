@@ -18,7 +18,7 @@ import (
 var upsertMarketsCmd = &cobra.Command{
 	Use: "markets",
 	Long: "input csv file with the following format:\n" +
-		"Symbol,Asset,C Token,Init Exchange,Reserve Factor,Liquidation Incentive,Collateral Factor,Base Rate,Close Factor,Multiplier,Jump Multiplier,Kink,Price Threshold,Price,Submit State,Duplicated",
+		"Symbol,Asset,C Token,Init Exchange,Reserve Factor,Liquidation Incentive,Collateral Factor,Base Rate,Close Factor,Multiplier,Jump Multiplier,Kink,Price Threshold,Max Supply",
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := cmd.Context()
 		system := provideSystem()
@@ -69,6 +69,10 @@ var upsertMarketsCmd = &cobra.Command{
 				return
 			}
 			req.PriceThreshold = int(threshold)
+
+			if len(row) > 13 {
+				req.MaxPledge = number.Decimal(row[13])
+			}
 
 			asset, err := dapp.Client.ReadAsset(ctx, req.AssetID)
 			if err != nil {
