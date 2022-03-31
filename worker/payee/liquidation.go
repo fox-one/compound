@@ -40,7 +40,7 @@ func (w *Payee) handleLiquidationEvent(ctx context.Context, output *core.Output,
 		seizedCTokenAssetID = seizedCTokenAsset.String()
 	}
 
-	supplyMarket, err := w.mustGetMarket(ctx, seizedCTokenAssetID)
+	supplyMarket, err := w.mustGetMarketWithCToken(ctx, seizedCTokenAssetID)
 	if err != nil {
 		log.WithError(err).Infoln("invalid supply market")
 		return w.returnOrRefundError(ctx, err, output, userID, followID, core.ActionTypeLiquidate, core.ErrMarketNotFound)
