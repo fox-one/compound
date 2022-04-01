@@ -24,15 +24,9 @@ func (w *Payee) handleMakeProposal(ctx context.Context, output *core.Output, mes
 		return e
 	}
 
-	proposal := &core.Proposal{
-		CreatedAt: output.CreatedAt,
-		TraceID:   output.TraceID,
-		Creator:   output.Sender,
-		AssetID:   output.AssetID,
-		Amount:    output.Amount,
-		Action:    action,
-		Content:   message,
-		Version:   output.ID,
+	proposal, err := w.buildProposalV1(ctx, output, action, message)
+	if proposal == nil || err != nil {
+		return err
 	}
 
 	if err := w.proposalStore.Create(ctx, proposal); err != nil {

@@ -28,7 +28,8 @@ var upsertMarketCmd = &cobra.Command{
 	multi: multiplier
 	jump_multi: jump multiplier
 	kink: kink
-	price_threshold: int`,
+	price_threshold: int
+	max_pledge: max pledge`,
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := cmd.Context()
 		system := provideSystem()
@@ -152,6 +153,16 @@ var upsertMarketCmd = &cobra.Command{
 		}
 		req.Kink = k
 
+		flag, e = cmd.Flags().GetString("max_pledge")
+		if e != nil {
+			panic("invalid flag max_pledge")
+		}
+		maxPledge, e := decimal.NewFromString(flag)
+		if e != nil {
+			panic(e)
+		}
+		req.MaxPledge = maxPledge
+
 		if pt, err := cmd.Flags().GetInt("price_threshold"); err != nil {
 			panic("invalid param: price_threshold")
 		} else {
@@ -197,4 +208,5 @@ func init() {
 	upsertMarketCmd.Flags().String("kink", "0", "kink")
 	upsertMarketCmd.Flags().String("price", "0", "price")
 	upsertMarketCmd.Flags().Int("price_threshold", 0, "price threshold")
+	upsertMarketCmd.Flags().String("max_pledge", "0", "max_pledge")
 }
