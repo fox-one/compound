@@ -152,7 +152,7 @@ func (w *Payee) buildProposalV1(ctx context.Context, output *core.Output, action
 		return nil, fmt.Errorf("unknown proposal action %d", p.Action)
 	}
 
-	if _, err := mtg.Scan(message, content); err != nil {
+	if err := content.UnmarshalBinary(message); err != nil {
 		log.WithError(err).Debugln("decode proposal content failed")
 	}
 
