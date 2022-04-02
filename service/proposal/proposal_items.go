@@ -83,6 +83,10 @@ func (s *service) ListItems(ctx context.Context, p *core.Proposal) ([]core.Propo
 				Key:   "price",
 				Value: action.Price.String(),
 			},
+			{
+				Key:   "max_pledge",
+				Value: action.MaxPledge.String(),
+			},
 		}
 	case core.ActionTypeProposalWithdrawReserves:
 		var action proposal.WithdrawReq
