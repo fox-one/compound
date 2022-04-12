@@ -123,7 +123,7 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 		}
 
 		// supply, calculate ctokens
-		ctokens := decimal.Zero
+		var ctokens decimal.Decimal
 		if isSupplyCToken {
 			ctokens = output.Amount
 		} else {

@@ -21,11 +21,13 @@ func (w *Payee) handlePriceEvent(ctx context.Context, output *core.Output) error
 		return err
 	}
 
+	priceTime := time.Unix(priceData.Timestamp, 0)
+
 	log := logger.FromContext(ctx).WithFields(logrus.Fields{
 		"event":     "price-oracle",
 		"asset":     priceData.AssetID,
 		"price":     priceData.Price,
-		"timestamp": time.Unix(priceData.Timestamp, 0),
+		"timestamp": priceTime,
 	})
 	ctx = logger.WithContext(ctx, log)
 
@@ -36,6 +38,17 @@ func (w *Payee) handlePriceEvent(ctx context.Context, output *core.Output) error
 
 	if market.Version >= output.ID {
 		return nil
+	}
+
+	market.Price = priceData.Price
+	if w.sysversion < 3 {
+		market.PriceUpdatedAt = output.CreatedAt
+	} else {
+		market.PriceUpdatedAt = priceTime
+		if market.PriceUpdatedAt.After(priceTime) {
+			log.Infoln("skip: price outdated", market.PriceUpdatedAt)
+			return nil
+		}
 	}
 
 	ss, err := w.oracleSignerStore.FindAll(ctx)
@@ -76,8 +89,6 @@ func (w *Payee) handlePriceEvent(ctx context.Context, output *core.Output) error
 		return err
 	}
 
-	market.Price = priceData.Price
-	market.PriceUpdatedAt = output.CreatedAt
 	AccrueInterest(ctx, market, output.CreatedAt)
 	if err := w.marketStore.Update(ctx, market, output.ID); err != nil {
 		log.WithError(err).Errorln("update market price err")
