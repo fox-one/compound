@@ -5,6 +5,7 @@ import (
 	"compound/pkg/compound"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -183,9 +184,17 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 	}
 
 	if compound.ShouldRefund(e.Flag) {
-		memo := fmt.Sprintf(`{"f":"%s","m":"Rings operation failed: %s"}`, followID, e.Error())
+		memo, err := json.Marshal(core.TransferAction{
+			Source:   core.ActionTypeRefundTransfer,
+			FollowID: followID,
+			Message:  e.Error(),
+		})
+		if err != nil {
+			return err
+		}
+
 		transfer := &core.Transfer{
-			TraceID:   uuid.Modify(output.TraceID, memo),
+			TraceID:   uuid.Modify(output.TraceID, string(memo)),
 			AssetID:   output.AssetID,
 			Amount:    output.Amount,
 			Memo:      base64.StdEncoding.EncodeToString([]byte(memo)),
