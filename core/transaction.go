@@ -182,8 +182,7 @@ func BuildTransactionFromOutput(ctx context.Context, userID, followID string, ac
 func BuildTransactionFromTransfer(ctx context.Context, transfer *Transfer, snapshotTraceID string) (*Transaction, error) {
 	var transferAction TransferAction
 	m := decodeTransferMemo(transfer.Memo)
-	err := json.Unmarshal(m, &transferAction)
-	if err != nil {
+	if err := json.Unmarshal(m, &transferAction); err != nil {
 		return nil, err
 	}
 

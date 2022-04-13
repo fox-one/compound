@@ -183,7 +183,7 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 	}
 
 	if compound.ShouldRefund(e.Flag) {
-		memo := fmt.Sprintf(`{"id":"%s","s":"%s"}`, followID, e.Error())
+		memo := fmt.Sprintf(`{"f":"%s","m":"Rings operation failed: %s"}`, followID, e.Error())
 		transfer := &core.Transfer{
 			TraceID:   uuid.Modify(output.TraceID, memo),
 			AssetID:   output.AssetID,
