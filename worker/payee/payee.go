@@ -188,7 +188,7 @@ func (w *Payee) handleOutput(ctx context.Context, output *core.Output) error {
 			TraceID:   uuid.Modify(output.TraceID, memo),
 			AssetID:   output.AssetID,
 			Amount:    output.Amount,
-			Memo:      base64.RawStdEncoding.EncodeToString([]byte(memo)),
+			Memo:      base64.StdEncoding.EncodeToString([]byte(memo)),
 			Threshold: 1,
 			Opponents: []string{output.Sender},
 		}
