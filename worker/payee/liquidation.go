@@ -279,7 +279,7 @@ func (w *Payee) HasClosedMarkets(ctx context.Context, user string) error {
 
 	for _, borrow := range borrows {
 		_, ok := closedMarkets[borrow.AssetID]
-		if err := compound.Require(!ok, "payee/market-closed"); err != nil {
+		if err := compound.Require(!ok, "payee/market-closed", compound.FlagRefund); err != nil {
 			log.WithError(err).Infoln("failure: borrow market closed", borrow.AssetID)
 			return err
 		}
@@ -293,7 +293,7 @@ func (w *Payee) HasClosedMarkets(ctx context.Context, user string) error {
 
 	for _, supply := range supplies {
 		_, ok := closedMarkets[supply.CTokenAssetID]
-		if err := compound.Require(!ok, "payee/market-closed"); err != nil {
+		if err := compound.Require(!ok, "payee/market-closed", compound.FlagRefund); err != nil {
 			log.WithError(err).Infoln("failure: supply market closed", supply.CTokenAssetID)
 			return err
 		}

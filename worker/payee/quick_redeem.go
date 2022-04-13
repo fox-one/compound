@@ -65,6 +65,7 @@ func (w *Payee) handleQuickRedeemEvent(ctx context.Context, output *core.Output,
 			redeemTokens.LessThanOrEqual(market.CTokens) &&
 				market.RedeemAllowed(redeemTokens),
 			"payee/redeem-disallowed",
+			compound.FlagRefund,
 		); err != nil {
 			log.WithError(err).Infoln("skip: redeem not allowed")
 			return w.returnOrRefundError(ctx, err, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrRedeemNotAllowed)
@@ -73,6 +74,7 @@ func (w *Payee) handleQuickRedeemEvent(ctx context.Context, output *core.Output,
 		if err := compound.Require(
 			redeemTokens.LessThanOrEqual(supply.Collaterals),
 			"payee/insufficient-collaterals",
+			compound.FlagRefund,
 		); err != nil {
 			log.WithError(err).Infoln("skip: insufficient collaterals")
 			return w.returnOrRefundError(ctx, err, output, userID, followID, core.ActionTypeQuickRedeem, core.ErrInsufficientCollaterals)
