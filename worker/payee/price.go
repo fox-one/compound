@@ -44,11 +44,11 @@ func (w *Payee) handlePriceEvent(ctx context.Context, output *core.Output) error
 	if w.sysversion < 3 {
 		market.PriceUpdatedAt = output.CreatedAt
 	} else {
-		market.PriceUpdatedAt = priceTime
 		if market.PriceUpdatedAt.After(priceTime) {
 			log.Infoln("skip: price outdated", market.PriceUpdatedAt)
 			return nil
 		}
+		market.PriceUpdatedAt = priceTime
 	}
 
 	ss, err := w.oracleSignerStore.FindAll(ctx)
