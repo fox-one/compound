@@ -9,7 +9,7 @@ COPY . ./
 
 RUN make build-prod
 
-FROM frolvlad/alpine-glibc:latest
+FROM frolvlad/alpine-glibc:glibc-2.34
 
 WORKDIR /app
 

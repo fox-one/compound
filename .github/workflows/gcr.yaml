@@ -2,7 +2,6 @@ on:
   push:
     tags:
       - v*
-      - t*
 
 name: Build & Push Rings Node to GCR
 

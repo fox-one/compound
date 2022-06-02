@@ -84,7 +84,6 @@ var upsertMarketsCmd = &cobra.Command{
 				cmd.PrintErr("symbol not matched", req.Symbol, asset.Symbol)
 				return
 			}
-			req.Price = asset.PriceUSD
 
 			if !exec || dapp.Pin == "" {
 				url, err := buildProposalTransferURL(ctx, system, dapp.Client, core.ActionTypeProposalUpsertMarket, req)
