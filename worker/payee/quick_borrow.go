@@ -56,13 +56,15 @@ func (w *Payee) handleQuickBorrowEvent(ctx context.Context, output *core.Output,
 	}
 	isSupplyCToken := supplyMarket.CTokenAssetID == output.AssetID
 
-	if err := compound.Require(
-		supplyMarket.AssetID != borrowAssetID,
-		"payee/same-supply-and-borrow-asset",
-		compound.FlagRefund,
-	); err != nil {
-		log.WithError(err).Errorln("refund: supply/borrow asset is same")
-		return err
+	if w.sysversion > 3 {
+		if err := compound.Require(
+			supplyMarket.AssetID != borrowAssetID,
+			"payee/same-supply-and-borrow-asset",
+			compound.FlagRefund,
+		); err != nil {
+			log.WithError(err).Errorln("refund: supply/borrow asset is same")
+			return err
+		}
 	}
 
 	// supply market accrue interest
