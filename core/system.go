@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	SysVersion int64 = 4
+	SysVersion int64 = 5
 )
 
 type (

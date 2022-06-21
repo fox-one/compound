@@ -51,9 +51,16 @@ func (w *Payee) mustGetSupply(ctx context.Context, user, asset string) (*core.Su
 		return nil, err
 	}
 
-	if err := compound.Require(supply.ID > 0, "payee/supply-not-found"); err != nil {
-		log.WithError(err).Infoln("skip")
-		return nil, err
+	if w.sysversion < 5 {
+		if err := compound.Require(supply.ID > 0, "payee/supply-not-found"); err != nil {
+			log.WithError(err).Infoln("skip")
+			return nil, err
+		}
+	} else {
+		if err := compound.Require(supply.ID > 0, "payee/supply-not-found", compound.FlagRefund); err != nil {
+			log.WithError(err).Infoln("skip")
+			return nil, err
+		}
 	}
 
 	return supply, nil
@@ -90,9 +97,16 @@ func (w *Payee) mustGetBorrow(ctx context.Context, user, asset string) (*core.Bo
 		return nil, err
 	}
 
-	if err := compound.Require(borrow.ID > 0, "payee/borrow-not-found"); err != nil {
-		log.WithError(err).Infoln("skip")
-		return nil, err
+	if w.sysversion < 5 {
+		if err := compound.Require(borrow.ID > 0, "payee/borrow-not-found"); err != nil {
+			log.WithError(err).Infoln("skip")
+			return nil, err
+		}
+	} else {
+		if err := compound.Require(borrow.ID > 0, "payee/borrow-not-found", compound.FlagRefund); err != nil {
+			log.WithError(err).Infoln("skip")
+			return nil, err
+		}
 	}
 
 	return borrow, nil
