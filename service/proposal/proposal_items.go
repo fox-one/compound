@@ -107,6 +107,10 @@ func (s *service) ListItems(ctx context.Context, p *core.Proposal) ([]core.Propo
 				Hint:   s.fetchUserName(ctx, action.Opponent),
 				Action: userAction(action.Opponent),
 			},
+			{
+				Key:   "amount",
+				Value: action.Amount.String(),
+			},
 		}
 	case core.ActionTypeProposalCloseMarket:
 		var action proposal.MarketStatusReq
