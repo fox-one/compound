@@ -44,7 +44,7 @@ func WithRequestID(ctx context.Context, requestID string) *resty.Request {
 
 // Execute do network request
 func Execute(request *resty.Request, method, url string, body interface{}, resp interface{}) (int, error) {
-	logrus.Infoln("url:%s\n", url)
+	logrus.Infof("url:%s\n", url)
 
 	if body != nil {
 		request = request.SetBody(body)
@@ -55,7 +55,7 @@ func Execute(request *resty.Request, method, url string, body interface{}, resp 
 		return r.StatusCode(), err
 	}
 
-	logrus.Infoln("resp.status:%s\n", r.Status())
+	logrus.Infof("resp.status:%s\n", r.Status())
 
 	return r.StatusCode(), ParseResponse(r, resp)
 }
