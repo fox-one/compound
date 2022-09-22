@@ -1,8 +1,4 @@
-FROM alpine as build
-RUN apk --no-cache add ca-certificates
-FROM scratch
-COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-
+FROM frolvlad/alpine-glibc:glibc-2.34
 WORKDIR /app
 COPY rings .
 ENTRYPOINT ["/app/rings"]
