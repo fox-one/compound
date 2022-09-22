@@ -1,18 +1,8 @@
-FROM golang:1.16 AS builder
+FROM alpine as build
+RUN apk --no-cache add ca-certificates
+FROM scratch
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 WORKDIR /app
-
-COPY go.mod go.sum ./
-RUN go mod download
-
-COPY . ./
-
-RUN make build-prod
-
-FROM frolvlad/alpine-glibc:glibc-2.34
-
-WORKDIR /app
-
-COPY --from=builder /app/builds/rings .
-
+COPY rings .
 ENTRYPOINT ["/app/rings"]

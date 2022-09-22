@@ -1,0 +1,27 @@
+before:
+  hooks:
+    - go mod download
+
+builds:
+  - main: .
+    id: rings
+    binary: rings
+    goos:
+      - linux
+    goarch:
+      - amd64
+    env:
+      - CGO_ENABLED=1
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}}
+
+dockers:
+  - id: rings
+    goos: linux
+    goarch: amd64
+    dockerfile: docker/Dockerfile
+    image_templates:
+      - "ghcr.io/fox-one/{{ .ProjectName }}/rings:latest"
+      - "ghcr.io/fox-one/{{ .ProjectName }}/rings:{{ .Major }}"
+      - "ghcr.io/fox-one/{{ .ProjectName }}/rings:{{ .Major }}.{{ .Minor }}"
+      - "ghcr.io/fox-one/{{ .ProjectName }}/rings:{{ .Major }}.{{ .Minor }}.{{ .Patch }}"
